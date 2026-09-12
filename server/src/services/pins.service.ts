@@ -35,7 +35,23 @@ export class PinsService {
     try {
       if (fs.existsSync(this.dbPath)) {
         const raw = fs.readFileSync(this.dbPath, 'utf-8');
-        return JSON.parse(raw);
+        const parsed: PinsDb = JSON.parse(raw);
+        // Self-heal records written before publicUrl normalization existed —
+        // without this, a pin saved with a bare domain (no https://) stays
+        // broken forever even after the write path was fixed.
+        let needsResave = false;
+        for (const record of Object.values(parsed.pins)) {
+          const normalized = this.normalizeUrl(record.publicUrl);
+          if (normalized !== record.publicUrl) {
+            record.publicUrl = normalized;
+            needsResave = true;
+          }
+        }
+        if (needsResave) {
+          this.db = parsed;
+          this.saveDb();
+        }
+        return parsed;
       }
     } catch (err) {
       console.error('[PinsService] Error reading pins database:', err);
