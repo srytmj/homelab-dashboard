@@ -160,6 +160,17 @@ export interface NativeConsoleItem {
   status: 'online' | 'degraded' | 'offline';
 }
 
+export interface SentinelStatus {
+  enabled: boolean;
+  botUsername?: string;
+  polling: boolean;
+  allowedUsersCount: number;
+  geminiConfigured: boolean;
+  managedContainers: string[];
+  lastCommandAt?: string;
+  lastCommand?: string;
+}
+
 export interface CockpitSnapshot {
   timestamp: number;
   host: HostMetrics;
@@ -169,5 +180,6 @@ export interface CockpitSnapshot {
   sslCertificates: SslCertificate[];
   dockerHygiene: DockerDiskHygiene;
   consoles: NativeConsoleItem[];
+  sentinel?: SentinelStatus;
   isDemoMode: boolean;
 }

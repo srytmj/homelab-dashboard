@@ -23,4 +23,17 @@ export const config = {
     .filter(Boolean),
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || '2000', 10),
   demoMode: process.env.DEMO_MODE === 'true',
+  sentinel: {
+    telegramToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    allowedUserIds: (process.env.TELEGRAM_ALLOWED_USER_IDS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean),
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    managedContainers: (process.env.MANAGED_CONTAINERS || 'jellyfin,nextcloud,t3-code,nginx-proxy-manager,uptime-kuma,portainer-ce,transmission,paperless-ngx,home-assistant')
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean),
+  },
 };

@@ -13,6 +13,7 @@ import { SystemService } from './services/system.service.js';
 import { TailscaleService } from './services/tailscale.service.js';
 import { SslService } from './services/ssl.service.js';
 import { CollectorService } from './services/collector.service.js';
+import { SentinelService } from './services/sentinel.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,15 +36,25 @@ async function bootstrap() {
   const systemService = new SystemService();
   const tailscaleService = new TailscaleService();
   const sslService = new SslService();
+
+  let sentinelService: SentinelService | null = null;
+
   const collectorService = new CollectorService(
     dockerService,
     proxmoxService,
     systemService,
     tailscaleService,
-    sslService
+    sslService,
+    () => sentinelService?.getStatus()
+  );
+
+  sentinelService = new SentinelService(
+    dockerService,
+    () => collectorService.getLastSnapshot()
   );
 
   collectorService.start();
+  sentinelService.start();
 
   // WebSocket Route
   app.get('/ws', { websocket: true }, (socket) => {
@@ -72,6 +83,10 @@ async function bootstrap() {
   app.get('/api/ssl', async () => {
     const certs = await sslService.getCertificates();
     return certs;
+  });
+
+  app.get('/api/sentinel', async () => {
+    return sentinelService?.getStatus() || { enabled: false, polling: false };
   });
 
   app.post('/api/docker/prune', async () => {
@@ -117,6 +132,7 @@ async function bootstrap() {
   // Graceful shutdown
   const shutdown = async () => {
     console.log('[Server] Shutting down gracefully...');
+    sentinelService?.stop();
     collectorService.stop();
     await app.close();
     process.exit(0);

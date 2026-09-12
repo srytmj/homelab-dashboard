@@ -6,6 +6,7 @@ import { HostHealthSection } from './components/HostHealthSection.js';
 import { TailscaleMatrixSection } from './components/TailscaleMatrixSection.js';
 import { StorageMatrixSection } from './components/StorageMatrixSection.js';
 import { SslTrackerSection } from './components/SslTrackerSection.js';
+import { SentinelWidget } from './components/SentinelWidget.js';
 import { ContainerGridSection } from './components/ContainerGridSection.js';
 import { LogModal } from './components/LogModal.js';
 import { RestartModal } from './components/RestartModal.js';
@@ -93,7 +94,10 @@ export function App() {
           isPrivacyMode={isPrivacyMode}
         />
 
-        {/* 5. Container Live Fleet with Smart Web UI Launcher & Speedometer */}
+        {/* 5. Homelab Sentinel (Telegram & Gemini AI Companion) */}
+        <SentinelWidget sentinel={snapshot?.sentinel} />
+
+        {/* 6. Container Live Fleet with Smart Web UI Launcher & Speedometer */}
         <ContainerGridSection
           containers={snapshot?.containers}
           isPrivacyMode={isPrivacyMode}
@@ -143,7 +147,7 @@ export function App() {
             <span>— Lenovo ThinkCentre M710q Tiny</span>
           </div>
           <div>
-            <span>DAS Canary Watchdog • Proxmox vzdump • SSL Tracker • Speedometer • Command Deck</span>
+            <span>DAS Canary Watchdog • Sentinel Telegram Bot • Proxmox vzdump • Command Deck</span>
           </div>
         </div>
       </footer>

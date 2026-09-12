@@ -4,7 +4,7 @@ import { ProxmoxService } from './proxmox.service.js';
 import { SystemService } from './system.service.js';
 import { TailscaleService } from './tailscale.service.js';
 import { SslService } from './ssl.service.js';
-import { CockpitSnapshot, NativeConsoleItem } from '../types.js';
+import { CockpitSnapshot, NativeConsoleItem, SentinelStatus } from '../types.js';
 import { config } from '../config.js';
 
 export class CollectorService {
@@ -13,6 +13,7 @@ export class CollectorService {
   private systemService: SystemService;
   private tailscaleService: TailscaleService;
   private sslService: SslService;
+  private getSentinelStatus?: () => SentinelStatus | undefined;
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
   private lastSnapshot: CockpitSnapshot | null = null;
@@ -22,13 +23,15 @@ export class CollectorService {
     proxmoxService: ProxmoxService,
     systemService: SystemService,
     tailscaleService: TailscaleService,
-    sslService: SslService
+    sslService: SslService,
+    getSentinelStatus?: () => SentinelStatus | undefined
   ) {
     this.dockerService = dockerService;
     this.proxmoxService = proxmoxService;
     this.systemService = systemService;
     this.tailscaleService = tailscaleService;
     this.sslService = sslService;
+    this.getSentinelStatus = getSentinelStatus;
   }
 
   public start() {
@@ -186,6 +189,8 @@ export class CollectorService {
       },
     ];
 
+    const sentinel = this.getSentinelStatus ? this.getSentinelStatus() : undefined;
+
     const snapshot: CockpitSnapshot = {
       timestamp: Date.now(),
       host: {
@@ -198,6 +203,7 @@ export class CollectorService {
       sslCertificates: sslCerts,
       dockerHygiene: diskHygiene,
       consoles,
+      sentinel,
       isDemoMode: !containerData.isLive || config.demoMode,
     };
 
