@@ -32,9 +32,13 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)
                     - polls every 2s, broadcasts over WebSocket
                     - Dockerode, Proxmox REST, Tailscale socket
                     - L7 HTTP probes, SSL expiry, disk hygiene
+                    - pinned-container registry (data/pins.json)
                     - optional Telegram bot with Gemini Q&A
                                  |
-                    React client (Vite + Tailwind)
+                    React client (Vite + Tailwind + React Router)
+                    - Overview / Fleet / Infra / Sentinel pages
+                    - Ctrl+K command palette
+                    - light and dark theme
 ```
 
 ## Features
@@ -53,7 +57,13 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)
 
 **Disk hygiene.** Reclaimable space across dangling layers and build cache, with a confirmation modal that runs a safe prune. Running containers and named volumes are never touched.
 
-**Command deck.** One-click links into Proxmox, Portainer, Nginx Proxy Manager, Netdata, Uptime Kuma, AdGuard Home, the web IDE and Jellyfin, on either LAN or Tailscale addresses.
+**Pinned containers and public domains.** Pin any container from the fleet table, optionally with the public domain it answers on if it's exposed through a Cloudflare tunnel. Pins persist server-side in `data/pins.json`, so they follow you between browsers and devices.
+
+**Command palette.** `Ctrl+K` (or `Cmd+K`) from anywhere opens a searchable palette across the four pages, the native consoles (Proxmox, Portainer, Nginx Proxy Manager, Netdata, Uptime Kuma, AdGuard Home, the web IDE, Jellyfin), and pinned containers. Arrow keys move, Enter activates.
+
+**Pages.** Overview is a one-glance summary — device, spec, usage, container count. Fleet, Infra and Sentinel hold the detail. Direct links to any page work, since the daemon serves the client for every non-API route.
+
+**Light and dark theme.** Toggles from the header, remembers your choice, otherwise follows the OS setting.
 
 **Privacy mode and kiosk mode.** Redact IPs and domains before taking screenshots; go fullscreen for a wall display.
 
@@ -124,6 +134,8 @@ Everything except `/api/health` and `/api/auth/*` requires `Authorization: Beare
 | GET | `/api/containers/:id/logs?tail=100` | Container logs |
 | POST | `/api/containers/:id/restart` | Restart one container |
 | POST | `/api/docker/prune` | Safe prune of layers and build cache |
+| POST | `/api/pins/:name` | Pin a container, optionally with `{ publicUrl }` |
+| DELETE | `/api/pins/:name` | Unpin a container |
 | WS | `/ws` | Snapshot broadcast every 2 seconds |
 
 ## Documentation

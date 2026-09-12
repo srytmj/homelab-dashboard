@@ -6,6 +6,10 @@ Tokens live in [client/tailwind.config.js](../client/tailwind.config.js); shared
 
 ## Colour
 
+Every token is a CSS variable holding an `R G B` triplet (not a hex string), so Tailwind's opacity modifiers work: `bg-cockpit-accent/10` composes to `rgb(var(--cockpit-accent) / 0.1)`. Always add new tokens the same way — a hex value breaks every `/NN` usage silently, with no build error.
+
+**Dark** (default, `:root`):
+
 | Token | Value | Use |
 | --- | --- | --- |
 | `cockpit-bg` | `#101115` | Page background, inset surfaces inside panels |
@@ -20,7 +24,25 @@ Tokens live in [client/tailwind.config.js](../client/tailwind.config.js); shared
 | `state-warn` | `#f2a93c` | Degraded, above 75 percent, expiring soon |
 | `state-bad` | `#f2554d` | Failed, above 90 percent, destructive actions |
 
-The accent is never a status colour and the status colours are never decoration. A green pill means something is healthy; a periwinkle bar means a bar. `getStatusColor` and `getTempColor` in [formatters.ts](../client/src/utils/formatters.ts) are the single source for threshold mapping.
+**Light** (`:root.light`, toggled by `useTheme`):
+
+| Token | Value |
+| --- | --- |
+| `cockpit-bg` | `#f4f5f7` |
+| `cockpit-panel` | `#ffffff` |
+| `cockpit-panelHover` | `#eef0f4` |
+| `cockpit-topbar` | `#ffffff` |
+| `cockpit-border` | `#dde0e6` |
+| `cockpit-text` | `#14161c` |
+| `cockpit-muted` | `#62697a` |
+| `cockpit-accent` | `#4f6fe0` |
+| `state-good` | `#178a5c` |
+| `state-warn` | `#a8620a` |
+| `state-bad` | `#c93a35` |
+
+Light isn't dark-with-inverted-lightness: the accent and state colours are deepened and desaturated slightly so they hold contrast on a white panel instead of looking washed out. Button text uses literal `white`, not a token, since it needs to work against both accent values.
+
+The accent is never a status colour and the status colours are never decoration. A green pill means something is healthy; a periwinkle bar means a bar. `getStatusColor` and `getTempColor` in [formatters.ts](../client/src/utils/formatters.ts) are the single source for threshold mapping, and return Tailwind classes that already point at the right tokens — they don't need to know which theme is active.
 
 ## Typography
 
@@ -51,6 +73,8 @@ Wide content scrolls inside its own container. The page body never scrolls sidew
 | `.icon-btn` | Square icon button |
 | `.field` | Text input |
 | `.overlay`, `.modal-panel` | Modal backdrop and panel |
+
+The command palette and every modal share `.overlay`/`.modal-panel`. Don't invent a second overlay treatment — a new dialog should look like the existing ones by construction, not by copying their styles.
 
 ## Motion
 
