@@ -147,12 +147,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 <p className="label px-2 py-1.5">{group}</p>
                 {groupItems.map((item) => {
                   runningIndex += 1;
-                  const isSelected = runningIndex === selected;
+                  const itemIndex = runningIndex;
+                  const isSelected = itemIndex === selected;
                   return (
                     <button
                       key={item.id}
                       onClick={() => activate(item)}
-                      onMouseEnter={() => setSelected(runningIndex)}
+                      onMouseEnter={() => setSelected(itemIndex)}
                       className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors ${
                         isSelected ? 'bg-cockpit-accent/10 text-cockpit-accent' : 'text-cockpit-text'
                       }`}
