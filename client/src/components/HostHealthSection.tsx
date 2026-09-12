@@ -1,12 +1,13 @@
 import { Server, Cpu, HardDrive, ShieldCheck, Thermometer, Clock, Database, CheckCircle2, AlertTriangle, Wind } from 'lucide-react';
 import { HostMetrics } from '../types.js';
-import { formatBytes, formatUptime, getStatusColor } from '../utils/formatters.js';
+import { formatBytes, formatUptime, redactText, getStatusColor } from '../utils/formatters.js';
 
 interface HostHealthSectionProps {
   host: HostMetrics | undefined;
+  isPrivacyMode?: boolean;
 }
 
-export const HostHealthSection: React.FC<HostHealthSectionProps> = ({ host }) => {
+export const HostHealthSection: React.FC<HostHealthSectionProps> = ({ host, isPrivacyMode = false }) => {
   if (!host) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
@@ -45,7 +46,9 @@ export const HostHealthSection: React.FC<HostHealthSectionProps> = ({ host }) =>
                     {pve.nodeName}
                   </span>
                 </h3>
-                <span className="text-[11px] font-mono text-slate-400">{pve.ip}</span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {redactText(pve.ip, isPrivacyMode)}
+                </span>
               </div>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-semibold">
@@ -124,7 +127,9 @@ export const HostHealthSection: React.FC<HostHealthSectionProps> = ({ host }) =>
                     {dockerHost.hostname}
                   </span>
                 </h3>
-                <span className="text-[11px] font-mono text-slate-400">{dockerHost.ip}</span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {redactText(dockerHost.ip, isPrivacyMode)}
+                </span>
               </div>
             </div>
             

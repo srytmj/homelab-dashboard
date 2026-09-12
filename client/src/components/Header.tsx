@@ -1,11 +1,17 @@
 import React from 'react';
-import { Server, Activity, RefreshCw, Wifi, WifiOff, HardDrive, ShieldCheck, Network } from 'lucide-react';
+import { Server, Activity, RefreshCw, Wifi, WifiOff, HardDrive, ShieldCheck, Network, Eye, EyeOff, Maximize2, Minimize2, Terminal } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
+import { redactText } from '../utils/formatters.js';
 
 interface HeaderProps {
   snapshot: CockpitSnapshot | null;
   isConnected: boolean;
   lastUpdated: Date | null;
+  isPrivacyMode: boolean;
+  isFullscreen: boolean;
+  onTogglePrivacy: () => void;
+  onToggleFullscreen: () => void;
+  onOpenCommandDeck: () => void;
   onRefresh: () => void;
 }
 
@@ -13,6 +19,11 @@ export const Header: React.FC<HeaderProps> = ({
   snapshot,
   isConnected,
   lastUpdated,
+  isPrivacyMode,
+  isFullscreen,
+  onTogglePrivacy,
+  onToggleFullscreen,
+  onOpenCommandDeck,
   onRefresh,
 }) => {
   const runningCount = snapshot?.containers.filter(c => c.state === 'running').length || 0;
@@ -55,11 +66,25 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Status Pills & Ticker */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
+          {/* Infrastructure Command Deck Launcher */}
+          <button
+            onClick={onOpenCommandDeck}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-gradient-to-r from-cyan-950/80 to-indigo-950/80 border border-cyan-500/40 text-cyan-300 hover:text-white hover:border-cyan-400 font-mono font-bold transition-all shadow-sm shadow-cyan-950"
+          >
+            <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Command Deck</span>
+            <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.2 rounded font-normal">
+              8 Consoles
+            </span>
+          </button>
+
           {/* Proxmox Node Status */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-slate-300 font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-slate-400">PVE:</span>
-            <span className="font-semibold text-slate-200">192.168.18.224</span>
+            <span className="font-semibold text-slate-200">
+              {redactText('192.168.18.224', isPrivacyMode)}
+            </span>
             <span className={`w-2 h-2 rounded-full ${snapshot?.host.pve.connected ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-amber-400'}`} />
           </div>
 
@@ -67,7 +92,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-slate-300 font-mono">
             <HardDrive className="w-3.5 h-3.5 text-indigo-400" />
             <span className="text-slate-400">LXC:</span>
-            <span className="font-semibold text-slate-200">192.168.18.225</span>
+            <span className="font-semibold text-slate-200">
+              {redactText('192.168.18.225', isPrivacyMode)}
+            </span>
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
           </div>
 
@@ -88,6 +115,28 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-slate-500">/</span>
             <span className="text-slate-300 font-semibold">{totalCount}</span>
           </div>
+
+          {/* Privacy / Showcase Toggle */}
+          <button
+            onClick={onTogglePrivacy}
+            title={isPrivacyMode ? 'Privacy Mode ON (IPs & domains redacted for screenshots)' : 'Toggle Privacy Mode'}
+            className={`p-1.5 rounded-md border transition-colors ${
+              isPrivacyMode
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            {isPrivacyMode ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Kiosk / Fullscreen Toggle */}
+          <button
+            onClick={onToggleFullscreen}
+            title={isFullscreen ? 'Exit Kiosk Fullscreen' : 'Enter Kiosk Fullscreen (Wall Display / Tablet)'}
+            className="p-1.5 rounded-md bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
 
           {/* Live Sync / WS Connection */}
           <button

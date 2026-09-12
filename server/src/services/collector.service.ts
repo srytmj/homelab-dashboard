@@ -4,7 +4,7 @@ import { ProxmoxService } from './proxmox.service.js';
 import { SystemService } from './system.service.js';
 import { TailscaleService } from './tailscale.service.js';
 import { SslService } from './ssl.service.js';
-import { CockpitSnapshot } from '../types.js';
+import { CockpitSnapshot, NativeConsoleItem } from '../types.js';
 import { config } from '../config.js';
 
 export class CollectorService {
@@ -87,6 +87,105 @@ export class CollectorService {
     const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
     const containerData = await this.dockerService.getContainers(selfTailscaleIp);
 
+    const consoles: NativeConsoleItem[] = [
+      {
+        id: 'console_pve',
+        name: 'Proxmox VE',
+        category: 'hypervisor',
+        description: 'Bare-metal Hypervisor Node & VM/LXC Manager',
+        port: 8006,
+        protocol: 'https',
+        lanHost: '192.168.18.224',
+        tailscaleHost: '100.110.20.14',
+        badge: 'Node PVE',
+        status: pveMetrics.connected ? 'online' : 'online',
+      },
+      {
+        id: 'console_portainer',
+        name: 'Portainer CE',
+        category: 'containers',
+        description: 'Docker Stacks & Container UI Manager',
+        port: 9000,
+        protocol: 'http',
+        lanHost: '192.168.18.225',
+        tailscaleHost: selfTailscaleIp,
+        badge: ':9000',
+        status: 'online',
+      },
+      {
+        id: 'console_npm',
+        name: 'Nginx Proxy Manager',
+        category: 'proxy',
+        description: 'Reverse Proxy & Let\'s Encrypt SSL Gateway',
+        port: 81,
+        protocol: 'http',
+        lanHost: '192.168.18.225',
+        tailscaleHost: selfTailscaleIp,
+        badge: ':81 Admin',
+        status: 'online',
+      },
+      {
+        id: 'console_netdata',
+        name: 'Netdata',
+        category: 'monitoring',
+        description: 'Per-second OS & Hardware Kernel Telemetry',
+        port: 19999,
+        protocol: 'http',
+        lanHost: '192.168.18.225',
+        tailscaleHost: selfTailscaleIp,
+        badge: ':19999',
+        status: 'online',
+      },
+      {
+        id: 'console_kuma',
+        name: 'Uptime Kuma',
+        category: 'monitoring',
+        description: 'Service Health Status & Alert Notifications',
+        port: 3001,
+        protocol: 'http',
+        lanHost: '192.168.18.225',
+        tailscaleHost: selfTailscaleIp,
+        badge: ':3001',
+        status: 'online',
+      },
+      {
+        id: 'console_adguard',
+        name: 'AdGuard Home',
+        category: 'security',
+        description: 'Network-wide DNS Adblocker & Local DNS Sinkhole',
+        port: 3000,
+        protocol: 'http',
+        lanHost: '192.168.18.225',
+        tailscaleHost: selfTailscaleIp,
+        badge: ':3000 DNS',
+        status: 'online',
+      },
+      {
+        id: 'console_t3code',
+        name: 'T3 Code Web IDE',
+        category: 'tools',
+        description: 'Antigravity Autonomous IDE Workspace',
+        port: 7860,
+        protocol: 'http',
+        lanHost: '192.168.18.225',
+        tailscaleHost: selfTailscaleIp,
+        badge: ':7860 IDE',
+        status: 'online',
+      },
+      {
+        id: 'console_jellyfin',
+        name: 'Jellyfin Media',
+        category: 'tools',
+        description: 'Direct Streaming Video & 4K Transcoding',
+        port: 8096,
+        protocol: 'http',
+        lanHost: '192.168.18.225',
+        tailscaleHost: selfTailscaleIp,
+        badge: ':8096',
+        status: 'online',
+      },
+    ];
+
     const snapshot: CockpitSnapshot = {
       timestamp: Date.now(),
       host: {
@@ -98,6 +197,7 @@ export class CollectorService {
       containers: containerData.containers,
       sslCertificates: sslCerts,
       dockerHygiene: diskHygiene,
+      consoles,
       isDemoMode: !containerData.isLive || config.demoMode,
     };
 

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Network, Smartphone, Laptop, Server, Globe, Copy, Check, Route } from 'lucide-react';
 import { TailscaleStatus, TailscaleDevice } from '../types.js';
+import { redactText } from '../utils/formatters.js';
 
 interface TailscaleMatrixSectionProps {
   tailscale: TailscaleStatus | undefined;
+  isPrivacyMode?: boolean;
 }
 
-export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ tailscale }) => {
+export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ tailscale, isPrivacyMode = false }) => {
   const [copiedIp, setCopiedIp] = useState<string | null>(null);
 
   if (!tailscale) {
@@ -50,7 +52,7 @@ export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ 
                 Tailscale Mesh Network & Tailnet Tracking
               </h2>
               <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300 border border-slate-700">
-                {tailnetName}
+                {redactText(tailnetName, isPrivacyMode)}
               </span>
             </div>
             <p className="text-xs text-slate-400 font-mono">
@@ -66,7 +68,9 @@ export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ 
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
               <Route className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-slate-500">Subnet:</span>
-              <span className="text-cyan-300 font-semibold">{subnetRouters[0].subnetRoutes.join(', ')}</span>
+              <span className="text-cyan-300 font-semibold">
+                {isPrivacyMode ? '192.168.•••.0/24' : subnetRouters[0].subnetRoutes.join(', ')}
+              </span>
             </div>
           )}
 
@@ -88,6 +92,8 @@ export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {devices.map((device) => {
           const isCopied = copiedIp === device.ipv4;
+          const displayIp = redactText(device.ipv4, isPrivacyMode);
+          const displayDns = redactText(device.dnsName, isPrivacyMode);
 
           return (
             <div
@@ -122,7 +128,7 @@ export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ 
                         )}
                       </div>
                       <div className="text-[11px] font-mono text-slate-500 truncate max-w-[180px]">
-                        {device.dnsName}
+                        {displayDns}
                       </div>
                     </div>
                   </div>
@@ -134,8 +140,7 @@ export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ 
                         device.online ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-slate-600'
                       }`}
                     />
-                    <span className={device.online ? 'text-emerald-400 font-semibold' : 'text-slate-500'}>
-                      {device.online ? 'ONLINE' : 'OFFLINE'}
+                    <span className={device.online ? 'text-emerald-400 font-semibold' : 'text-slate-500'}>\n                      {device.online ? 'ONLINE' : 'OFFLINE'}
                     </span>
                   </div>
                 </div>
@@ -144,7 +149,9 @@ export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ 
                 {device.subnetRoutes.length > 0 && (
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-mono bg-cyan-950/40 border border-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded">
                     <Route className="w-3 h-3" />
-                    <span>Subnet Router: {device.subnetRoutes.join(', ')}</span>
+                    <span>
+                      Subnet Router: {isPrivacyMode ? '192.168.•••.0/24' : device.subnetRoutes.join(', ')}
+                    </span>
                   </div>
                 )}
               </div>
@@ -154,7 +161,7 @@ export const TailscaleMatrixSection: React.FC<TailscaleMatrixSectionProps> = ({ 
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-mono text-slate-500">IPv4:</span>
                   <span className="font-mono text-xs font-bold text-slate-200">
-                    {device.ipv4}
+                    {displayIp}
                   </span>
                 </div>
 

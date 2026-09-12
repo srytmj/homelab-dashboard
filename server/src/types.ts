@@ -111,6 +111,13 @@ export interface TailscaleStatus {
   totalDevices: number;
 }
 
+export interface HttpHealthProbe {
+  status: 'healthy' | 'warning' | 'critical' | 'unchecked';
+  statusCode?: number;
+  latencyMs?: number;
+  checkedAt?: string;
+}
+
 export interface ContainerMetric {
   id: string;
   shortId: string;
@@ -124,6 +131,8 @@ export interface ContainerMetric {
   memoryPercent: number;
   networkRxBytes: number;
   networkTxBytes: number;
+  networkRxRateBytesPerSec: number;
+  networkTxRateBytesPerSec: number;
   sparklineCpu: number[];
   sparklineMemory: number[];
   uptime: string;
@@ -134,6 +143,21 @@ export interface ContainerMetric {
   tailscaleUrl?: string;
   lanUrl?: string;
   primaryPort?: number;
+  httpHealth?: HttpHealthProbe;
+}
+
+export interface NativeConsoleItem {
+  id: string;
+  name: string;
+  category: 'hypervisor' | 'containers' | 'monitoring' | 'proxy' | 'security' | 'tools';
+  description: string;
+  port: number;
+  path?: string;
+  protocol: 'http' | 'https';
+  lanHost: string;
+  tailscaleHost: string;
+  badge: string;
+  status: 'online' | 'degraded' | 'offline';
 }
 
 export interface CockpitSnapshot {
@@ -144,5 +168,6 @@ export interface CockpitSnapshot {
   containers: ContainerMetric[];
   sslCertificates: SslCertificate[];
   dockerHygiene: DockerDiskHygiene;
+  consoles: NativeConsoleItem[];
   isDemoMode: boolean;
 }

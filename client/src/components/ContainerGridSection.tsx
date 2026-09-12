@@ -1,17 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { Search, RefreshCw, Terminal, Layers, ArrowUpDown, Network, Copy, Check, ExternalLink, Globe } from 'lucide-react';
+import { Search, RefreshCw, Terminal, Layers, ArrowUpDown, Network, Copy, Check, ExternalLink, Globe, ArrowDown, ArrowUp, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
-import { formatBytes, getStatusColor } from '../utils/formatters.js';
+import { formatBytes, formatNetworkRate, redactText, getStatusColor } from '../utils/formatters.js';
 
 interface ContainerGridSectionProps {
   containers: ContainerMetric[] | undefined;
+  isPrivacyMode?: boolean;
   onViewLogs: (container: ContainerMetric) => void;
   onRestartContainer: (container: ContainerMetric) => void;
 }
 
 export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   containers = [],
+  isPrivacyMode = false,
   onViewLogs,
   onRestartContainer,
 }) => {
@@ -19,7 +21,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
   const [networkFilter, setNetworkFilter] = useState<'all' | 'tailscale' | 'lan'>('all');
   const [urlMode, setUrlMode] = useState<'auto' | 'tailscale' | 'lan'>('auto');
-  const [sortBy, setSortBy] = useState<'cpu' | 'ram' | 'name'>('cpu');
+  const [sortBy, setSortBy] = useState<'cpu' | 'ram' | 'name' | 'network'>('cpu');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
@@ -52,12 +54,13 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
         if (sortBy === 'cpu') diff = a.cpuPercent - b.cpuPercent;
         else if (sortBy === 'ram') diff = a.memoryBytes - b.memoryBytes;
         else if (sortBy === 'name') diff = a.name.localeCompare(b.name);
+        else if (sortBy === 'network') diff = (a.networkRxRateBytesPerSec + a.networkTxRateBytesPerSec) - (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
 
         return sortOrder === 'desc' ? -diff : diff;
       });
   }, [containers, search, statusFilter, networkFilter, sortBy, sortOrder]);
 
-  const toggleSort = (column: 'cpu' | 'ram' | 'name') => {
+  const toggleSort = (column: 'cpu' | 'ram' | 'name' | 'network') => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
     } else {
@@ -100,7 +103,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-400 font-mono">
-              Docker Engine metrics + Smart Web UI Launcher (LAN/Tailscale Auto-Switcher)
+              Docker Engine metrics • Live Throughput Speedometer • L7 HTTP Probes
             </p>
           </div>
         </div>
@@ -152,7 +155,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             </button>
             <button
               onClick={() => setUrlMode('lan')}
-              title="Force LAN IP (192.168.18.225)"
+              title="Force LAN IP"
               className={`px-2 py-1 rounded-md transition-colors ${
                 urlMode === 'lan'
                   ? 'bg-slate-800 text-slate-200 font-bold'
@@ -163,7 +166,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             </button>
             <button
               onClick={() => setUrlMode('tailscale')}
-              title="Force Tailscale IP (100.110.20.15)"
+              title="Force Tailscale IP"
               className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 ${
                 urlMode === 'tailscale'
                   ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30'
@@ -189,7 +192,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             </button>
             <button
               onClick={() => setNetworkFilter('tailscale')}
-              className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 ${
+              className={`px-2 py-1 rounded-md transition-colors ${
                 networkFilter === 'tailscale'
                   ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30'
                   : 'text-slate-400 hover:text-slate-200'
@@ -225,6 +228,13 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             >
               RAM
             </button>
+            <span>/</span>
+            <button
+              onClick={() => toggleSort('network')}
+              className={`hover:text-white px-1 ${sortBy === 'network' ? 'text-emerald-400 font-bold' : ''}`}
+            >
+              Net
+            </button>
           </div>
         </div>
 
@@ -236,7 +246,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
           <thead>
             <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800 text-[11px] uppercase tracking-wider">
               <th className="py-2.5 px-3.5 font-bold">Service / Container</th>
-              <th className="py-2.5 px-3 font-bold">State</th>
+              <th className="py-2.5 px-3 font-bold">State & L7 Health</th>
               <th className="py-2.5 px-3 font-bold">Web UI & Routing</th>
               <th className="py-2.5 px-3 font-bold cursor-pointer hover:text-cyan-400" onClick={() => toggleSort('cpu')}>
                 <div className="flex items-center gap-1">
@@ -250,7 +260,12 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                   {sortBy === 'ram' && <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>}
                 </div>
               </th>
-              <th className="py-2.5 px-3 font-bold hidden md:table-cell">Net I/O</th>
+              <th className="py-2.5 px-3 font-bold cursor-pointer hover:text-emerald-400" onClick={() => toggleSort('network')}>
+                <div className="flex items-center gap-1">
+                  <span>Speedometer (Live Rate)</span>
+                  {sortBy === 'network' && <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>}
+                </div>
+              </th>
               <th className="py-2.5 px-3 font-bold text-right">Actions</th>
             </tr>
           </thead>
@@ -296,17 +311,35 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                     </div>
                   </td>
 
-                  {/* State / Uptime */}
+                  {/* State & L7 Health */}
                   <td className="py-2.5 px-3">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        isRunning
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
-                      }`}
-                    >
-                      {isRunning ? 'RUNNING' : 'STOPPED'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${
+                          isRunning
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            : 'bg-slate-800 text-slate-400 border-slate-700'
+                        }`}
+                      >
+                        {isRunning ? 'RUNNING' : 'STOPPED'}
+                      </span>
+
+                      {/* L7 HTTP Probe Result */}
+                      {isRunning && container.httpHealth && container.httpHealth.status === 'healthy' && (
+                        <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-cyan-400" />
+                          <span>{container.httpHealth.statusCode || 200} OK</span>
+                          <span className="text-slate-500 text-[9px]">({container.httpHealth.latencyMs}ms)</span>
+                        </span>
+                      )}
+
+                      {isRunning && container.httpHealth && container.httpHealth.status === 'critical' && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950/60 text-rose-300 border border-rose-500/40 animate-pulse">
+                          <AlertCircle className="w-2.5 h-2.5 text-rose-400" />
+                          <span>502 ERR</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-slate-500 mt-0.5">{container.uptime}</div>
                   </td>
 
@@ -318,6 +351,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                           href={targetUrl}
                           target="_blank"
                           rel="noreferrer"
+                          title={`Open ${redactText(targetUrl, isPrivacyMode)}`}
                           className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 hover:text-white hover:border-indigo-400 transition-colors text-[11px] font-semibold"
                         >
                           <ExternalLink className="w-3 h-3" />
@@ -326,7 +360,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
                         <button
                           onClick={() => copyToClipboard(targetUrl)}
-                          title={`Copy URL: ${targetUrl}`}
+                          title={`Copy URL: ${redactText(targetUrl, isPrivacyMode)}`}
                           className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
                         >
                           {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -375,12 +409,24 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                     </div>
                   </td>
 
-                  {/* Net I/O */}
-                  <td className="py-2.5 px-3 hidden md:table-cell text-slate-400">
-                    <div className="flex items-center gap-1 text-[11px]">
-                      <span className="text-emerald-400">↓ {formatBytes(container.networkRxBytes)}</span>
-                      <span className="text-slate-600">/</span>
-                      <span className="text-sky-400">↑ {formatBytes(container.networkTxBytes)}</span>
+                  {/* Speedometer (Live Rate Delta) + Total Cumulative */}
+                  <td className="py-2.5 px-3 text-slate-300">
+                    <div className="flex flex-col gap-0.5">
+                      {/* Live Speedometer */}
+                      <div className="flex items-center gap-2 text-[11px] font-bold">
+                        <span className="text-emerald-400 flex items-center gap-0.5">
+                          <ArrowDown className="w-3 h-3" />
+                          {formatNetworkRate(container.networkRxRateBytesPerSec)}
+                        </span>
+                        <span className="text-sky-400 flex items-center gap-0.5">
+                          <ArrowUp className="w-3 h-3" />
+                          {formatNetworkRate(container.networkTxRateBytesPerSec)}
+                        </span>
+                      </div>
+                      {/* Total Cumulated */}
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        Total: {formatBytes(container.networkRxBytes)} / {formatBytes(container.networkTxBytes)}
+                      </div>
                     </div>
                   </td>
 

@@ -1,11 +1,13 @@
 import { ShieldCheck, Lock } from 'lucide-react';
 import { SslCertificate } from '../types.js';
+import { redactText } from '../utils/formatters.js';
 
 interface SslTrackerSectionProps {
   certificates: SslCertificate[] | undefined;
+  isPrivacyMode?: boolean;
 }
 
-export const SslTrackerSection: React.FC<SslTrackerSectionProps> = ({ certificates = [] }) => {
+export const SslTrackerSection: React.FC<SslTrackerSectionProps> = ({ certificates = [], isPrivacyMode = false }) => {
   if (certificates.length === 0) return null;
 
   return (
@@ -59,7 +61,7 @@ export const SslTrackerSection: React.FC<SslTrackerSectionProps> = ({ certificat
                   <div className="flex items-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span className="font-mono text-xs font-bold text-slate-100 truncate max-w-[150px]">
-                      {cert.domain}
+                      {redactText(cert.domain, isPrivacyMode)}
                     </span>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${badgeColor}`}>

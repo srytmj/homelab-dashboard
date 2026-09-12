@@ -7,6 +7,29 @@ export function formatBytes(bytes: number, decimals = 1): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
+export function formatNetworkRate(bytesPerSec: number): string {
+  if (!bytesPerSec || bytesPerSec <= 0) return '0 B/s';
+  if (bytesPerSec < 1024) return `${bytesPerSec} B/s`;
+  if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+  if (bytesPerSec < 1024 * 1024 * 1024) return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+  return `${(bytesPerSec / (1024 * 1024 * 1024)).toFixed(2)} GB/s`;
+}
+
+export function redactText(text: string, isPrivacy: boolean): string {
+  if (!isPrivacy || !text) return text;
+  // Redact IPv4
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(text)) {
+    const parts = text.split('.');
+    return `${parts[0]}.${parts[1]}.•••.•••`;
+  }
+  // Redact domain
+  if (text.includes('.')) {
+    const parts = text.split('.');
+    return `••••••.${parts.slice(-1)[0]}`;
+  }
+  return '••••••';
+}
+
 export function formatUptime(seconds: number): string {
   if (!seconds || seconds <= 0) return '0m';
   const days = Math.floor(seconds / 86400);
