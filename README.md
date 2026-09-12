@@ -4,6 +4,34 @@
 
 ---
 
+## 🏆 Real-World Impact: Lenovo ThinkCentre M710q Tiny Case Study
+
+Deployed in production on an unprivileged Ubuntu 24.04 LXC (100) on a Lenovo ThinkCentre M710q Tiny (Intel Core i5-7500, 32GB RAM) running Proxmox VE 8:
+
+```
++-----------------------------------------------------------------------------------------+
+|                                    HARD BENCHMARK METRICS                               |
+|                                                                                         |
+|   📉 -83.3% Observability Containers  : Reduced from 6 containers down to 1 daemon       |
+|   💾 15.27 GB NVMe SSD Space Reclaimed : Cleaned via `docker system prune -af --volumes` |
+|   ⚡ 9.8 GB Free RAM Headroom          : LXC RAM stabilized at ~2.2 GB / 12 GB          |
+|   🚫 4 Redundant Stacks Decommissioned : Netdata, Uptime Kuma, Portainer & Homelable    |
+|   🔄 Zero Polling Storm                : Replaced 4 poll loops with 1 multiplexed WS    |
++-----------------------------------------------------------------------------------------+
+```
+
+| Metric | Before (Fragmented Stacks) | After (Homelab Cockpit) | Impact |
+| :--- | :--- | :--- | :--- |
+| **Active Monitoring Stacks** | **4 tools / 6 containers**<br>*(Netdata, Uptime Kuma, Portainer, Homelable x3)* | **1 container**<br>*(`homelab-cockpit` on port :8050)* | **-83.3%** container bloat |
+| **NVMe SSD Storage** | Bloated layers, cache & volumes | Purged via `docker system prune -af` | **15.27 GB Reclaimed** |
+| **LXC RAM Consumption** | High baseline memory pressure | **~2.2 GB** used out of 12 GB allocation | **9.8 GB Free Headroom** |
+| **Browser Tabs for Operations** | 4 tabs minimum | **1 unified Cockpit tab** | **-75%** context switching |
+| **Tailscale Routing Visibility** | Blind / Guesswork | Explicit `TS 100.x` vs `LAN 192.x` badges | **Instant 1-click routing** |
+
+> 📖 **Read the full case study & technical deep dive:** [docs/case-study.md](file:///root/homelab-dashboard/docs/case-study.md)
+
+---
+
 ## ⚡ Architecture & Signal Flow
 
 Homelab Cockpit combines low-level hardware telemetry, multi-bay storage watchdog protection, Tailscale overlay peer tracking, live per-second network throughput speedometers, L7 HTTP service probes, native infrastructure console quick-launching, and an optional **Telegram Sentinel Bot** into a single unified daemon.
@@ -28,12 +56,13 @@ Homelab Cockpit combines low-level hardware telemetry, multi-bay storage watchdo
        |             HOMELAB COCKPIT DAEMON            |<-- 100.x Peer Mesh
        |       Node.js (Fastify) + TypeScript          |    • Local Socket
        |       • Real-time WebSocket Broadcaster (2s)  |    • Subnet Router 192.168.18.0/24
-       |       • Dockerode + Proxmox REST Client       |    • Direct Container URLs
+       |       • 1x Owner Auth Wall & 30-Day Sessions  |    • Direct Container URLs
+       |       • Dockerode + Proxmox REST Client       |
        |       • Live Bandwidth Delta Speedometer      |
        |       • L7 HTTP Service Health Prober         |
        |       • NPM Let's Encrypt SSL Tracker         |
        |       • Docker NVMe Disk Hygiene / Prune      |
-       |       • Infrastructure Command Deck Gateway   |
+       |       • Infrastructure Quick Consoles Gateway |
        |       • Telegram Sentinel Bot (3-Tier Ops)    |<-- 📱 Telegram Long-Polling
        |       • Gemini 2.0 Flash AI Context Engine    |<-- 🧠 Google AI Studio
        +-----------------------------------------------+
@@ -50,7 +79,20 @@ Homelab Cockpit combines low-level hardware telemetry, multi-bay storage watchdo
 
 ## 🎯 Complete Feature Matrix
 
-### 1. 🤖 Homelab Sentinel (Telegram & Gemini AI Companion) — *Optional*
+### 1. 🔐 Owner Auth Wall (1x Onboarding & Remote Protection)
+- **1x Initial Registration**: Setup form appears only on first run. Once registered, public registration is **permanently locked** down to the single owner.
+- **30-Day Persistent Session**: Secure scrypt-hashed credentials stored in persistent volume `./data/auth.json`. Safe to expose outside via Cloudflare Tunnel or Tailscale.
+- **Full Route Protection**: Fastify `preHandler` hook protects all REST endpoints (`/api/snapshot`, logs, restart, prune) and WebSocket connections (`/ws`).
+
+### 2. 🌐 Container Fleet with Explicit Tailscale Routing
+- **Prominent Dual Network Display**: Shows active **`TS` `100.110.20.15:PORT`** and **`LAN` `192.168.18.225:PORT`** side-by-side with 1-click clipboard copy and open buttons.
+- **Instant Network Filters**: Segment by `All (28)`, `Tailscale Mesh (14)`, `LAN Only (7)`, and `Internal Bridge (7)`.
+- **In-App Real-Time Log Viewer**: Stream stdout/stderr directly (50/100/250/500 lines) with auto-scroll and copy.
+- **Safe Graceful Restart**: Interactive confirmation modal with instant feedback.
+- **Live Bandwidth Speedometer**: Live per-second throughput deltas (`↓ 12.5 MB/s`, `↑ 1.4 MB/s`).
+- **L7 HTTP Health Probing**: Verifies real service responsiveness (`200 OK - 8ms` vs `502 ERR`) instead of blindly trusting Docker's "Up" state.
+
+### 3. 🤖 Homelab Sentinel (Telegram & Gemini AI Companion) — *Optional*
 - **Zero Extra Containers**: Replaces separate Python bot stacks (`homelab-sentinel`) by embedding directly into the Cockpit daemon with in-memory telemetry access.
 - **3-Tier Risk Architecture**:
   - **Tier 1 (Read-Only Telemetry)**: `/status`, `/resources`, `/backup_status`, `/logs <container>`.
@@ -59,55 +101,28 @@ Homelab Cockpit combines low-level hardware telemetry, multi-bay storage watchdo
 - **Fail-Closed Security**: Silently rejects and ignores any Telegram user ID not specified in `TELEGRAM_ALLOWED_USER_IDS`.
 - **Outbound Long-Polling**: Works behind Tailscale and CGNAT without open inbound ports or webhooks.
 
-### 2. 🎛️ Infrastructure Command Deck (Native Console Launchpad)
-- **Quick-Access Modal**: One-click direct gateway to your 8 native homelab consoles:
-  - **Proxmox VE** (`:8006`, HTTPS hypervisor manager)
-  - **Portainer CE** (`:9000`, Docker management)
-  - **Nginx Proxy Manager** (`:81`, reverse proxy & SSL manager)
-  - **Netdata** (`:19999`, second-by-second OS & kernel metrics)
-  - **Uptime Kuma** (`:3001`, service uptime monitor)
-  - **AdGuard Home** (`:3000`, DNS sinkhole & adblocker)
-  - **T3 Code Web IDE** (`:7860`, autonomous developer workspace)
-  - **Jellyfin** (`:8096`, 4K media server)
-- **Seamless LAN vs Tailscale Switcher**: Toggle all 8 consoles between local LAN (`192.168.18.x`) or Tailscale (`100.x`) with 1 click.
+### 4. 🎛️ Infrastructure Quick Consoles (Launcher)
+- **Minimal Utilitarian Drawer**: Direct single-click gateway into 8 native homelab consoles (Proxmox VE `:8006`, Portainer `:9000`, NPM `:81`, Netdata `:19999`, Uptime Kuma `:3001`, AdGuard `:3000`, T3 Code `:7860`, Jellyfin `:8096`).
+- **Dual Routing**: Instantly switch between LAN and Tailscale URLs.
 
-### 3. ⚡ Live Network Rate Speedometer (`MB/s` / `KB/s`)
-- Computes real-time bandwidth delta throughput per polling interval:
-  - Instantly spot when Jellyfin is transcoding/streaming (`↑ 12.5 MB/s`) or Transmission is downloading (`↓ 8.5 MB/s`).
-  - Total cumulative lifetime transfer + live instantaneous speed.
+### 5. 🚨 DAS Canary Watchdog (Hard Drive Disconnect Alert)
+- Continuous monitoring of external multi-bay USB DAS storage via canary files (`.mounted`).
+- Triggers a pulsing emergency banner if any storage volume unmounts, preventing SSD overflow.
 
-### 4. 🩺 L7 HTTP Service Health Prober (Process vs Real Health)
-- Bypasses basic Docker "Up" status by probing actual web ports with latency tracking:
-  - 🟢 `200 OK (8ms)`: Service is alive and actively serving HTTP requests.
-  - 🔴 `502 Bad Gateway`: Catches database disconnects or internal worker crashes.
+### 6. 🛡️ Proxmox Nightly Backup Tracker (vzdump)
+- Direct integration with Proxmox VE REST API (`192.168.18.224:8006`).
+- Displays last night's backup status (`SUCCEEDED` / `FAILED`), duration, archive size, and storage targets.
 
-### 5. 🙈 Privacy & Showcase Mode + Kiosk Fullscreen
-- **1-Click Screenshot Redaction**: Obfuscates all private LAN IPs (`192.168.18.•••`), Tailscale addresses (`100.110.•••.•••`), and domain names so you can safely screenshot and share your setup on Reddit / Discord.
-- **Kiosk / Fullscreen Mode**: Maximizes the dashboard with one click, ideal for dedicated tablets or wall-mounted homelab status displays.
+### 7. 🧹 Docker NVMe SSD Saver & Safe Prune
+- Identifies reclaimable disk space across dangling images, build caches, and unused volumes.
+- Safely triggers `docker system prune -f` directly from the UI or via Telegram `/prune`.
 
-### 6. 🛡️ Multi-Bay DAS Mount Watchdog & Canary Protection
-- Canary check (`.mounted`) on external USB/DAS enclosures (`/mnt/hdd-media`, `/mnt/hdd-cloud`, `/mnt/hdd-music`).
-- **Emergency Pulsing Alarm Banner**: Triggers instantly if an external drive disconnects, preventing container downloads from overflowing into the root NVMe SSD.
+### 8. 🔒 SSL Certificate & Domain Expiry Tracker (NPM Companion)
+- Real-time countdown of Let's Encrypt certificates across all subdomains with warning threshold indicators.
 
-### 7. 💾 Proxmox Backup Vitals ("Did My Homelab Backup Last Night?")
-- Live vzdump backup telemetry for LXC 100 (`docker-host`):
-  - Status: 🟢 `SUCCEEDED` (24h Clean)
-  - Last backup timestamp, target storage, archive size (`14.85 GB`), and duration (`4m 12s`).
-
-### 8. 🌡️ CPU Thermal Throttle Indicator (Lenovo M710q Tiny)
-- Monitors package temperature, fan speed percentage, and kernel thermal throttling counters.
-- Visual warning badge if the Tiny chassis begins throttling under high CPU transcoding load.
-
-### 9. 🧹 Docker Disk Hygiene ("NVMe SSD Saver") & Safe Prune
-- Calculates reclaimable disk space across dangling image layers, stopped containers, and build cache.
-- **Safe Prune Confirmation Modal**: Triggers `POST /api/docker/prune` to reclaim gigabytes of NVMe SSD space safely without affecting running containers.
-
-### 10. ⏳ SSL Certificate & Domain Expiry Tracker (NPM Companion)
-- Live countdown of Let's Encrypt certificates across all subdomains with warning states (<30 days warning, <14 days critical).
-
-### 11. 🌐 Tailscale Mesh Network & Smart Launcher Switcher
-- Full peer tracking on the Tailnet (`100.x` IPs, online status, MagicDNS names, subnet router badges).
-- Automatic LAN vs Tailscale URL switcher for all container Web UI action links.
+### 9. 🕶️ Privacy Showcase Mode & Kiosk Fullscreen
+- **1-Click Privacy Toggle**: Instantly redacts local IPs, Tailscale IPs, and domain names for clean screenshots.
+- **Kiosk Fullscreen**: Perfect for wall-mounted tablets and ambient displays.
 
 ---
 
