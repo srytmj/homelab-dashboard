@@ -1,29 +1,32 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AuthScreen } from './components/AuthScreen.js';
 import { useCockpitData } from './hooks/useCockpitData.js';
+import { useTheme } from './hooks/useTheme.js';
 import { Header } from './components/Header.js';
 import { DasWatchdogAlert } from './components/DasWatchdogAlert.js';
-import { HostHealthSection } from './components/HostHealthSection.js';
-import { TailscaleMatrixSection } from './components/TailscaleMatrixSection.js';
-import { StorageMatrixSection } from './components/StorageMatrixSection.js';
-import { SslTrackerSection } from './components/SslTrackerSection.js';
-import { SentinelWidget } from './components/SentinelWidget.js';
-import { ContainerGridSection } from './components/ContainerGridSection.js';
+import { CommandPalette } from './components/CommandPalette.js';
 import { LogModal } from './components/LogModal.js';
 import { RestartModal } from './components/RestartModal.js';
 import { PruneModal } from './components/PruneModal.js';
-import { CommandDeckModal } from './components/CommandDeckModal.js';
+import { PinDomainModal } from './components/PinDomainModal.js';
+import { HomePage } from './pages/HomePage.js';
+import { FleetPage } from './pages/FleetPage.js';
+import { InfraPage } from './pages/InfraPage.js';
+import { SentinelPage } from './pages/SentinelPage.js';
 import { ContainerMetric } from './types.js';
 
 function CockpitDashboard() {
   const { isAuthenticated, isLoading } = useAuth();
   const { snapshot, isConnected, lastUpdated, refetch } = useCockpitData();
+  const { theme, toggleTheme } = useTheme();
 
   const [activeLogContainer, setActiveLogContainer] = useState<ContainerMetric | null>(null);
   const [activeRestartContainer, setActiveRestartContainer] = useState<ContainerMetric | null>(null);
+  const [activePinContainer, setActivePinContainer] = useState<ContainerMetric | null>(null);
   const [isPruneModalOpen, setIsPruneModalOpen] = useState(false);
-  const [isCommandDeckOpen, setIsCommandDeckOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -34,6 +37,17 @@ function CockpitDashboard() {
       tx: containers.reduce((sum, c) => sum + c.networkTxRateBytesPerSec, 0),
     };
   }, [snapshot]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -64,9 +78,11 @@ function CockpitDashboard() {
         lastUpdated={lastUpdated}
         isPrivacyMode={isPrivacyMode}
         isFullscreen={isFullscreen}
+        theme={theme}
         onTogglePrivacy={() => setIsPrivacyMode(!isPrivacyMode)}
         onToggleFullscreen={toggleFullscreen}
-        onOpenCommandDeck={() => setIsCommandDeckOpen(true)}
+        onToggleTheme={toggleTheme}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         onRefresh={refetch}
       />
 
@@ -83,41 +99,37 @@ function CockpitDashboard() {
           </p>
         )}
 
-        <section id="overview" className="scroll-mt-32">
-          <HostHealthSection host={snapshot?.host} throughput={throughput} isPrivacyMode={isPrivacyMode} />
-        </section>
-
-        <section id="fleet" className="scroll-mt-32">
-          <ContainerGridSection
-            containers={snapshot?.containers}
-            isPrivacyMode={isPrivacyMode}
-            onViewLogs={(c) => setActiveLogContainer(c)}
-            onRestartContainer={(c) => setActiveRestartContainer(c)}
+        <Routes>
+          <Route path="/" element={<HomePage snapshot={snapshot} throughput={throughput} isPrivacyMode={isPrivacyMode} />} />
+          <Route
+            path="/fleet"
+            element={
+              <FleetPage
+                containers={snapshot?.containers}
+                isPrivacyMode={isPrivacyMode}
+                onViewLogs={(c) => setActiveLogContainer(c)}
+                onRestartContainer={(c) => setActiveRestartContainer(c)}
+                onPinContainer={(c) => setActivePinContainer(c)}
+              />
+            }
           />
-        </section>
-
-        <section id="infra" className="grid scroll-mt-32 items-start gap-4 lg:grid-cols-3">
-          <StorageMatrixSection
-            storage={snapshot?.storage}
-            hygiene={snapshot?.dockerHygiene}
-            onOpenPruneModal={() => setIsPruneModalOpen(true)}
+          <Route
+            path="/infra"
+            element={
+              <InfraPage snapshot={snapshot} isPrivacyMode={isPrivacyMode} onOpenPruneModal={() => setIsPruneModalOpen(true)} />
+            }
           />
-          <TailscaleMatrixSection tailscale={snapshot?.tailscale} isPrivacyMode={isPrivacyMode} />
-          <SslTrackerSection certificates={snapshot?.sslCertificates} isPrivacyMode={isPrivacyMode} />
-        </section>
-
-        <section id="sentinel" className="scroll-mt-32">
-          <SentinelWidget sentinel={snapshot?.sentinel} />
-        </section>
+          <Route path="/sentinel" element={<SentinelPage sentinel={snapshot?.sentinel} />} />
+        </Routes>
       </main>
 
-      {isCommandDeckOpen && (
-        <CommandDeckModal
-          consoles={snapshot?.consoles}
-          isPrivacyMode={isPrivacyMode}
-          onClose={() => setIsCommandDeckOpen(false)}
-        />
-      )}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        consoles={snapshot?.consoles}
+        containers={snapshot?.containers}
+        isPrivacyMode={isPrivacyMode}
+      />
 
       {activeLogContainer && (
         <LogModal container={activeLogContainer} onClose={() => setActiveLogContainer(null)} />
@@ -128,6 +140,14 @@ function CockpitDashboard() {
           container={activeRestartContainer}
           onClose={() => setActiveRestartContainer(null)}
           onSuccess={() => refetch()}
+        />
+      )}
+
+      {activePinContainer && (
+        <PinDomainModal
+          container={activePinContainer}
+          onClose={() => setActivePinContainer(null)}
+          onSaved={() => refetch()}
         />
       )}
 
@@ -152,7 +172,9 @@ function CockpitDashboard() {
 export function App() {
   return (
     <AuthProvider>
-      <CockpitDashboard />
+      <BrowserRouter>
+        <CockpitDashboard />
+      </BrowserRouter>
     </AuthProvider>
   );
 }

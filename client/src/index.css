@@ -2,16 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Color tokens are stored as "R G B" triplets (not hex) so Tailwind's
+   opacity modifiers (bg-cockpit-accent/10) can compose them via
+   rgb(var(--x) / <alpha-value>) in tailwind.config.js. */
 :root {
   color-scheme: dark;
+
+  --cockpit-bg: 16 17 21;
+  --cockpit-panel: 23 24 30;
+  --cockpit-panel-hover: 28 29 36;
+  --cockpit-topbar: 19 20 25;
+  --cockpit-border: 38 39 47;
+  --cockpit-text: 238 240 244;
+  --cockpit-muted: 132 137 154;
+  --cockpit-accent: 124 156 255;
+
+  --state-good: 72 213 151;
+  --state-warn: 242 169 60;
+  --state-bad: 242 85 77;
+}
+
+:root.light {
+  color-scheme: light;
+
+  --cockpit-bg: 244 245 247;
+  --cockpit-panel: 255 255 255;
+  --cockpit-panel-hover: 238 240 244;
+  --cockpit-topbar: 255 255 255;
+  --cockpit-border: 221 224 230;
+  --cockpit-text: 20 22 28;
+  --cockpit-muted: 98 105 122;
+  --cockpit-accent: 79 111 224;
+
+  --state-good: 23 138 92;
+  --state-warn: 168 98 10;
+  --state-bad: 201 58 53;
 }
 
 body {
   margin: 0;
-  background-color: #101115;
-  color: #eef0f4;
+  background-color: var(--cockpit-bg);
+  color: var(--cockpit-text);
   font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 @layer components {
@@ -104,7 +138,7 @@ body {
   }
 
   .btn-primary {
-    @apply btn bg-cockpit-accent text-[#0f1220] hover:bg-cockpit-accent/85;
+    @apply btn bg-cockpit-accent text-white hover:bg-cockpit-accent/85;
   }
 
   .btn-ghost {
@@ -112,7 +146,7 @@ body {
   }
 
   .btn-danger {
-    @apply btn bg-state-bad text-[#1a0a09] hover:bg-state-bad/85;
+    @apply btn bg-state-bad text-white hover:bg-state-bad/85;
   }
 
   .field {
@@ -139,16 +173,16 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #26272f;
+  background: var(--cockpit-border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #35374180;
+  background: var(--cockpit-muted);
 }
 
 :focus-visible {
-  outline: 2px solid #7c9cff;
+  outline: 2px solid var(--cockpit-accent);
   outline-offset: 2px;
 }
 

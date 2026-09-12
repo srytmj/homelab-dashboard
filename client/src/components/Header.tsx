@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal, LogOut } from 'lucide-react';
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal, LogOut, Sun, Moon } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 import { redactText } from '../utils/formatters.js';
 import { useAuth } from '../context/AuthContext.js';
+import { Theme } from '../hooks/useTheme.js';
 
 interface HeaderProps {
   snapshot: CockpitSnapshot | null;
@@ -10,43 +12,20 @@ interface HeaderProps {
   lastUpdated: Date | null;
   isPrivacyMode: boolean;
   isFullscreen: boolean;
+  theme: Theme;
   onTogglePrivacy: () => void;
   onToggleFullscreen: () => void;
-  onOpenCommandDeck: () => void;
+  onToggleTheme: () => void;
+  onOpenCommandPalette: () => void;
   onRefresh: () => void;
 }
 
-const NAV_SECTIONS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'fleet', label: 'Fleet' },
-  { id: 'infra', label: 'Infra' },
-  { id: 'sentinel', label: 'Sentinel' },
+const NAV_ROUTES = [
+  { path: '/', label: 'Overview' },
+  { path: '/fleet', label: 'Fleet' },
+  { path: '/infra', label: 'Infra' },
+  { path: '/sentinel', label: 'Sentinel' },
 ];
-
-function useActiveSection(): string {
-  const [active, setActive] = useState(NAV_SECTIONS[0].id);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (visible) setActive(visible.target.id);
-      },
-      { rootMargin: '-120px 0px -55% 0px' }
-    );
-
-    NAV_SECTIONS.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  return active;
-}
 
 export const Header: React.FC<HeaderProps> = ({
   snapshot,
@@ -54,12 +33,13 @@ export const Header: React.FC<HeaderProps> = ({
   lastUpdated,
   isPrivacyMode,
   isFullscreen,
+  theme,
   onTogglePrivacy,
   onToggleFullscreen,
-  onOpenCommandDeck,
+  onToggleTheme,
+  onOpenCommandPalette,
   onRefresh,
 }) => {
-  const activeSection = useActiveSection();
   const { username, logout } = useAuth();
   const runningCount = snapshot?.containers.filter((c) => c.state === 'running').length || 0;
   const totalCount = snapshot?.containers.length || 0;
@@ -93,33 +73,49 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <nav className="hidden items-center gap-1 md:flex">
-            {NAV_SECTIONS.map((section) => (
-              <a
-                key={section.id}
-                href={`#${section.id}`}
-                className={`relative rounded-md px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-200 ${
-                  activeSection === section.id
-                    ? 'text-cockpit-accent'
-                    : 'text-cockpit-muted hover:text-cockpit-text'
-                }`}
+            {NAV_ROUTES.map((route) => (
+              <NavLink
+                key={route.path}
+                to={route.path}
+                end={route.path === '/'}
+                className={({ isActive }) =>
+                  `relative rounded-md px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-200 ${
+                    isActive ? 'text-cockpit-accent' : 'text-cockpit-muted hover:text-cockpit-text'
+                  }`
+                }
               >
-                {section.label}
-                <span
-                  className={`absolute inset-x-3 -bottom-0.5 h-px origin-left bg-cockpit-accent transition-transform duration-300 ${
-                    activeSection === section.id ? 'scale-x-100' : 'scale-x-0'
-                  }`}
-                />
-              </a>
+                {({ isActive }) => (
+                  <>
+                    {route.label}
+                    <span
+                      className={`absolute inset-x-3 -bottom-0.5 h-px origin-left bg-cockpit-accent transition-transform duration-300 ${
+                        isActive ? 'scale-x-100' : 'scale-x-0'
+                      }`}
+                    />
+                  </>
+                )}
+              </NavLink>
             ))}
           </nav>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={onOpenCommandDeck}
+              onClick={onOpenCommandPalette}
               className="group inline-flex items-center gap-1.5 rounded-lg border border-cockpit-accent/30 bg-cockpit-accent/10 px-3 py-1.5 text-[12.5px] font-semibold text-cockpit-accent transition-all duration-150 hover:bg-cockpit-accent/20 active:scale-95"
             >
               <Terminal className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Command Deck</span>
+              <kbd className="hidden rounded border border-cockpit-accent/30 px-1 font-mono text-[10px] normal-case opacity-80 sm:inline">
+                Ctrl K
+              </kbd>
+            </button>
+
+            <button
+              onClick={onToggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="icon-btn"
+            >
+              {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
 
             <button
@@ -164,6 +160,24 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Nav for small screens */}
+        <nav className="flex items-center gap-1 pb-2 md:hidden">
+          {NAV_ROUTES.map((route) => (
+            <NavLink
+              key={route.path}
+              to={route.path}
+              end={route.path === '/'}
+              className={({ isActive }) =>
+                `rounded-md px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors ${
+                  isActive ? 'bg-cockpit-accent/10 text-cockpit-accent' : 'text-cockpit-muted'
+                }`
+              }
+            >
+              {route.label}
+            </NavLink>
+          ))}
+        </nav>
 
         {/* Meta strip */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-cockpit-border/60 py-2 font-mono text-[11px] text-cockpit-muted">

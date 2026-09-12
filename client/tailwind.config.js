@@ -1,4 +1,8 @@
 /** @type {import('tailwindcss').Config} */
+function withOpacity(variable) {
+  return `rgb(var(${variable}) / <alpha-value>)`;
+}
+
 export default {
   content: [
     "./index.html",
@@ -9,19 +13,19 @@ export default {
     extend: {
       colors: {
         cockpit: {
-          bg: '#101115',
-          panel: '#17181e',
-          panelHover: '#1c1d24',
-          topbar: '#131419',
-          border: '#26272f',
-          text: '#eef0f4',
-          muted: '#84899a',
-          accent: '#7c9cff',
+          bg: withOpacity('--cockpit-bg'),
+          panel: withOpacity('--cockpit-panel'),
+          panelHover: withOpacity('--cockpit-panel-hover'),
+          topbar: withOpacity('--cockpit-topbar'),
+          border: withOpacity('--cockpit-border'),
+          text: withOpacity('--cockpit-text'),
+          muted: withOpacity('--cockpit-muted'),
+          accent: withOpacity('--cockpit-accent'),
         },
         state: {
-          good: '#48d597',
-          warn: '#f2a93c',
-          bad: '#f2554d',
+          good: withOpacity('--state-good'),
+          warn: withOpacity('--state-warn'),
+          bad: withOpacity('--state-bad'),
         },
       },
       fontFamily: {

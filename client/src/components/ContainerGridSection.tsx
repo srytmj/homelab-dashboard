@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, RefreshCw, Terminal, Copy, Check, ExternalLink, ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, RefreshCw, Terminal, Copy, Check, ExternalLink, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pin } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
 import { formatBytes, formatNetworkRate, redactText, getStatusColor } from '../utils/formatters.js';
@@ -9,6 +9,7 @@ interface ContainerGridSectionProps {
   isPrivacyMode?: boolean;
   onViewLogs: (container: ContainerMetric) => void;
   onRestartContainer: (container: ContainerMetric) => void;
+  onPinContainer: (container: ContainerMetric) => void;
 }
 
 type SortKey = 'cpu' | 'ram' | 'name' | 'network';
@@ -20,6 +21,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   isPrivacyMode = false,
   onViewLogs,
   onRestartContainer,
+  onPinContainer,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
@@ -222,6 +224,9 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
+                          {container.isPinned && (
+                            <Pin className="h-3 w-3 shrink-0 fill-cockpit-accent text-cockpit-accent" />
+                          )}
                           <span className="font-semibold text-cockpit-text">{container.name}</span>
                           <span className="font-mono text-[10.5px] text-cockpit-muted">#{container.shortId}</span>
                         </div>
@@ -313,6 +318,15 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={() => onPinContainer(container)}
+                        title={container.isPinned ? 'Edit pin' : 'Pin to command palette'}
+                        className={`icon-btn hover:border-cockpit-accent/40 hover:text-cockpit-accent ${
+                          container.isPinned ? 'border-cockpit-accent/30 text-cockpit-accent' : ''
+                        }`}
+                      >
+                        <Pin className={`h-3.5 w-3.5 ${container.isPinned ? 'fill-current' : ''}`} />
+                      </button>
                       <button onClick={() => onViewLogs(container)} title="View logs" className="icon-btn">
                         <Terminal className="h-3.5 w-3.5" />
                       </button>
