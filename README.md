@@ -4,6 +4,20 @@ A single-pane dashboard for a compact homelab: Proxmox VE host vitals, Docker co
 
 Built for a Lenovo ThinkCentre M710q Tiny running Proxmox VE with an Ubuntu LXC container runner and an external multi-bay DAS enclosure, but nothing is hardcoded to that setup.
 
+## Results in production
+
+Running on an unprivileged Ubuntu 24.04 LXC on the M710q under Proxmox VE 8, replacing a stack of separate monitoring tools:
+
+| | Before | After |
+| --- | --- | --- |
+| Monitoring containers | 6 across 4 tools | 1 daemon |
+| LXC memory in use | high baseline pressure | 2.2 GB of 12 GB |
+| NVMe reclaimed | — | 15.27 GB |
+| Browser tabs to operate | 4 | 1 |
+| Poll loops | 4 independent | 1 multiplexed WebSocket |
+
+Netdata, Uptime Kuma, Portainer and the previous dashboard were decommissioned. Full write-up in [docs/case-study.md](docs/case-study.md).
+
 ## Architecture
 
 ```
@@ -14,6 +28,7 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)
               +------------------+-------------------+
                                  |
                     Cockpit daemon (Fastify + TypeScript)
+                    - single owner account, 30-day sessions
                     - polls every 2s, broadcasts over WebSocket
                     - Dockerode, Proxmox REST, Tailscale socket
                     - L7 HTTP probes, SSL expiry, disk hygiene
@@ -23,6 +38,8 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)
 ```
 
 ## Features
+
+**Owner authentication.** The first visit registers one owner account, and registration closes permanently after that. Every `/api` route and the WebSocket require a bearer token; sessions last 30 days when you ask them to. Health and auth endpoints stay public.
 
 **Host vitals.** Proxmox CPU, memory, package temperature and uptime; LXC CPU, memory and load average; fan speed and kernel throttle counters; vzdump backup status, archive size and duration.
 
@@ -88,9 +105,15 @@ npm run dev:client   # Vite dev server on :5173, proxies /api and /ws
 
 ## HTTP API
 
+Everything except `/api/health` and `/api/auth/*` requires `Authorization: Bearer <token>`; the WebSocket takes the same token as a `token` query parameter.
+
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | Liveness check |
+| GET | `/api/auth/status` | Whether an owner exists and the token is valid |
+| POST | `/api/auth/register` | Create the owner account, once |
+| POST | `/api/auth/login` | Exchange credentials for a token |
+| POST | `/api/auth/logout` | Invalidate the current token |
 | GET | `/api/snapshot` | Full telemetry snapshot |
 | GET | `/api/tailscale` | Tailnet peers |
 | GET | `/api/ssl` | Certificate expiry |

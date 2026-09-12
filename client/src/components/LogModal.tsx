@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Copy, Check, RefreshCw, ArrowDownToLine } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
+import { authFetch } from '../utils/api.js';
 
 interface LogModalProps {
   container: ContainerMetric | null;
@@ -22,7 +23,7 @@ export const LogModal: React.FC<LogModalProps> = ({ container, onClose }) => {
     const fetchLogs = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/containers/${container.id}/logs?tail=${tail}`);
+        const res = await authFetch(`/api/containers/${container.id}/logs?tail=${tail}`);
         if (res.ok) {
           const data = await res.json();
           if (isSubscribed) {

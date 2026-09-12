@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { AuthScreen } from './components/AuthScreen.js';
 import { useCockpitData } from './hooks/useCockpitData.js';
 import { Header } from './components/Header.js';
 import { DasWatchdogAlert } from './components/DasWatchdogAlert.js';
@@ -14,7 +16,8 @@ import { PruneModal } from './components/PruneModal.js';
 import { CommandDeckModal } from './components/CommandDeckModal.js';
 import { ContainerMetric } from './types.js';
 
-export function App() {
+function CockpitDashboard() {
+  const { isAuthenticated, isLoading } = useAuth();
   const { snapshot, isConnected, lastUpdated, refetch } = useCockpitData();
 
   const [activeLogContainer, setActiveLogContainer] = useState<ContainerMetric | null>(null);
@@ -39,6 +42,19 @@ export function App() {
       document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-cockpit-bg">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-cockpit-accent border-t-transparent" />
+        <span className="label">Checking session</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-cockpit-bg text-cockpit-text">
@@ -130,6 +146,14 @@ export function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <CockpitDashboard />
+    </AuthProvider>
   );
 }
 

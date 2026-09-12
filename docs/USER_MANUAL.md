@@ -2,6 +2,12 @@
 
 How to read the dashboard and use every control. For installation see the [README](../README.md).
 
+## Signing in
+
+The first time the dashboard is opened it asks you to create the owner account. That happens once: after the account exists, registration is closed and the screen becomes a plain sign-in form. There is no password reset, so store the credentials somewhere durable.
+
+"Stay signed in for 30 days" keeps the session token in this browser. Without it the session ends sooner and you sign in again. The logout button sits at the right end of the header and invalidates the token immediately, on every tab.
+
 ## Layout
 
 The page is one scrolling column with four sections, reachable from the header nav:
@@ -26,6 +32,7 @@ Controls on the right, left to right:
 - **Command Deck** opens the console launcher. Switch the whole list between LAN and Tailscale addresses with the toggle in its header.
 - **Eye icon** toggles privacy mode. IPs become `192.168.•••.•••` and domains become `••••••.com`, so a screenshot is safe to post. The button turns amber while active. Nothing is sent anywhere; this is display-only.
 - **Arrows icon** toggles browser fullscreen for a wall display or tablet.
+- **Logout icon** ends the session and returns to the sign-in screen.
 - **Live pill** shows connection state and the time of the last update. Click it to force a refresh; it falls back to HTTP polling if the socket drops, and reconnects on its own after three seconds.
 
 ## Overview

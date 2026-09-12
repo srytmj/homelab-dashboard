@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CockpitSnapshot } from '../types.js';
+import { useAuth } from '../context/AuthContext.js';
 
 export function useCockpitData() {
+  const { token, isAuthenticated } = useAuth();
   const [snapshot, setSnapshot] = useState<CockpitSnapshot | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -11,34 +13,43 @@ export function useCockpitData() {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchInitialSnapshot = useCallback(async () => {
+    if (!token) return;
+
     try {
-      const res = await fetch('/api/snapshot');
+      const res = await fetch('/api/snapshot', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
       if (res.ok) {
         const data: CockpitSnapshot = await res.json();
         setSnapshot(data);
         setLastUpdated(new Date());
         setError(null);
+      } else if (res.status === 401) {
+        setError('Authentication required');
       }
     } catch (err: any) {
       console.warn('[useCockpitData] Initial snapshot fetch error:', err.message);
     }
-  }, []);
+  }, [token]);
 
   const connectWs = useCallback(() => {
+    if (!token) return;
+
     if (socketRef.current) {
       socketRef.current.close();
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws`;
+    const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`;
 
-    console.log(`[useCockpitData] Connecting to WebSocket: ${wsUrl}`);
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
     ws.onopen = () => {
-      console.log('[useCockpitData] WebSocket connection established');
       setIsConnected(true);
       setError(null);
     };
@@ -62,33 +73,41 @@ export function useCockpitData() {
 
     ws.onclose = () => {
       setIsConnected(false);
-      // Auto-reconnect after 3 seconds
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = setTimeout(() => {
-        connectWs();
+        if (isAuthenticated) {
+          connectWs();
+        }
       }, 3000);
     };
-  }, []);
+  }, [token, isAuthenticated]);
 
   useEffect(() => {
-    fetchInitialSnapshot();
-    connectWs();
+    if (isAuthenticated) {
+      fetchInitialSnapshot();
+      connectWs();
 
-    // Fallback polling every 5s if WS is disconnected
-    const pollingInterval = setInterval(() => {
-      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-        fetchInitialSnapshot();
-      }
-    }, 5000);
+      const pollingInterval = setInterval(() => {
+        if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+          fetchInitialSnapshot();
+        }
+      }, 5000);
 
-    return () => {
-      clearInterval(pollingInterval);
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      return () => {
+        clearInterval(pollingInterval);
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+        if (socketRef.current) {
+          socketRef.current.close();
+        }
+      };
+    } else {
       if (socketRef.current) {
         socketRef.current.close();
       }
-    };
-  }, [fetchInitialSnapshot, connectWs]);
+      setSnapshot(null);
+      setIsConnected(false);
+    }
+  }, [isAuthenticated, fetchInitialSnapshot, connectWs]);
 
   return {
     snapshot,

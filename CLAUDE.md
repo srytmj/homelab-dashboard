@@ -23,8 +23,10 @@ The daemon runs without any configuration: with no Docker socket and no Proxmox 
 ## Repo map
 
 ```
-server/src/index.ts              routes and WebSocket broadcast
-server/src/services/             one file per data source
+server/src/index.ts              routes, auth guard, WebSocket broadcast
+server/src/services/             one file per data source, including auth
+client/src/context/AuthContext   session state, login, register, logout
+client/src/utils/api.ts          authFetch, the only way to call /api
 server/src/types.ts              server-side shape of the snapshot
 client/src/App.tsx               page layout and modal state
 client/src/hooks/useCockpitData  WebSocket with HTTP polling fallback
@@ -46,6 +48,8 @@ client/src/index.css             shared component classes
 **Thresholds live in one place.** `getStatusColor` and `getTempColor` in `formatters.ts` decide when a number turns amber or red. Do not inline threshold comparisons in a component.
 
 **Monospace and `tabular-nums` for anything numeric** that a person compares across rows. Values that jitter as they update are a bug.
+
+**Every protected request goes through `authFetch`.** Plain `fetch` against `/api` returns 401 for anything outside `/api/health` and `/api/auth/*`. `authFetch` in `client/src/utils/api.ts` attaches the bearer token; the WebSocket passes the same token as a query parameter. Auth state lives in `AuthContext` and nothing else should read `localStorage` for it.
 
 **Respect privacy mode.** Any IP, hostname or domain rendered in the client goes through `redactText(value, isPrivacyMode)`. A new field that leaks an address in a screenshot defeats the feature.
 

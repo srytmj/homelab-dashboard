@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw, X, Check } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
+import { authFetch } from '../utils/api.js';
 
 interface RestartModalProps {
   container: ContainerMetric | null;
@@ -17,7 +18,7 @@ export const RestartModal: React.FC<RestartModalProps> = ({ container, onClose, 
   const handleRestart = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/containers/${container.id}/restart`, { method: 'POST' });
+      const res = await authFetch(`/api/containers/${container.id}/restart`, { method: 'POST' });
       const data = await res.json();
       setFeedback({ success: data.success, message: data.message });
       if (data.success) {

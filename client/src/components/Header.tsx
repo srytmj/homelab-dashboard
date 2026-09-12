@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal } from 'lucide-react';
+import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal, LogOut } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 import { redactText } from '../utils/formatters.js';
+import { useAuth } from '../context/AuthContext.js';
 
 interface HeaderProps {
   snapshot: CockpitSnapshot | null;
@@ -59,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
 }) => {
   const activeSection = useActiveSection();
+  const { username, logout } = useAuth();
   const runningCount = snapshot?.containers.filter((c) => c.state === 'running').length || 0;
   const totalCount = snapshot?.containers.length || 0;
   const tailscale = snapshot?.tailscale;
@@ -83,6 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-[15px] font-extrabold tracking-tight text-cockpit-text">Cockpit</h1>
+                {username && <span className="pill pill-neutral normal-case">{username}</span>}
                 {snapshot?.isDemoMode && <span className="pill pill-warn">Demo data</span>}
               </div>
               <p className="label mt-0.5 normal-case tracking-normal">Owner POV · Lenovo M710q Tiny</p>
@@ -150,6 +153,14 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden opacity-70 sm:inline">{lastUpdated.toLocaleTimeString()}</span>
               )}
               <RefreshCw className="h-3 w-3 opacity-60" />
+            </button>
+
+            <button
+              onClick={logout}
+              title={username ? `Sign out ${username}` : 'Sign out'}
+              className="icon-btn hover:border-state-bad/40 hover:text-state-bad"
+            >
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>

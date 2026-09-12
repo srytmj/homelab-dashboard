@@ -22,7 +22,14 @@ services:
       - STORAGE_MOUNTS=/,/mnt/hdd-media,/mnt/hdd-cloud,/mnt/hdd-music
       - POLL_INTERVAL_MS=2000
       - DEMO_MODE=${DEMO_MODE:-false}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_USER_IDS=${TELEGRAM_ALLOWED_USER_IDS:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - MANAGED_CONTAINERS=${MANAGED_CONTAINERS:-jellyfin,nextcloud,t3-code,nginx-proxy-manager,uptime-kuma,portainer-ce,transmission,paperless-ngx,home-assistant}
     volumes:
+      # Persistent Owner Auth & Sessions
+      - ./data:/app/data
       # Docker Socket access for real-time container metrics & control
       - /var/run/docker.sock:/var/run/docker.sock
       # Tailscale Daemon Socket (optional: allows reading live local tailscaled status)

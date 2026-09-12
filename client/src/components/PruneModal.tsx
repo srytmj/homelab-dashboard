@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Trash2, AlertOctagon, Check, X } from 'lucide-react';
 import { DockerDiskHygiene } from '../types.js';
 import { formatBytes } from '../utils/formatters.js';
+import { authFetch } from '../utils/api.js';
 
 interface PruneModalProps {
   hygiene: DockerDiskHygiene | undefined;
@@ -19,7 +20,7 @@ export const PruneModal: React.FC<PruneModalProps> = ({ hygiene, onClose, onSucc
     setResultMessage(null);
 
     try {
-      const res = await fetch('/api/docker/prune', { method: 'POST' });
+      const res = await authFetch('/api/docker/prune', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         setIsSuccess(true);
