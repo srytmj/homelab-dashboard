@@ -64,6 +64,8 @@ client/src/index.css             token values per theme, shared component classe
 
 **Pins are server-owned, not client state.** `PinsService` (`server/src/services/pins.service.ts`) is the only writer of `data/pins.json`. The client never persists a pin itself — it calls `POST`/`DELETE /api/pins/:name` and waits for the next snapshot to reflect it. `CollectorService` merges `isPinned`/`publicUrl` onto each container by name before it reaches the client; don't duplicate that merge client-side.
 
+**Docker is multi-host; most other services are not.** `CollectorService` holds a `DockerService[]`, one per entry in `config.dockerHosts` (`server/src/config.ts`), and every `ContainerMetric` carries `dockerHost` so it can be traced back to the instance that produced it. `CollectorService.getDockerServiceForContainer(id)` is how a route finds the right instance — never assume there's exactly one. Everything else (`ProxmoxService`, `SystemService`, disk hygiene, prune, the Sentinel bot) is scoped to the primary host only, because host-level OS vitals are only ever readable for the machine the daemon runs on and each host has its own separate disk. Only the primary `DockerService` (`index === 0`) generates mock/demo containers; don't make a second configured host duplicate that fallback.
+
 ## Common tasks
 
 **Adding a metric to an existing section.** Add the field to both `types.ts` files, populate it in the relevant service, render it as a `.data-row` or a tile. Keep the label short and lowercase-with-capital, not a sentence.

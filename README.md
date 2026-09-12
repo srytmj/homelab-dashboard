@@ -21,17 +21,17 @@ Netdata, Uptime Kuma, Portainer and the previous dashboard were decommissioned. 
 ## Architecture
 
 ```
-Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)
-  host CPU / RAM / thermal                ~28 containers via docker.sock
-  vzdump backup history                   /mnt/hdd-* DAS mounts
-              |                                      |
-              +------------------+-------------------+
+Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      Second Docker host (optional)
+  host CPU / RAM / thermal                ~28 containers via docker.sock         containers only, over
+  vzdump backup history                   /mnt/hdd-* DAS mounts                  dockerd's TCP API on the tailnet
+              |                                      |                                    |
+              +------------------+-------------------+------------------+-----------------+
                                  |
                     Cockpit daemon (Fastify + TypeScript)
                     - single owner account, 30-day sessions
                     - polls every 2s, broadcasts over WebSocket
-                    - Dockerode, Proxmox REST, Tailscale socket
-                    - L7 HTTP probes, SSL expiry, disk hygiene
+                    - Dockerode per configured Docker host, Proxmox REST, Tailscale socket
+                    - L7 HTTP probes, SSL expiry, disk hygiene (primary host only)
                     - pinned-container registry (data/pins.json)
                     - optional Telegram bot with Gemini Q&A
                                  |
@@ -47,7 +47,9 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)
 
 **Host vitals.** Proxmox CPU, memory, package temperature and uptime; LXC CPU, memory and load average; fan speed and kernel throttle counters; vzdump backup status, archive size and duration.
 
-**Container fleet.** Live CPU, memory and per-second network rate for every container, with sparklines, sortable columns, filters and pagination. L7 HTTP probes report the real status code and latency instead of trusting the Docker "Up" state.
+**Container fleet.** Live CPU, memory and per-second network rate for every container, with sparklines, sortable columns, filters and pagination. L7 HTTP probes report the real status code and latency instead of trusting the Docker "Up" state. A container's Web UI cell opens a small menu to pick which address to use — LAN, Tailscale, or its public domain if pinned with one — rather than guessing.
+
+**Multiple Docker hosts.** Point the daemon at more than one dockerd (see `DOCKER_HOSTS` below) and every host's containers land in the same fleet table, tagged and filterable by which host they came from. Host-level CPU/RAM stays scoped to the primary host — that's the only machine the daemon can read its own OS vitals from.
 
 **Storage and DAS watchdog.** Usage per volume plus a canary file check (`.mounted`) on external enclosures. If a bay detaches, a banner appears immediately, because containers writing to a missing mount will fill the root NVMe instead.
 
@@ -86,6 +88,11 @@ Without a `.env` the daemon starts in demo mode with simulated telemetry, which 
 
 ```env
 PORT=3000
+
+DOCKER_HOST_NAME=docker-host
+DOCKER_SOCKET=/var/run/docker.sock
+# Optional second (and third, ...) Docker host, reachable over the tailnet
+DOCKER_HOSTS=media-lxc=tcp://100.110.20.30:2375
 
 PROXMOX_URL=https://192.168.18.224:8006
 PROXMOX_NODE=pve

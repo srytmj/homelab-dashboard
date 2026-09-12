@@ -63,7 +63,7 @@ One row per container.
 
 - The dot is green when running, grey when stopped.
 - **Health** shows the Docker state plus the L7 probe result, for example `200 · 15ms`. A red `502 error` means the process is up but the service behind it is broken, which the Docker state alone will not tell you.
-- **Web UI** links to the service port and copies its URL. Which address is used depends on the **Links** toggle: `Auto` picks Tailscale when you opened the dashboard over Tailscale and LAN otherwise, or force one.
+- **Web UI** opens a small menu rather than a single link — pick LAN, Tailscale, or the public domain if you've pinned one for this container. Each row also has its own copy button.
 - **CPU** and **Memory** show the current value and a sparkline of recent history.
 - **Throughput** shows the live per-second rate, with cumulative totals underneath.
 - **Actions** — pin, view logs, or restart. All three appear on hover.
@@ -71,7 +71,8 @@ One row per container.
 Filtering and sorting:
 
 - The search box matches name, image and port.
-- `All / Running / Stopped` filters by state; `All nets / Tailscale / LAN` filters by exposure.
+- `All / Running / Stopped` filters by state.
+- If more than one Docker host is configured, a **host filter** appears: buttons for up to five hosts, or a searchable dropdown beyond that. Each row also shows which host it's on when more than one is configured.
 - Click a column header to sort by it, click again to reverse. Sorted columns are marked with an arrow.
 - The footer sets rows per page (10, 25, 50, 100) and pages through the result. Changing a filter or the page size returns you to page one.
 
@@ -92,6 +93,8 @@ Pins are stored on the daemon, not the browser, so they're the same whether you 
 ## Infra
 
 **Host detail.** The Proxmox node's address, core count, version and uptime; the LXC runner's live CPU and memory bars, load average and fan or throttle state; and last night's vzdump backup with size and duration. A `SIMULATED` badge on the Proxmox panel means the API token is not configured and the numbers are generated.
+
+**Docker hosts.** Only appears once a second Docker host is configured. One row per host, with a connected/simulated pill and how many containers it's currently reporting. CPU and memory aren't shown here — that's only ever readable for the machine the daemon itself runs on, so a second host contributes containers, not its own vitals.
 
 **Storage and DAS watchdog.** One row per volume with a usage bar. The line underneath carries the mount path, used and free space, and either the SMART result or the canary state for external bays. A `DETACHED` badge and a red banner at the top of the page mean an enclosure dropped: containers pointed at that path will silently write to the root NVMe until it fills, so stop them or remount before doing anything else.
 
