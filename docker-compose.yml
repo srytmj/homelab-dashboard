@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: homelab-cockpit
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "8050:3000" # Access UI at http://<DOCKER_HOST_IP>:8050
     environment:
