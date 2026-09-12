@@ -155,20 +155,6 @@ export interface DockerHostSummary {
   containerCount: number;
 }
 
-export interface NativeConsoleItem {
-  id: string;
-  name: string;
-  category: 'hypervisor' | 'containers' | 'monitoring' | 'proxy' | 'security' | 'tools';
-  description: string;
-  port: number;
-  path?: string;
-  protocol: 'http' | 'https';
-  lanHost: string;
-  tailscaleHost: string;
-  badge: string;
-  status: 'online' | 'degraded' | 'offline';
-}
-
 export interface SentinelStatus {
   enabled: boolean;
   botUsername?: string;
@@ -189,7 +175,6 @@ export interface CockpitSnapshot {
   dockerHosts: DockerHostSummary[];
   sslCertificates: SslCertificate[];
   dockerHygiene: DockerDiskHygiene;
-  consoles: NativeConsoleItem[];
   sentinel?: SentinelStatus;
   isDemoMode: boolean;
 }

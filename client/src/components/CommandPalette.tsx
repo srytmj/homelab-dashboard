@@ -1,18 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ExternalLink, ArrowRight, LayoutGrid, Terminal, Pin } from 'lucide-react';
-import { ContainerMetric, NativeConsoleItem } from '../types.js';
+import { Search, ExternalLink, ArrowRight, Terminal, Pin } from 'lucide-react';
+import { ContainerMetric } from '../types.js';
 import { redactText } from '../utils/formatters.js';
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
-  consoles: NativeConsoleItem[] | undefined;
   containers: ContainerMetric[] | undefined;
   isPrivacyMode?: boolean;
 }
 
-type PaletteGroup = 'Pages' | 'Consoles' | 'Pinned containers';
+type PaletteGroup = 'Pages' | 'Pinned containers';
 
 interface PaletteItem {
   id: string;
@@ -33,7 +32,6 @@ const PAGES = [
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
-  consoles = [],
   containers = [],
   isPrivacyMode = false,
 }) => {
@@ -41,10 +39,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const isLoadedViaTailscale =
-    typeof window !== 'undefined' &&
-    (window.location.hostname.startsWith('100.') || window.location.hostname.endsWith('.ts.net'));
 
   useEffect(() => {
     if (isOpen) {
@@ -63,19 +57,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       run: () => navigate(p.path),
     }));
 
-    const consoleItems: PaletteItem[] = consoles.map((item) => {
-      const host = isLoadedViaTailscale ? item.tailscaleHost : item.lanHost;
-      const url = `${item.protocol}://${host}:${item.port}${item.path || ''}`;
-      return {
-        id: `console-${item.id}`,
-        group: 'Consoles',
-        label: item.name,
-        sublabel: redactText(url, isPrivacyMode),
-        icon: <LayoutGrid className="h-3.5 w-3.5" />,
-        run: () => window.open(url, '_blank', 'noreferrer'),
-      };
-    });
-
     const pinnedItems: PaletteItem[] = containers
       .filter((c) => c.isPinned)
       .map((c) => {
@@ -84,7 +65,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           id: `container-${c.id}`,
           group: 'Pinned containers',
           label: c.name,
-          sublabel: url ? redactText(url, isPrivacyMode) : 'No reachable URL',
+          sublabel: url ? redactText(url, isPrivacyMode) : 'No reachable URL — pin it with a LAN/Tailscale port',
           icon: <Pin className="h-3.5 w-3.5 fill-current" />,
           run: () => {
             if (url) window.open(url, '_blank', 'noreferrer');
@@ -92,8 +73,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         };
       });
 
-    return [...pageItems, ...consoleItems, ...pinnedItems];
-  }, [consoles, containers, isLoadedViaTailscale, isPrivacyMode, navigate]);
+    return [...pageItems, ...pinnedItems];
+  }, [containers, isPrivacyMode, navigate]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -130,7 +111,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   };
 
   let runningIndex = -1;
-  const groups: PaletteGroup[] = ['Pages', 'Consoles', 'Pinned containers'];
+  const groups: PaletteGroup[] = ['Pages', 'Pinned containers'];
 
   return (
     <div className="overlay items-start pt-[12vh]" onClick={onClose}>
@@ -146,7 +127,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Jump to a page, console or pinned container…"
+            placeholder="Jump to a page or a pinned container…"
             className="w-full bg-transparent text-[13.5px] text-cockpit-text placeholder-cockpit-muted focus:outline-none"
           />
           <kbd className="label rounded border border-cockpit-border px-1.5 py-0.5">Esc</kbd>
@@ -185,13 +166,21 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                           </span>
                         )}
                       </span>
-                      {item.group !== 'Pages' && <ExternalLink className="h-3 w-3 shrink-0 text-cockpit-muted" />}
+                      {item.group === 'Pinned containers' && (
+                        <ExternalLink className="h-3 w-3 shrink-0 text-cockpit-muted" />
+                      )}
                     </button>
                   );
                 })}
               </div>
             );
           })}
+
+          {items.filter((i) => i.group === 'Pinned containers').length === 0 && !query && (
+            <p className="px-4 py-3 text-[12px] text-cockpit-muted">
+              Nothing pinned yet — pin a container from the Fleet table to launch it from here.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-4 border-t border-cockpit-border px-4 py-2 font-mono text-[10.5px] text-cockpit-muted">

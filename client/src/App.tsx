@@ -126,7 +126,6 @@ function CockpitDashboard() {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
-        consoles={snapshot?.consoles}
         containers={snapshot?.containers}
         isPrivacyMode={isPrivacyMode}
       />
