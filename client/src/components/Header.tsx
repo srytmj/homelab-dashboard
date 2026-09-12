@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal, LogOut, Sun, Moon } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
-import { redactText } from '../utils/formatters.js';
+import { redactText, formatBytes } from '../utils/formatters.js';
 import { useAuth } from '../context/AuthContext.js';
 import { Theme } from '../hooks/useTheme.js';
 
@@ -44,8 +44,13 @@ export const Header: React.FC<HeaderProps> = ({
   const runningCount = snapshot?.containers.filter((c) => c.state === 'running').length || 0;
   const totalCount = snapshot?.containers.length || 0;
   const tailscale = snapshot?.tailscale;
-  const pveOnline = snapshot?.host.pve.connected ?? false;
+  const pve = snapshot?.host.pve;
+  const dockerHost = snapshot?.host.dockerHost;
+  const pveOnline = pve?.connected ?? false;
   const allHealthy = isConnected && pveOnline;
+  const spec = pve
+    ? `${pve.cpuModel || `${pve.cpuCores} cores`} · ${formatBytes(dockerHost?.ramTotalBytes ?? 0)} RAM`
+    : null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-cockpit-border bg-cockpit-topbar/95 backdrop-blur-md">
@@ -68,7 +73,9 @@ export const Header: React.FC<HeaderProps> = ({
                 {username && <span className="pill pill-neutral normal-case">{username}</span>}
                 {snapshot?.isDemoMode && <span className="pill pill-warn">Demo data</span>}
               </div>
-              <p className="label mt-0.5 normal-case tracking-normal">Owner POV · Lenovo M710q Tiny</p>
+              <p className="label mt-0.5 normal-case tracking-normal">
+                Owner POV{pve?.nodeName ? ` · ${pve.nodeName}` : ''}
+              </p>
             </div>
           </div>
 
@@ -182,12 +189,13 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Meta strip */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-cockpit-border/60 py-2 font-mono text-[11px] text-cockpit-muted">
           <span>
-            PVE <span className="text-cockpit-text">{redactText('192.168.18.224', isPrivacyMode)}</span>
+            PVE <span className="text-cockpit-text">{redactText(pve?.ip || '—', isPrivacyMode)}</span>
             <span className={`ml-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${pveOnline ? 'bg-state-good' : 'bg-state-warn'}`} />
           </span>
           <span className="text-cockpit-border">|</span>
           <span>
-            LXC <span className="text-cockpit-text">{redactText('192.168.18.225', isPrivacyMode)}</span>
+            {dockerHost?.hostname || 'LXC'}{' '}
+            <span className="text-cockpit-text">{redactText(dockerHost?.ip || '—', isPrivacyMode)}</span>
             <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-state-good align-middle" />
           </span>
           {tailscale && (
@@ -210,8 +218,12 @@ export const Header: React.FC<HeaderProps> = ({
             </span>{' '}
             running
           </span>
-          <span className="text-cockpit-border hidden sm:inline">|</span>
-          <span className="hidden sm:inline">Intel i5-7500 · 4C/4T · 32GB</span>
+          {spec && (
+            <>
+              <span className="text-cockpit-border hidden sm:inline">|</span>
+              <span className="hidden sm:inline">{spec}</span>
+            </>
+          )}
         </div>
       </div>
     </header>

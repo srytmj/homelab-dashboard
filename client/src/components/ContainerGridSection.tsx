@@ -52,9 +52,9 @@ const WebUiMenu: React.FC<{ container: ContainerMetric; isPrivacyMode: boolean }
   const ref = useClickOutside(() => setIsOpen(false));
 
   const links = [
-    { label: 'LAN', url: container.lanUrl },
-    { label: 'Tailscale', url: container.tailscaleUrl },
     { label: 'Public domain', url: container.publicUrl },
+    { label: 'Tailscale', url: container.tailscaleUrl },
+    { label: 'LAN', url: container.lanUrl },
   ].filter((l): l is { label: string; url: string } => Boolean(l.url));
 
   if (links.length === 0) {

@@ -79,7 +79,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     const pinnedItems: PaletteItem[] = containers
       .filter((c) => c.isPinned)
       .map((c) => {
-        const url = c.publicUrl || (isLoadedViaTailscale ? c.tailscaleUrl || c.lanUrl : c.lanUrl || c.tailscaleUrl);
+        const url = c.publicUrl || c.tailscaleUrl || c.lanUrl;
         return {
           id: `container-${c.id}`,
           group: 'Pinned containers',

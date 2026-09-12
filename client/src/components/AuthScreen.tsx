@@ -149,7 +149,7 @@ export const AuthScreen: React.FC = () => {
       </div>
 
       <p className="mt-4 font-mono text-[11px] text-cockpit-muted">
-        Lenovo M710q Tiny · Proxmox VE · Docker runner
+        Proxmox VE · Docker · Tailscale
       </p>
     </div>
   );

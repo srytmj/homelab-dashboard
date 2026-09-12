@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
-import { redactText } from '../utils/formatters.js';
+import { redactText, formatBytes } from '../utils/formatters.js';
 import { HostSummaryTiles } from '../components/HostSummaryTiles.js';
 
 interface HomePageProps {
@@ -15,17 +15,20 @@ export const HomePage: React.FC<HomePageProps> = ({ snapshot, throughput, isPriv
   const runningCount = snapshot?.containers.filter((c) => c.state === 'running').length ?? 0;
   const totalCount = snapshot?.containers.length ?? 0;
   const pinnedCount = snapshot?.containers.filter((c) => c.isPinned).length ?? 0;
+  const pve = snapshot?.host.pve;
+  const dockerHost = snapshot?.host.dockerHost;
 
   return (
     <div className="space-y-4">
       <section className="panel px-5 py-4">
         <p className="label">This machine</p>
         <h1 className="mt-1 text-[19px] font-extrabold tracking-tight text-cockpit-text">
-          Lenovo ThinkCentre M710q Tiny
+          {pve?.nodeName || 'Homelab node'}
         </h1>
         <p className="mt-1 font-mono text-[12px] text-cockpit-muted">
-          Intel i5-7500 · 4C/4T · 32GB RAM · Proxmox VE {redactText('192.168.18.224', isPrivacyMode)} · Docker LXC{' '}
-          {redactText('192.168.18.225', isPrivacyMode)}
+          {pve ? `${pve.cpuModel || `${pve.cpuCores} cores`} · ${formatBytes(dockerHost?.ramTotalBytes ?? 0)} RAM · ` : ''}
+          Proxmox VE {redactText(pve?.ip || '—', isPrivacyMode)} · Docker {dockerHost?.hostname || 'host'}{' '}
+          {redactText(dockerHost?.ip || '—', isPrivacyMode)}
         </p>
       </section>
 
