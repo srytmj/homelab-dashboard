@@ -2,6 +2,7 @@ import type { WebSocket, RawData } from 'ws';
 import { DockerService } from './docker.service.js';
 import { ProxmoxService } from './proxmox.service.js';
 import { SystemService } from './system.service.js';
+import { TailscaleService } from './tailscale.service.js';
 import { CockpitSnapshot } from '../types.js';
 import { config } from '../config.js';
 
@@ -9,6 +10,7 @@ export class CollectorService {
   private dockerService: DockerService;
   private proxmoxService: ProxmoxService;
   private systemService: SystemService;
+  private tailscaleService: TailscaleService;
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
   private lastSnapshot: CockpitSnapshot | null = null;
@@ -16,18 +18,18 @@ export class CollectorService {
   constructor(
     dockerService: DockerService,
     proxmoxService: ProxmoxService,
-    systemService: SystemService
+    systemService: SystemService,
+    tailscaleService: TailscaleService
   ) {
     this.dockerService = dockerService;
     this.proxmoxService = proxmoxService;
     this.systemService = systemService;
+    this.tailscaleService = tailscaleService;
   }
 
   public start() {
-    // Initial fetch
     this.collectAndBroadcast();
 
-    // Start ticker
     this.timer = setInterval(() => {
       this.collectAndBroadcast();
     }, config.pollIntervalMs);
@@ -44,16 +46,13 @@ export class CollectorService {
 
   public addClient(ws: WebSocket) {
     this.wsClients.add(ws);
-    console.log(`[CollectorService] Client connected (total: ${this.wsClients.size})`);
 
-    // Send immediate snapshot upon connection
     if (this.lastSnapshot) {
       ws.send(JSON.stringify({ type: 'SNAPSHOT', data: this.lastSnapshot }));
     }
 
     ws.on('close', () => {
       this.wsClients.delete(ws);
-      console.log(`[CollectorService] Client disconnected (remaining: ${this.wsClients.size})`);
     });
 
     ws.on('message', async (message: RawData) => {
@@ -66,18 +65,21 @@ export class CollectorService {
           ws.send(JSON.stringify({ type: 'SNAPSHOT', data: snapshot }));
         }
       } catch {
-        // ignore malformed message
+        // ignore
       }
     });
   }
 
   public async collect(): Promise<CockpitSnapshot> {
-    const [pveMetrics, dockerHostMetrics, containerData, storageData] = await Promise.all([
+    const [pveMetrics, dockerHostMetrics, tailscaleData, storageData] = await Promise.all([
       this.proxmoxService.getMetrics(),
       this.systemService.getDockerHostMetrics(),
-      this.dockerService.getContainers(),
+      this.tailscaleService.getStatus(),
       this.systemService.getStorageMatrix(),
     ]);
+
+    const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
+    const containerData = await this.dockerService.getContainers(selfTailscaleIp);
 
     const snapshot: CockpitSnapshot = {
       timestamp: Date.now(),
@@ -86,6 +88,7 @@ export class CollectorService {
         dockerHost: dockerHostMetrics,
       },
       storage: storageData,
+      tailscale: tailscaleData,
       containers: containerData.containers,
       isDemoMode: !containerData.isLive || config.demoMode,
     };
@@ -100,7 +103,7 @@ export class CollectorService {
       if (this.wsClients.size > 0) {
         const message = JSON.stringify({ type: 'SNAPSHOT', data: snapshot });
         for (const client of this.wsClients) {
-          if (client.readyState === 1) { // WebSocket.OPEN = 1
+          if (client.readyState === 1) { // OPEN
             client.send(message);
           }
         }

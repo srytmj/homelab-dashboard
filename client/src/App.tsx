@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCockpitData } from './hooks/useCockpitData.js';
 import { Header } from './components/Header.js';
 import { HostHealthSection } from './components/HostHealthSection.js';
+import { TailscaleMatrixSection } from './components/TailscaleMatrixSection.js';
 import { StorageMatrixSection } from './components/StorageMatrixSection.js';
 import { ContainerGridSection } from './components/ContainerGridSection.js';
 import { LogModal } from './components/LogModal.js';
@@ -46,10 +47,13 @@ export function App() {
         {/* 1. Real-time Node & Hardware Health */}
         <HostHealthSection host={snapshot?.host} />
 
-        {/* 2. Storage Matrix */}
+        {/* 2. Tailscale Mesh Network & Peer Tracking */}
+        <TailscaleMatrixSection tailscale={snapshot?.tailscale} />
+
+        {/* 3. Storage Matrix */}
         <StorageMatrixSection storage={snapshot?.storage} />
 
-        {/* 3. Container Live Grid */}
+        {/* 4. Container Live Grid with Tailscale reachability */}
         <ContainerGridSection
           containers={snapshot?.containers}
           onViewLogs={(c) => setActiveLogContainer(c)}
@@ -82,7 +86,7 @@ export function App() {
             <span>— Lenovo ThinkCentre M710q Tiny</span>
           </div>
           <div>
-            <span>WebSocket Live Stream (2s) • Fastify + Vite + React</span>
+            <span>Tailscale Overlay • Proxmox VE • Docker Runner</span>
           </div>
         </div>
       </footer>

@@ -10,6 +10,7 @@ import { config } from './config.js';
 import { DockerService } from './services/docker.service.js';
 import { ProxmoxService } from './services/proxmox.service.js';
 import { SystemService } from './services/system.service.js';
+import { TailscaleService } from './services/tailscale.service.js';
 import { CollectorService } from './services/collector.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,7 +32,13 @@ async function bootstrap() {
   const dockerService = new DockerService();
   const proxmoxService = new ProxmoxService();
   const systemService = new SystemService();
-  const collectorService = new CollectorService(dockerService, proxmoxService, systemService);
+  const tailscaleService = new TailscaleService();
+  const collectorService = new CollectorService(
+    dockerService,
+    proxmoxService,
+    systemService,
+    tailscaleService
+  );
 
   collectorService.start();
 
@@ -52,6 +59,11 @@ async function bootstrap() {
   app.get('/api/snapshot', async () => {
     const snapshot = await collectorService.collect();
     return snapshot;
+  });
+
+  app.get('/api/tailscale', async () => {
+    const status = await tailscaleService.getStatus();
+    return status;
   });
 
   app.get('/api/containers/:id/logs', async (request) => {

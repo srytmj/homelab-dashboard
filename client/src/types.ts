@@ -44,6 +44,31 @@ export interface StorageItem {
   smartStatus?: 'PASSED' | 'WARNING' | 'FAILED' | 'UNKNOWN';
 }
 
+export interface TailscaleDevice {
+  id: string;
+  name: string;
+  hostname: string;
+  dnsName: string;
+  ipv4: string;
+  ipv6?: string;
+  os: 'linux' | 'windows' | 'macos' | 'android' | 'ios' | 'other';
+  online: boolean;
+  lastSeen: string;
+  isCurrentDevice: boolean;
+  isExitNode: boolean;
+  subnetRoutes: string[];
+  tags: string[];
+  keyExpiryDays?: number;
+}
+
+export interface TailscaleStatus {
+  connected: boolean;
+  tailnetName: string;
+  devices: TailscaleDevice[];
+  totalOnline: number;
+  totalDevices: number;
+}
+
 export interface ContainerMetric {
   id: string;
   shortId: string;
@@ -62,12 +87,16 @@ export interface ContainerMetric {
   uptime: string;
   ports: string[];
   created: number;
+  tailscaleEnabled: boolean;
+  tailscaleIp?: string;
+  tailscaleUrl?: string;
 }
 
 export interface CockpitSnapshot {
   timestamp: number;
   host: HostMetrics;
   storage: StorageItem[];
+  tailscale: TailscaleStatus;
   containers: ContainerMetric[];
   isDemoMode: boolean;
 }

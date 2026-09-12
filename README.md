@@ -1,12 +1,12 @@
 # 🛸 Homelab Cockpit | Owner POV Dashboard
 
-> **Real-time 360° Homelab Telemetry & Control Plane.** Built specifically for compact, multi-service homelab environments (Lenovo ThinkCentre Tiny, Proxmox VE, Ubuntu Docker Runner LXC, and Multi-bay External DAS).
+> **Real-time 360° Homelab Telemetry & Control Plane.** Built specifically for compact, multi-service homelab environments (Lenovo ThinkCentre Tiny, Proxmox VE, Ubuntu Docker Runner LXC, Tailscale Mesh Network, and Multi-bay External DAS).
 
 ---
 
 ## ⚡ Overview & Architecture
 
-Homelab Cockpit combines hardware telemetry, multi-drive storage matrices, and real-time container metrics into a high-density, low-latency, dark-mode-first dashboard.
+Homelab Cockpit combines hardware telemetry, multi-drive storage matrices, Tailscale overlay peer tracking, and real-time container metrics into a high-density, low-latency, dark-mode-first dashboard.
 
 ```
  +-------------------------------------------------------------------------+
@@ -17,19 +17,18 @@ Homelab Cockpit combines hardware telemetry, multi-drive storage matrices, and r
        v                                              v
  [ Proxmox VE Node ]                           [ Ubuntu LXC ]
   IP: 192.168.18.224                            IP: 192.168.18.225
-  • Host CPU & RAM                              • Container Runner
+  • Host CPU & RAM                              • Container Runner (~28 containers)
   • Thermal Sensors                             • /var/run/docker.sock
   • Proxmox REST API                            • Mounts: /mnt/hdd-*
        |                                              |
        +--------------------+    +--------------------+
                             |    |
                             v    v
-       +-----------------------------------------------+
-       |             HOMELAB COCKPIT DAEMON            |
-       |       Node.js (Fastify) + TypeScript          |
-       |       • Periodic WebSocket Broadcaster (2s)   |
-       |       • Dockerode + Proxmox REST Client       |
-       |       • Micro-sparkline Rolling History       |
+       +-----------------------------------------------+   [ Tailscale Tailnet ]
+       |             HOMELAB COCKPIT DAEMON            |<-- 100.x Peer Mesh
+       |       Node.js (Fastify) + TypeScript          |    • Local Socket
+       |       • Periodic WebSocket Broadcaster (2s)   |    • Subnet Router 192.168.18.0/24
+       |       • Dockerode + Proxmox REST Client       |    • Direct Container URLs
        +-----------------------------------------------+
                             |  WebSocket (ws://)
                             v
@@ -48,20 +47,27 @@ Homelab Cockpit combines hardware telemetry, multi-drive storage matrices, and r
    - **Proxmox VE Hypervisor (192.168.18.224)**: Host CPU %, RAM usage (used vs 32GB hardware limit), CPU thermal sensor monitoring (`°C` status badge: Cool / Warm / Hot), PVE version, and host uptime.
    - **Docker Runner (Ubuntu LXC 192.168.18.225)**: LXC CPU load, memory utilization, and 1m/5m/15m system load averages.
 
-2. **Storage Matrix & External DAS Enclosures**:
+2. **Tailscale Mesh & Peer Tracking**:
+   - **Tailnet Peer Fleet**: Track which homelab devices, hypervisors, workstations, and mobile devices are connected to the Tailnet.
+   - **IP & MagicDNS Matrix**: Live `100.x.y.z` IPv4 and IPv6 addresses with 1-click clipboard copy.
+   - **Subnet Router & Exit Node Detection**: Highlights advertised subnets (e.g. `192.168.18.0/24`) and exit node status.
+   - **Per-Container Tailscale Reachability**: View whether a container service is accessible via Tailscale vs LAN Only, with direct 1-click Tailscale URLs!
+
+3. **Storage Matrix & External DAS Enclosures**:
    - Live visual capacity bars for **Internal NVMe SSD** (Root OS & Docker Volumes).
    - Real-time capacity breakdown for **External 3-Bay DAS Enclosures** (`/mnt/hdd-media`, `/mnt/hdd-cloud`, `/mnt/hdd-music`).
    - SMART health badges and alert indicators for warning (>80%) and critical (>90%) thresholds.
 
-3. **Live Container Fleet (Docker Engine Telemetry)**:
+4. **Live Container Fleet (Docker Engine Telemetry)**:
    - Full live list of containers via `/var/run/docker.sock`.
    - Real-time CPU % & RAM MB/GB with **dynamic inline SVG micro-sparklines** showing usage trends.
    - Network I/O counter (RX / TX) and exposed port bindings.
+   - Filter by **All**, **Tailscale Only**, or **LAN Only**.
    - **Quick Actions**:
      - **Tail Logs Modal**: Monospace dark terminal with live line selector (50, 100, 250 lines) and copy-to-clipboard.
      - **Safe Restart Trigger**: Restart container directly with confirmation prompt.
 
-4. **Zero-Overhead Single Container Deployment**:
+5. **Zero-Overhead Single Container Deployment**:
    - Multi-stage Docker build packaging both Fastify daemon and compiled Vite frontend into a single lean Alpine image (< 130MB).
    - Smart fallback demo-mode if run outside the homelab cluster.
 
@@ -85,6 +91,12 @@ PROXMOX_NODE=pve
 PROXMOX_TOKEN_ID=root@pam!cockpit
 PROXMOX_TOKEN_SECRET=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 PROXMOX_REJECT_UNAUTHORIZED=false
+
+# Tailscale Integration (via socket or API key)
+TAILSCALE_SOCKET=/var/run/tailscale/tailscaled.sock
+TAILSCALE_API_KEY=tskey-api-kxxxxxxxxxxxxxx
+TAILSCALE_TAILNET=your-tailnet.ts.net
+
 STORAGE_MOUNTS=/,/mnt/hdd-media,/mnt/hdd-cloud,/mnt/hdd-music
 ```
 
@@ -95,27 +107,22 @@ docker compose up -d --build
 ```
 
 Dashboard will be accessible at:
-👉 **`http://192.168.18.225:8050`** (or `http://localhost:8050`)
+👉 **`http://192.168.18.225:8050`** (or via your Tailscale IP `http://100.x.y.z:8050`)
 
 ---
 
-## 🔑 Setting Up Proxmox VE API Token
+## 🔑 Integrations Setup
 
-To allow Homelab Cockpit to read CPU, RAM, and thermal metrics from your Proxmox Host (192.168.18.224):
-
-1. Login to **Proxmox VE Web UI** (`https://192.168.18.224:8006`).
+### 1. Proxmox VE API Token
+1. Login to Proxmox VE Web UI (`https://192.168.18.224:8006`).
 2. Go to **Datacenter** → **Permissions** → **API Tokens** → Click **Add**:
-   - **User**: `root@pam` (or a dedicated monitoring user)
+   - **User**: `root@pam`
    - **Token ID**: `cockpit`
-   - **Privilege Separation**: Unchecked (or grant `PVEAuditor` role)
-3. Copy the generated **Secret Token** (UUID).
-4. Fill in `.env`:
-   ```env
-   PROXMOX_TOKEN_ID=root@pam!cockpit
-   PROXMOX_TOKEN_SECRET=your-secret-token-here
-   ```
+3. Copy generated **Secret Token** into `.env`.
 
-*(Note: If no Proxmox token is configured yet, the dashboard automatically generates simulated high-fidelity telemetry so the UI remains fully functional).*
+### 2. Tailscale Telemetry
+- **Via Local Socket (Zero Config)**: Keep volume mount `/var/run/tailscale:/var/run/tailscale:ro` in `docker-compose.yml`. Homelab Cockpit will read live peer statuses directly from `tailscaled`.
+- **Via Tailscale API**: Generate an API access token in Tailscale Admin Console → **Settings** → **Keys** → **API access tokens**, and set `TAILSCALE_API_KEY` and `TAILSCALE_TAILNET`.
 
 ---
 
@@ -124,63 +131,12 @@ To allow Homelab Cockpit to read CPU, RAM, and thermal metrics from your Proxmox
 Run backend and frontend concurrently in development mode:
 
 ```bash
-# Install dependencies
-cd server && npm install
-cd ../client && npm install
-cd ..
+# Build whole project
+npm run build
 
 # Run dev mode
 npm run dev:server   # Fastify on http://localhost:3000
-npm run dev:client   # Vite on http://localhost:5173 with proxy
-```
-
-### Production Build Test
-
-```bash
-npm run build
-npm start
-```
-
----
-
-## 📁 Repository Structure
-
-```
-homelab-dashboard/
-├── client/                     # Vite + React 18 + Tailwind CSS Frontend
-│   ├── src/
-│   │   ├── components/         # Cockpit UI components
-│   │   │   ├── Header.tsx
-│   │   │   ├── HostHealthSection.tsx
-│   │   │   ├── StorageMatrixSection.tsx
-│   │   │   ├── ContainerGridSection.tsx
-│   │   │   ├── Sparkline.tsx   # SVG micro-sparklines
-│   │   │   ├── LogModal.tsx    # Live terminal log viewer
-│   │   │   └── RestartModal.tsx# Safe restart dialog
-│   │   ├── hooks/
-│   │   │   └── useCockpitData.ts # Real-time WebSocket hook
-│   │   ├── utils/              # Unit formatters & thresholds
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── index.html
-│   ├── vite.config.ts
-│   └── tailwind.config.js
-├── server/                     # Fastify + TypeScript Backend
-│   ├── src/
-│   │   ├── services/
-│   │   │   ├── docker.service.ts    # Docker Engine API & stats calculation
-│   │   │   ├── proxmox.service.ts   # Proxmox REST API client
-│   │   │   ├── system.service.ts    # Filesystem & systeminformation
-│   │   │   └── collector.service.ts # Real-time WebSocket aggregator
-│   │   ├── config.ts
-│   │   ├── types.ts
-│   │   └── index.ts
-│   ├── tsconfig.json
-│   └── package.json
-├── docker-compose.yml          # Production homelab deployment
-├── Dockerfile                  # Multi-stage ultra-slim image
-├── .env.example                # Environment variables template
-└── README.md
+npm run dev:client   # Vite on http://localhost:5173
 ```
 
 ---

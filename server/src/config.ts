@@ -12,6 +12,11 @@ export const config = {
     tokenSecret: process.env.PROXMOX_TOKEN_SECRET || '',
     rejectUnauthorized: process.env.PROXMOX_REJECT_UNAUTHORIZED === 'true',
   },
+  tailscale: {
+    apiKey: process.env.TAILSCALE_API_KEY || '',
+    tailnet: process.env.TAILSCALE_TAILNET || '',
+    socketPath: process.env.TAILSCALE_SOCKET || '/var/run/tailscale/tailscaled.sock',
+  },
   storageMounts: (process.env.STORAGE_MOUNTS || '/,/mnt/hdd-media,/mnt/hdd-cloud,/mnt/hdd-music')
     .split(',')
     .map(p => p.trim())

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Server, Activity, RefreshCw, Wifi, WifiOff, HardDrive, ShieldCheck } from 'lucide-react';
+import { Server, Activity, RefreshCw, Wifi, WifiOff, HardDrive, ShieldCheck, Network } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 
 interface HeaderProps {
@@ -17,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const runningCount = snapshot?.containers.filter(c => c.state === 'running').length || 0;
   const totalCount = snapshot?.containers.length || 0;
+  const tailscale = snapshot?.tailscale;
 
   return (
     <header className="border-b border-slate-800/80 bg-[#0c1220]/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3.5 shadow-lg shadow-black/20">
@@ -53,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Status Pills & Ticker */}
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
           {/* Proxmox Node Status */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-slate-300 font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
@@ -69,6 +70,15 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="font-semibold text-slate-200">192.168.18.225</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
           </div>
+
+          {/* Tailscale Status Pill */}
+          {tailscale && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-950/40 border border-indigo-500/30 text-indigo-300 font-mono">
+              <Network className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-slate-400">Tailnet:</span>
+              <span className="text-indigo-200 font-bold">{tailscale.totalOnline}/{tailscale.totalDevices}</span>
+            </div>
+          )}
 
           {/* Active Container Count */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 font-mono">
@@ -92,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
             {isConnected ? (
               <>
                 <Wifi className="w-3.5 h-3.5" />
-                <span className="font-bold">LIVE (2s)</span>
+                <span className="font-bold">LIVE</span>
               </>
             ) : (
               <>
@@ -101,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
               </>
             )}
             {lastUpdated && (
-              <span className="text-[10px] opacity-70 border-l border-emerald-500/30 pl-1.5">
+              <span className="text-[10px] opacity-70 border-l border-emerald-500/30 pl-1.5 hidden sm:inline">
                 {lastUpdated.toLocaleTimeString()}
               </span>
             )}
