@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Search, RefreshCw, Terminal, Layers, ArrowUpDown, Network, Copy, Check, ExternalLink, Globe, ArrowDown, ArrowUp, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, RefreshCw, Terminal, Copy, Check, ExternalLink, ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
 import { formatBytes, formatNetworkRate, redactText, getStatusColor } from '../utils/formatters.js';
@@ -11,6 +11,10 @@ interface ContainerGridSectionProps {
   onRestartContainer: (container: ContainerMetric) => void;
 }
 
+type SortKey = 'cpu' | 'ram' | 'name' | 'network';
+
+const PAGE_SIZES = [10, 25, 50, 100];
+
 export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   containers = [],
   isPrivacyMode = false,
@@ -21,32 +25,30 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
   const [networkFilter, setNetworkFilter] = useState<'all' | 'tailscale' | 'lan'>('all');
   const [urlMode, setUrlMode] = useState<'auto' | 'tailscale' | 'lan'>('auto');
-  const [sortBy, setSortBy] = useState<'cpu' | 'ram' | 'name' | 'network'>('cpu');
+  const [sortBy, setSortBy] = useState<SortKey>('cpu');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
 
-  // Auto-detect current browser access environment
-  const isLoadedViaTailscale = typeof window !== 'undefined' && (
-    window.location.hostname.startsWith('100.') ||
-    window.location.hostname.endsWith('.ts.net')
-  );
+  const isLoadedViaTailscale =
+    typeof window !== 'undefined' &&
+    (window.location.hostname.startsWith('100.') || window.location.hostname.endsWith('.ts.net'));
 
   const filteredContainers = useMemo(() => {
     return containers
       .filter((c) => {
+        const q = search.toLowerCase();
         const matchesSearch =
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          c.image.toLowerCase().includes(search.toLowerCase()) ||
-          c.ports.some((p) => p.toLowerCase().includes(search.toLowerCase()));
+          c.name.toLowerCase().includes(q) ||
+          c.image.toLowerCase().includes(q) ||
+          c.ports.some((p) => p.toLowerCase().includes(q));
 
         if (!matchesSearch) return false;
-
         if (statusFilter === 'running' && c.state !== 'running') return false;
         if (statusFilter === 'exited' && c.state === 'running') return false;
-
         if (networkFilter === 'tailscale' && !c.tailscaleEnabled) return false;
         if (networkFilter === 'lan' && c.tailscaleEnabled) return false;
-
         return true;
       })
       .sort((a, b) => {
@@ -54,13 +56,23 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
         if (sortBy === 'cpu') diff = a.cpuPercent - b.cpuPercent;
         else if (sortBy === 'ram') diff = a.memoryBytes - b.memoryBytes;
         else if (sortBy === 'name') diff = a.name.localeCompare(b.name);
-        else if (sortBy === 'network') diff = (a.networkRxRateBytesPerSec + a.networkTxRateBytesPerSec) - (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
-
+        else diff =
+          a.networkRxRateBytesPerSec + a.networkTxRateBytesPerSec -
+          (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
         return sortOrder === 'desc' ? -diff : diff;
       });
   }, [containers, search, statusFilter, networkFilter, sortBy, sortOrder]);
 
-  const toggleSort = (column: 'cpu' | 'ram' | 'name' | 'network') => {
+  const pageCount = Math.max(1, Math.ceil(filteredContainers.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageStart = (currentPage - 1) * pageSize;
+  const visibleContainers = filteredContainers.slice(pageStart, pageStart + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, networkFilter, pageSize]);
+
+  const toggleSort = (column: SortKey) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
     } else {
@@ -78,273 +90,164 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const getContainerTargetUrl = (container: ContainerMetric): string | undefined => {
     if (urlMode === 'tailscale') return container.tailscaleUrl;
     if (urlMode === 'lan') return container.lanUrl;
-    return isLoadedViaTailscale ? (container.tailscaleUrl || container.lanUrl) : (container.lanUrl || container.tailscaleUrl);
+    return isLoadedViaTailscale
+      ? container.tailscaleUrl || container.lanUrl
+      : container.lanUrl || container.tailscaleUrl;
   };
 
-  const tailscaleCount = containers.filter(c => c.tailscaleEnabled).length;
+  const tailscaleCount = containers.filter((c) => c.tailscaleEnabled).length;
+  const runningCount = containers.filter((c) => c.state === 'running').length;
+
+  const SortHeader: React.FC<{ column: SortKey; children: React.ReactNode; className?: string }> = ({
+    column,
+    children,
+    className = '',
+  }) => (
+    <th className={`px-4 py-2.5 font-medium ${className}`}>
+      <button
+        onClick={() => toggleSort(column)}
+        className={`inline-flex items-center gap-1 transition-colors hover:text-cockpit-text ${
+          sortBy === column ? 'text-cockpit-accent' : ''
+        }`}
+      >
+        {children}
+        {sortBy === column && <span aria-hidden="true">{sortOrder === 'desc' ? '↓' : '↑'}</span>}
+      </button>
+    </th>
+  );
 
   return (
-    <section className="rounded-xl bg-[#0d1424] border border-slate-800/90 p-4 lg:p-5 shadow-md">
-      {/* Header with Search, Filters and URL Mode */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4 pb-3 border-b border-slate-800/70">
-        
-        {/* Title */}
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-cyan-400">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold tracking-wide uppercase text-slate-100">
-                Container Engine Fleet (Live Telemetry)
-              </h2>
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-slate-700">
-                {filteredContainers.length} of {containers.length} active
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 font-mono">
-              Docker Engine metrics • Live Throughput Speedometer • L7 HTTP Probes
-            </p>
-          </div>
+    <section className="panel overflow-hidden">
+      <div className="panel-head">
+        <div>
+          <h2 className="panel-title">Container fleet</h2>
+          <p className="panel-sub">
+            {runningCount} running of {containers.length} · live throughput &amp; L7 probes
+          </p>
         </div>
 
-        {/* Controls: Search, Filter, Smart Launcher Mode */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Search Box */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
             <input
               type="text"
-              placeholder="Filter container, image, port..."
+              placeholder="Filter name, image, port"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 w-44 sm:w-48"
+              className="field w-52 pl-8"
             />
           </div>
 
-          {/* Status Filter: All / Running / Exited */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
-            {(['all', 'running', 'exited'] as const).map((mode) => (
+          <div className="seg">
+            {([
+              ['all', 'All'],
+              ['running', 'Running'],
+              ['exited', 'Stopped'],
+            ] as const).map(([mode, label]) => (
               <button
                 key={mode}
                 onClick={() => setStatusFilter(mode)}
-                className={`px-2 py-1 rounded-md capitalize transition-colors ${
-                  statusFilter === mode
-                    ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`seg-btn ${statusFilter === mode ? 'seg-btn-on' : ''}`}
               >
-                {mode}
+                {label}
               </button>
             ))}
           </div>
 
-          {/* Smart Launcher Mode Selector */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
-            <button
-              onClick={() => setUrlMode('auto')}
-              title="Auto-detect whether you are accessing via LAN or Tailscale"
-              className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 ${
-                urlMode === 'auto'
-                  ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Globe className="w-3 h-3 text-cyan-400" />
-              <span>Auto</span>
-            </button>
-            <button
-              onClick={() => setUrlMode('lan')}
-              title="Force LAN IP"
-              className={`px-2 py-1 rounded-md transition-colors ${
-                urlMode === 'lan'
-                  ? 'bg-slate-800 text-slate-200 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              LAN
-            </button>
-            <button
-              onClick={() => setUrlMode('tailscale')}
-              title="Force Tailscale IP"
-              className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 ${
-                urlMode === 'tailscale'
-                  ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Network className="w-3 h-3 text-indigo-400" />
-              <span>TS</span>
-            </button>
+          <div className="seg">
+            {([
+              ['all', 'All nets'],
+              ['tailscale', `Tailscale ${tailscaleCount}`],
+              ['lan', 'LAN'],
+            ] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => setNetworkFilter(mode)}
+                className={`seg-btn ${networkFilter === mode ? 'seg-btn-on' : ''}`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Network Filter */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
-            <button
-              onClick={() => setNetworkFilter('all')}
-              className={`px-2 py-1 rounded-md transition-colors ${
-                networkFilter === 'all'
-                  ? 'bg-slate-800 text-slate-200 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              All Net
-            </button>
-            <button
-              onClick={() => setNetworkFilter('tailscale')}
-              className={`px-2 py-1 rounded-md transition-colors ${
-                networkFilter === 'tailscale'
-                  ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              TS ({tailscaleCount})
-            </button>
-            <button
-              onClick={() => setNetworkFilter('lan')}
-              className={`px-2 py-1 rounded-md transition-colors ${
-                networkFilter === 'lan'
-                  ? 'bg-slate-800 text-slate-200 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              LAN Only
-            </button>
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs font-mono text-slate-400">
-            <ArrowUpDown className="w-3 h-3 text-slate-400" />
-            <button
-              onClick={() => toggleSort('cpu')}
-              className={`hover:text-white px-1 ${sortBy === 'cpu' ? 'text-cyan-400 font-bold' : ''}`}
-            >
-              CPU
-            </button>
-            <span>/</span>
-            <button
-              onClick={() => toggleSort('ram')}
-              className={`hover:text-white px-1 ${sortBy === 'ram' ? 'text-indigo-400 font-bold' : ''}`}
-            >
-              RAM
-            </button>
-            <span>/</span>
-            <button
-              onClick={() => toggleSort('network')}
-              className={`hover:text-white px-1 ${sortBy === 'network' ? 'text-emerald-400 font-bold' : ''}`}
-            >
-              Net
-            </button>
+          <div className="seg" title="Which address the service links point at">
+            <span className="label px-2">Links</span>
+            {([
+              ['auto', 'Auto'],
+              ['lan', 'LAN'],
+              ['tailscale', 'TS'],
+            ] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => setUrlMode(mode)}
+                className={`seg-btn ${urlMode === mode ? 'seg-btn-on' : ''}`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
-
       </div>
 
-      {/* Table of Containers */}
-      <div className="overflow-x-auto rounded-lg border border-slate-800/80 bg-slate-950/40">
-        <table className="w-full text-left text-xs font-mono border-collapse">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px] text-left text-[13px]">
           <thead>
-            <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800 text-[11px] uppercase tracking-wider">
-              <th className="py-2.5 px-3.5 font-bold">Service / Container</th>
-              <th className="py-2.5 px-3 font-bold">State & L7 Health</th>
-              <th className="py-2.5 px-3 font-bold">Web UI & Routing</th>
-              <th className="py-2.5 px-3 font-bold cursor-pointer hover:text-cyan-400" onClick={() => toggleSort('cpu')}>
-                <div className="flex items-center gap-1">
-                  <span>CPU %</span>
-                  {sortBy === 'cpu' && <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>}
-                </div>
-              </th>
-              <th className="py-2.5 px-3 font-bold cursor-pointer hover:text-indigo-400" onClick={() => toggleSort('ram')}>
-                <div className="flex items-center gap-1">
-                  <span>RAM Alloc</span>
-                  {sortBy === 'ram' && <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>}
-                </div>
-              </th>
-              <th className="py-2.5 px-3 font-bold cursor-pointer hover:text-emerald-400" onClick={() => toggleSort('network')}>
-                <div className="flex items-center gap-1">
-                  <span>Speedometer (Live Rate)</span>
-                  {sortBy === 'network' && <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>}
-                </div>
-              </th>
-              <th className="py-2.5 px-3 font-bold text-right">Actions</th>
+            <tr className="border-b border-cockpit-border font-mono text-[10px] uppercase tracking-[0.09em] text-cockpit-muted">
+              <SortHeader column="name">Service</SortHeader>
+              <th className="px-4 py-2.5 font-medium">Health</th>
+              <th className="px-4 py-2.5 font-medium">Web UI</th>
+              <SortHeader column="cpu">CPU</SortHeader>
+              <SortHeader column="ram">Memory</SortHeader>
+              <SortHeader column="network">Throughput</SortHeader>
+              <th className="px-4 py-2.5 text-right font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60">
-            {filteredContainers.map((container) => {
+          <tbody key={`${currentPage}-${pageSize}`} className="animate-fadeIn">
+            {visibleContainers.map((container) => {
               const isRunning = container.state === 'running';
-              const cpuColors = getStatusColor(container.cpuPercent);
+              const cpuTone = getStatusColor(container.cpuPercent);
               const targetUrl = getContainerTargetUrl(container);
               const isCopied = copiedUrl === targetUrl;
+              const probe = container.httpHealth;
 
               return (
                 <tr
                   key={container.id}
-                  className="hover:bg-slate-900/60 transition-colors group"
+                  className="group border-b border-cockpit-border transition-colors last:border-b-0 hover:bg-cockpit-panelHover"
                 >
-                  {/* Service & Image */}
-                  <td className="py-2.5 px-3.5">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <span className="relative flex h-2.5 w-2.5 shrink-0">
-                        {isRunning && (
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                        )}
-                        <span
-                          className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                            isRunning ? 'bg-emerald-500' : 'bg-slate-600'
-                          }`}
-                        />
-                      </span>
-
-                      <div>
-                        <div className="font-bold text-slate-100 flex items-center gap-1.5">
-                          <span className="text-slate-100 group-hover:text-cyan-400 transition-colors">
-                            {container.name}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-normal hidden sm:inline">
-                            #{container.shortId}
-                          </span>
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${isRunning ? 'bg-state-good' : 'bg-cockpit-muted'}`}
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-cockpit-text">{container.name}</span>
+                          <span className="font-mono text-[10.5px] text-cockpit-muted">#{container.shortId}</span>
                         </div>
-                        <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={container.image}>
+                        <div className="truncate font-mono text-[11px] text-cockpit-muted" title={container.image}>
                           {container.image}
                         </div>
                       </div>
                     </div>
                   </td>
 
-                  {/* State & L7 Health */}
-                  <td className="py-2.5 px-3">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          isRunning
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                            : 'bg-slate-800 text-slate-400 border-slate-700'
-                        }`}
-                      >
-                        {isRunning ? 'RUNNING' : 'STOPPED'}
+                      <span className={`pill ${isRunning ? 'pill-good' : 'pill-neutral'}`}>
+                        {isRunning ? 'Running' : 'Stopped'}
                       </span>
-
-                      {/* L7 HTTP Probe Result */}
-                      {isRunning && container.httpHealth && container.httpHealth.status === 'healthy' && (
-                        <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-cyan-400" />
-                          <span>{container.httpHealth.statusCode || 200} OK</span>
-                          <span className="text-slate-500 text-[9px]">({container.httpHealth.latencyMs}ms)</span>
+                      {isRunning && probe?.status === 'healthy' && (
+                        <span className="pill pill-neutral normal-case tabular-nums">
+                          {probe.statusCode || 200} · {probe.latencyMs}ms
                         </span>
                       )}
-
-                      {isRunning && container.httpHealth && container.httpHealth.status === 'critical' && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950/60 text-rose-300 border border-rose-500/40 animate-pulse">
-                          <AlertCircle className="w-2.5 h-2.5 text-rose-400" />
-                          <span>502 ERR</span>
-                        </span>
-                      )}
+                      {isRunning && probe?.status === 'critical' && <span className="pill pill-bad">502 error</span>}
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">{container.uptime}</div>
+                    <div className="mt-1 font-mono text-[10.5px] text-cockpit-muted">{container.uptime}</div>
                   </td>
 
-                  {/* Smart Web UI & Routing */}
-                  <td className="py-2.5 px-3">
+                  <td className="px-4 py-3">
                     {targetUrl ? (
                       <div className="flex items-center gap-1.5">
                         <a
@@ -352,101 +255,73 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                           target="_blank"
                           rel="noreferrer"
                           title={`Open ${redactText(targetUrl, isPrivacyMode)}`}
-                          className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 hover:text-white hover:border-indigo-400 transition-colors text-[11px] font-semibold"
+                          className="inline-flex items-center gap-1 rounded-md border border-cockpit-border px-2 py-1 font-mono text-[11px] text-cockpit-accent transition-colors hover:border-cockpit-accent/40"
                         >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>:{container.primaryPort}</span>
+                          <ExternalLink className="h-3 w-3" />:{container.primaryPort}
                         </a>
-
                         <button
                           onClick={() => copyToClipboard(targetUrl)}
-                          title={`Copy URL: ${redactText(targetUrl, isPrivacyMode)}`}
-                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                          title="Copy URL"
+                          className="icon-btn p-1"
                         >
-                          {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          {isCopied ? <Check className="h-3 w-3 animate-popIn text-state-good" /> : <Copy className="h-3 w-3" />}
                         </button>
                       </div>
                     ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500">
-                        Internal
-                      </span>
+                      <span className="font-mono text-[11px] text-cockpit-muted">internal</span>
                     )}
                   </td>
 
-                  {/* CPU % + Sparkline */}
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold w-12 ${isRunning ? cpuColors.text : 'text-slate-500'}`}>
-                        {isRunning ? `${container.cpuPercent.toFixed(1)}%` : '0.0%'}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`metric w-12 text-[12.5px] ${isRunning ? cpuTone.text : 'text-cockpit-muted'}`}>
+                        {isRunning ? container.cpuPercent.toFixed(1) : '0.0'}%
                       </span>
-                      <div className="hidden sm:block">
-                        <Sparkline
-                          data={container.sparklineCpu}
-                          color={container.cpuPercent > 10 ? 'amber' : 'cyan'}
-                          width={50}
-                          height={18}
-                        />
-                      </div>
+                      <Sparkline
+                        data={container.sparklineCpu}
+                        tone={container.cpuPercent > 75 ? 'warn' : 'accent'}
+                        width={52}
+                        height={18}
+                      />
                     </div>
                   </td>
 
-                  {/* RAM MB/GB + Sparkline */}
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16">
-                        <div className="font-bold text-slate-200">
-                          {isRunning ? formatBytes(container.memoryBytes) : '0 B'}
-                        </div>
-                      </div>
-                      <div className="hidden sm:block">
-                        <Sparkline
-                          data={container.sparklineMemory}
-                          color="indigo"
-                          width={50}
-                          height={18}
-                        />
-                      </div>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="metric w-16 text-[12.5px]">
+                        {isRunning ? formatBytes(container.memoryBytes) : '0 B'}
+                      </span>
+                      <Sparkline data={container.sparklineMemory} tone="muted" width={52} height={18} />
                     </div>
                   </td>
 
-                  {/* Speedometer (Live Rate Delta) + Total Cumulative */}
-                  <td className="py-2.5 px-3 text-slate-300">
-                    <div className="flex flex-col gap-0.5">
-                      {/* Live Speedometer */}
-                      <div className="flex items-center gap-2 text-[11px] font-bold">
-                        <span className="text-emerald-400 flex items-center gap-0.5">
-                          <ArrowDown className="w-3 h-3" />
-                          {formatNetworkRate(container.networkRxRateBytesPerSec)}
-                        </span>
-                        <span className="text-sky-400 flex items-center gap-0.5">
-                          <ArrowUp className="w-3 h-3" />
-                          {formatNetworkRate(container.networkTxRateBytesPerSec)}
-                        </span>
-                      </div>
-                      {/* Total Cumulated */}
-                      <div className="text-[10px] text-slate-500 font-mono">
-                        Total: {formatBytes(container.networkRxBytes)} / {formatBytes(container.networkTxBytes)}
-                      </div>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5 font-mono text-[12px] tabular-nums">
+                      <span className="inline-flex items-center gap-0.5 text-cockpit-text">
+                        <ArrowDown className="h-3 w-3 text-cockpit-accent" />
+                        {formatNetworkRate(container.networkRxRateBytesPerSec)}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 text-cockpit-muted">
+                        <ArrowUp className="h-3 w-3" />
+                        {formatNetworkRate(container.networkTxRateBytesPerSec)}
+                      </span>
+                    </div>
+                    <div className="mt-1 font-mono text-[10.5px] tabular-nums text-cockpit-muted">
+                      total {formatBytes(container.networkRxBytes)} / {formatBytes(container.networkTxBytes)}
                     </div>
                   </td>
 
-                  {/* Actions */}
-                  <td className="py-2.5 px-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => onViewLogs(container)}
-                        title="Inspect Live Logs"
-                        className="p-1.5 rounded-md bg-slate-900 border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 hover:bg-slate-800 transition-colors"
-                      >
-                        <Terminal className="w-3.5 h-3.5" />
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
+                      <button onClick={() => onViewLogs(container)} title="View logs" className="icon-btn">
+                        <Terminal className="h-3.5 w-3.5" />
                       </button>
-
                       <button
                         onClick={() => onRestartContainer(container)}
-                        title="Restart Container"
-                        className="p-1.5 rounded-md bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-400 hover:border-amber-500/40 hover:bg-slate-800 transition-colors"
+                        title="Restart container"
+                        className="icon-btn hover:border-state-warn/40 hover:text-state-warn"
                       >
-                        <RefreshCw className="w-3.5 h-3.5" />
+                        <RefreshCw className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>
@@ -457,10 +332,56 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
         </table>
 
         {filteredContainers.length === 0 && (
-          <div className="p-8 text-center text-slate-500 font-mono text-xs">
-            No containers match your filter criteria.
-          </div>
+          <p className="animate-fadeIn px-5 py-10 text-center text-[13px] text-cockpit-muted">
+            No containers match this filter.
+          </p>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-cockpit-border px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="label">Rows</span>
+          <div className="seg">
+            {PAGE_SIZES.map((size) => (
+              <button
+                key={size}
+                onClick={() => setPageSize(size)}
+                className={`seg-btn ${pageSize === size ? 'seg-btn-on' : ''}`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 font-mono text-[11px] text-cockpit-muted">
+          <span className="tabular-nums">
+            {filteredContainers.length === 0
+              ? '0 of 0'
+              : `${pageStart + 1}–${Math.min(pageStart + pageSize, filteredContainers.length)} of ${filteredContainers.length}`}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="icon-btn disabled:pointer-events-none disabled:opacity-40"
+              title="Previous page"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="px-1.5 tabular-nums text-cockpit-text">
+              {currentPage} / {pageCount}
+            </span>
+            <button
+              onClick={() => setPage(currentPage + 1)}
+              disabled={currentPage >= pageCount}
+              className="icon-btn disabled:pointer-events-none disabled:opacity-40"
+              title="Next page"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

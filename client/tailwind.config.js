@@ -9,18 +9,28 @@ export default {
     extend: {
       colors: {
         cockpit: {
-          bg: '#090D16',
-          card: '#0F172A',
-          cardHover: '#131F37',
-          border: '#1E293B',
-          muted: '#64748B',
-          text: '#F8FAFC',
-          accent: '#06B6D4', // cyan-500
-        }
+          bg: '#101115',
+          panel: '#17181e',
+          panelHover: '#1c1d24',
+          topbar: '#131419',
+          border: '#26272f',
+          text: '#eef0f4',
+          muted: '#84899a',
+          accent: '#7c9cff',
+        },
+        state: {
+          good: '#48d597',
+          warn: '#f2a93c',
+          bad: '#f2554d',
+        },
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-      }
+        sans: ['Manrope', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
+      borderRadius: {
+        panel: '10px',
+      },
     },
   },
   plugins: [],

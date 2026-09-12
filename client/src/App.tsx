@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useCockpitData } from './hooks/useCockpitData.js';
 import { Header } from './components/Header.js';
 import { DasWatchdogAlert } from './components/DasWatchdogAlert.js';
@@ -13,7 +13,6 @@ import { RestartModal } from './components/RestartModal.js';
 import { PruneModal } from './components/PruneModal.js';
 import { CommandDeckModal } from './components/CommandDeckModal.js';
 import { ContainerMetric } from './types.js';
-import { Info } from 'lucide-react';
 
 export function App() {
   const { snapshot, isConnected, lastUpdated, refetch } = useCockpitData();
@@ -25,6 +24,14 @@ export function App() {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const throughput = useMemo(() => {
+    const containers = snapshot?.containers || [];
+    return {
+      rx: containers.reduce((sum, c) => sum + c.networkRxRateBytesPerSec, 0),
+      tx: containers.reduce((sum, c) => sum + c.networkTxRateBytesPerSec, 0),
+    };
+  }, [snapshot]);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
@@ -34,8 +41,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-[#F8FAFC] flex flex-col font-sans">
-      {/* Header */}
+    <div className="flex min-h-screen flex-col bg-cockpit-bg text-cockpit-text">
       <Header
         snapshot={snapshot}
         isConnected={isConnected}
@@ -48,65 +54,47 @@ export function App() {
         onRefresh={refetch}
       />
 
-      {/* Main Cockpit Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
-        
-        {/* DAS Canary Alert (Pulsing Red if any DAS mount has disconnected) */}
+      <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-6 px-5 py-7 lg:px-8">
         <DasWatchdogAlert storage={snapshot?.storage} />
 
-        {/* Notice for Proxmox API Token setup if demo or unconfigured */}
         {snapshot?.host.pve && !snapshot.host.pve.connected && (
-          <div className="rounded-lg bg-indigo-950/40 border border-indigo-500/30 p-3.5 flex items-start gap-3 text-xs font-mono">
-            <div className="p-1 rounded bg-indigo-500/20 text-indigo-400 shrink-0 mt-0.5">
-              <Info className="w-4 h-4" />
-            </div>
-            <div className="text-slate-300">
-              <span className="font-bold text-indigo-300">Proxmox VE API Integration:</span> Set your{' '}
-              <code className="text-cyan-400 bg-slate-900 px-1 py-0.5 rounded">PROXMOX_TOKEN_ID</code> &{' '}
-              <code className="text-cyan-400 bg-slate-900 px-1 py-0.5 rounded">PROXMOX_TOKEN_SECRET</code> in{' '}
-              <code className="text-amber-400">.env</code> to stream live hardware sensors & vzdump backups from your Lenovo M710q Tiny PVE node (192.168.18.224). Displaying high-fidelity simulated telemetry.
-            </div>
-          </div>
+          <p className="rounded-panel border border-cockpit-border bg-cockpit-panel px-5 py-3.5 text-[12.5px] leading-relaxed text-cockpit-muted">
+            <span className="font-semibold text-cockpit-text">Proxmox API not connected.</span> Set{' '}
+            <code className="font-mono text-cockpit-accent">PROXMOX_TOKEN_ID</code> and{' '}
+            <code className="font-mono text-cockpit-accent">PROXMOX_TOKEN_SECRET</code> in{' '}
+            <code className="font-mono text-cockpit-accent">.env</code> to stream real hardware sensors and vzdump
+            history from the PVE node. Showing simulated telemetry until then.
+          </p>
         )}
 
-        {/* 1. Real-time Node, Hardware & Proxmox Backup Vitals */}
-        <HostHealthSection
-          host={snapshot?.host}
-          isPrivacyMode={isPrivacyMode}
-        />
+        <section id="overview" className="scroll-mt-32">
+          <HostHealthSection host={snapshot?.host} throughput={throughput} isPrivacyMode={isPrivacyMode} />
+        </section>
 
-        {/* 2. Tailscale Mesh Network & Peer Tracking */}
-        <TailscaleMatrixSection
-          tailscale={snapshot?.tailscale}
-          isPrivacyMode={isPrivacyMode}
-        />
+        <section id="fleet" className="scroll-mt-32">
+          <ContainerGridSection
+            containers={snapshot?.containers}
+            isPrivacyMode={isPrivacyMode}
+            onViewLogs={(c) => setActiveLogContainer(c)}
+            onRestartContainer={(c) => setActiveRestartContainer(c)}
+          />
+        </section>
 
-        {/* 3. Storage Matrix & Docker NVMe Hygiene */}
-        <StorageMatrixSection
-          storage={snapshot?.storage}
-          hygiene={snapshot?.dockerHygiene}
-          onOpenPruneModal={() => setIsPruneModalOpen(true)}
-        />
+        <section id="infra" className="grid scroll-mt-32 items-start gap-4 lg:grid-cols-3">
+          <StorageMatrixSection
+            storage={snapshot?.storage}
+            hygiene={snapshot?.dockerHygiene}
+            onOpenPruneModal={() => setIsPruneModalOpen(true)}
+          />
+          <TailscaleMatrixSection tailscale={snapshot?.tailscale} isPrivacyMode={isPrivacyMode} />
+          <SslTrackerSection certificates={snapshot?.sslCertificates} isPrivacyMode={isPrivacyMode} />
+        </section>
 
-        {/* 4. SSL Certificate & Domain Expiry Tracker (NPM Companion) */}
-        <SslTrackerSection
-          certificates={snapshot?.sslCertificates}
-          isPrivacyMode={isPrivacyMode}
-        />
-
-        {/* 5. Homelab Sentinel (Telegram & Gemini AI Companion) */}
-        <SentinelWidget sentinel={snapshot?.sentinel} />
-
-        {/* 6. Container Live Fleet with Smart Web UI Launcher & Speedometer */}
-        <ContainerGridSection
-          containers={snapshot?.containers}
-          isPrivacyMode={isPrivacyMode}
-          onViewLogs={(c) => setActiveLogContainer(c)}
-          onRestartContainer={(c) => setActiveRestartContainer(c)}
-        />
+        <section id="sentinel" className="scroll-mt-32">
+          <SentinelWidget sentinel={snapshot?.sentinel} />
+        </section>
       </main>
 
-      {/* Modals */}
       {isCommandDeckOpen && (
         <CommandDeckModal
           consoles={snapshot?.consoles}
@@ -116,10 +104,7 @@ export function App() {
       )}
 
       {activeLogContainer && (
-        <LogModal
-          container={activeLogContainer}
-          onClose={() => setActiveLogContainer(null)}
-        />
+        <LogModal container={activeLogContainer} onClose={() => setActiveLogContainer(null)} />
       )}
 
       {activeRestartContainer && (
@@ -138,20 +123,14 @@ export function App() {
         />
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-[#090d16] py-4 px-4 text-center text-xs font-mono text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-cyan-500" />
-            <span className="text-slate-400 font-semibold">Homelab Cockpit</span>
-            <span>— Lenovo ThinkCentre M710q Tiny</span>
-          </div>
-          <div>
-            <span>DAS Canary Watchdog • Sentinel Telegram Bot • Proxmox vzdump • Command Deck</span>
-          </div>
+      <footer className="border-t border-cockpit-border bg-cockpit-topbar px-5 py-4 lg:px-8">
+        <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-2 font-mono text-[11px] text-cockpit-muted sm:flex-row">
+          <span>Homelab Cockpit · Lenovo ThinkCentre M710q Tiny</span>
+          <span>Polling every 2s over WebSocket</span>
         </div>
       </footer>
     </div>
   );
 }
+
 export default App;

@@ -17,9 +17,7 @@ export const RestartModal: React.FC<RestartModalProps> = ({ container, onClose, 
   const handleRestart = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/containers/${container.id}/restart`, {
-        method: 'POST',
-      });
+      const res = await fetch(`/api/containers/${container.id}/restart`, { method: 'POST' });
       const data = await res.json();
       setFeedback({ success: data.success, message: data.message });
       if (data.success) {
@@ -36,86 +34,56 @@ export const RestartModal: React.FC<RestartModalProps> = ({ container, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[#0f172a] border border-amber-500/40 rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
-        
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#0a101f] border-b border-slate-800">
-          <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Confirm Service Restart</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white"
-          >
-            <X className="w-4 h-4" />
+    <div className="overlay">
+      <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
+        <div className="panel-head">
+          <h3 className="panel-title">Restart {container.name}?</h3>
+          <button onClick={onClose} className="icon-btn" title="Close">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Modal Content */}
-        <div className="p-5">
-          <p className="text-slate-300 text-sm mb-3">
-            Are you sure you want to trigger a reboot for this container?
+        <div className="space-y-4 p-5">
+          <p className="text-[13px] leading-relaxed text-cockpit-muted">
+            The container stops and starts again. Anything streaming through it drops for a few seconds.
           </p>
-          
-          <div className="bg-slate-950/80 rounded-lg p-3 border border-slate-800 font-mono text-xs mb-4">
-            <div className="flex justify-between py-1 border-b border-slate-900">
-              <span className="text-slate-500">Container:</span>
-              <span className="text-cyan-400 font-bold">{container.name}</span>
+
+          <div className="rounded-lg border border-cockpit-border bg-cockpit-bg px-4 py-1">
+            <div className="data-row">
+              <span className="text-cockpit-muted">Container</span>
+              <span className="metric text-[12.5px]">{container.name}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-900">
-              <span className="text-slate-500">Short ID:</span>
-              <span className="text-slate-300">{container.shortId}</span>
+            <div className="data-row">
+              <span className="text-cockpit-muted">Short ID</span>
+              <span className="metric text-[12.5px]">{container.shortId}</span>
             </div>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-500">Current Status:</span>
-              <span className="text-emerald-400">{container.status}</span>
+            <div className="data-row">
+              <span className="text-cockpit-muted">Current status</span>
+              <span className="metric text-[12.5px]">{container.status}</span>
             </div>
           </div>
 
           {feedback && (
             <div
-              className={`p-2.5 rounded-lg text-xs font-mono mb-4 flex items-center gap-2 ${
-                feedback.success
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+              className={`flex animate-fadeIn items-center gap-2 rounded-lg px-3 py-2.5 text-[12.5px] ${
+                feedback.success ? 'bg-state-good/10 text-state-good' : 'bg-state-bad/10 text-state-bad'
               }`}
             >
-              {feedback.success ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+              {feedback.success ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
               <span>{feedback.message}</span>
             </div>
           )}
 
-          {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2.5">
-            <button
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-            >
+            <button onClick={onClose} disabled={isSubmitting} className="btn-ghost">
               Cancel
             </button>
-            <button
-              onClick={handleRestart}
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg text-xs font-mono font-bold bg-amber-500 hover:bg-amber-600 text-black flex items-center gap-1.5 transition-colors shadow-md shadow-amber-500/20"
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Restarting...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Execute Restart</span>
-                </>
-              )}
+            <button onClick={handleRestart} disabled={isSubmitting} className="btn-danger">
+              <RefreshCw className={`h-3.5 w-3.5 ${isSubmitting ? 'animate-spin' : ''}`} />
+              {isSubmitting ? 'Restarting…' : 'Restart'}
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

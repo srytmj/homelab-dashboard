@@ -50,31 +50,20 @@ export function getStatusColor(percent: number): {
   text: string;
 } {
   if (percent >= 90) {
-    return {
-      bar: 'bg-rose-500',
-      badge: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
-      text: 'text-rose-400',
-    };
+    return { bar: 'bg-state-bad', badge: 'pill-bad', text: 'text-state-bad' };
   }
   if (percent >= 75) {
-    return {
-      bar: 'bg-amber-500',
-      badge: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-      text: 'text-amber-400',
-    };
+    return { bar: 'bg-state-warn', badge: 'pill-warn', text: 'text-state-warn' };
   }
-  return {
-    bar: 'bg-emerald-500',
-    badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-    text: 'text-emerald-400',
-  };
+  return { bar: 'bg-cockpit-accent', badge: 'pill-neutral', text: 'text-cockpit-text' };
 }
 
 export function getTempColor(temp: number): {
-  color: string;
+  bar: string;
+  text: string;
   label: string;
 } {
-  if (temp > 75) return { color: 'text-rose-400 border-rose-500/30 bg-rose-500/10', label: 'HOT' };
-  if (temp > 60) return { color: 'text-amber-400 border-amber-500/30 bg-amber-500/10', label: 'WARM' };
-  return { color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10', label: 'COOL' };
+  if (temp > 75) return { bar: 'bg-state-bad', text: 'text-state-bad', label: 'HOT' };
+  if (temp > 60) return { bar: 'bg-state-warn', text: 'text-state-warn', label: 'WARM' };
+  return { bar: 'bg-cockpit-accent', text: 'text-cockpit-text', label: 'COOL' };
 }

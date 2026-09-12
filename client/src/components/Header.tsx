@@ -1,5 +1,5 @@
-import React from 'react';
-import { Server, Activity, RefreshCw, Wifi, WifiOff, HardDrive, ShieldCheck, Network, Eye, EyeOff, Maximize2, Minimize2, Terminal } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 import { redactText } from '../utils/formatters.js';
 
@@ -15,6 +15,38 @@ interface HeaderProps {
   onRefresh: () => void;
 }
 
+const NAV_SECTIONS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'fleet', label: 'Fleet' },
+  { id: 'infra', label: 'Infra' },
+  { id: 'sentinel', label: 'Sentinel' },
+];
+
+function useActiveSection(): string {
+  const [active, setActive] = useState(NAV_SECTIONS[0].id);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible) setActive(visible.target.id);
+      },
+      { rootMargin: '-120px 0px -55% 0px' }
+    );
+
+    NAV_SECTIONS.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return active;
+}
+
 export const Header: React.FC<HeaderProps> = ({
   snapshot,
   isConnected,
@@ -26,148 +58,136 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCommandDeck,
   onRefresh,
 }) => {
-  const runningCount = snapshot?.containers.filter(c => c.state === 'running').length || 0;
+  const activeSection = useActiveSection();
+  const runningCount = snapshot?.containers.filter((c) => c.state === 'running').length || 0;
   const totalCount = snapshot?.containers.length || 0;
   const tailscale = snapshot?.tailscale;
+  const pveOnline = snapshot?.host.pve.connected ?? false;
+  const allHealthy = isConnected && pveOnline;
 
   return (
-    <header className="border-b border-slate-800/80 bg-[#0c1220]/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3.5 shadow-lg shadow-black/20">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        
-        {/* Brand & Hardware Badge */}
-        <div className="flex items-center gap-3.5">
-          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-500/20 via-slate-800 to-indigo-500/20 border border-cyan-500/40 flex items-center justify-center shadow-inner shadow-cyan-500/10">
-            <Server className="w-5 h-5 text-cyan-400" />
+    <header className="sticky top-0 z-40 border-b border-cockpit-border bg-cockpit-topbar/95 backdrop-blur-md">
+      <div className="mx-auto w-full max-w-[1400px] px-5 lg:px-8">
+        {/* Primary bar */}
+        <div className="flex items-center justify-between gap-6 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-cockpit-border bg-cockpit-panel text-cockpit-accent">
+              <Server className="h-[18px] w-[18px]" />
+              <span
+                className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-cockpit-topbar ${
+                  allHealthy ? 'bg-state-good' : 'bg-state-warn'
+                }`}
+                title={allHealthy ? 'All systems nominal' : 'Degraded — check node status'}
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-[15px] font-extrabold tracking-tight text-cockpit-text">Cockpit</h1>
+                {snapshot?.isDemoMode && <span className="pill pill-warn">Demo data</span>}
+              </div>
+              <p className="label mt-0.5 normal-case tracking-normal">Owner POV · Lenovo M710q Tiny</p>
+            </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-base tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-slate-100 via-cyan-200 to-cyan-400">
-                Homelab Cockpit
-              </h1>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-cyan-950/70 text-cyan-400 border border-cyan-500/30">
-                OWNER POV
-              </span>
-              {snapshot?.isDemoMode && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  DEMO MODE
-                </span>
+
+          <nav className="hidden items-center gap-1 md:flex">
+            {NAV_SECTIONS.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className={`relative rounded-md px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-200 ${
+                  activeSection === section.id
+                    ? 'text-cockpit-accent'
+                    : 'text-cockpit-muted hover:text-cockpit-text'
+                }`}
+              >
+                {section.label}
+                <span
+                  className={`absolute inset-x-3 -bottom-0.5 h-px origin-left bg-cockpit-accent transition-transform duration-300 ${
+                    activeSection === section.id ? 'scale-x-100' : 'scale-x-0'
+                  }`}
+                />
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onOpenCommandDeck}
+              className="group inline-flex items-center gap-1.5 rounded-lg border border-cockpit-accent/30 bg-cockpit-accent/10 px-3 py-1.5 text-[12.5px] font-semibold text-cockpit-accent transition-all duration-150 hover:bg-cockpit-accent/20 active:scale-95"
+            >
+              <Terminal className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Command Deck</span>
+            </button>
+
+            <button
+              onClick={onTogglePrivacy}
+              title={isPrivacyMode ? 'Privacy mode on — IPs and domains hidden' : 'Hide IPs and domains'}
+              className={`icon-btn ${isPrivacyMode ? 'border-state-warn/40 text-state-warn' : ''}`}
+            >
+              {isPrivacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+
+            <button
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen (wall display)'}
+              className="icon-btn"
+            >
+              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+
+            <button
+              onClick={onRefresh}
+              title={lastUpdated ? `Last update ${lastUpdated.toLocaleTimeString()} — click to refresh` : 'Refresh'}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
+                isConnected
+                  ? 'border-state-good/30 bg-state-good/10 text-state-good'
+                  : 'border-state-bad/30 bg-state-bad/10 text-state-bad'
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-state-good' : 'bg-state-bad'}`} />
+              <span className="font-semibold">{isConnected ? 'Live' : 'Reconnecting'}</span>
+              {lastUpdated && (
+                <span className="hidden opacity-70 sm:inline">{lastUpdated.toLocaleTimeString()}</span>
               )}
-            </div>
-            <p className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
-              <span>Lenovo M710q Tiny</span>
-              <span className="text-slate-600">•</span>
-              <span>Intel i5-7500 (4C/4T)</span>
-              <span className="text-slate-600">•</span>
-              <span>32GB RAM</span>
-            </p>
+              <RefreshCw className="h-3 w-3 opacity-60" />
+            </button>
           </div>
         </div>
 
-        {/* Status Pills & Ticker */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
-          {/* Infrastructure Command Deck Launcher */}
-          <button
-            onClick={onOpenCommandDeck}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-gradient-to-r from-cyan-950/80 to-indigo-950/80 border border-cyan-500/40 text-cyan-300 hover:text-white hover:border-cyan-400 font-mono font-bold transition-all shadow-sm shadow-cyan-950"
-          >
-            <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Command Deck</span>
-            <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.2 rounded font-normal">
-              8 Consoles
-            </span>
-          </button>
-
-          {/* Proxmox Node Status */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-slate-300 font-mono">
-            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-slate-400">PVE:</span>
-            <span className="font-semibold text-slate-200">
-              {redactText('192.168.18.224', isPrivacyMode)}
-            </span>
-            <span className={`w-2 h-2 rounded-full ${snapshot?.host.pve.connected ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-amber-400'}`} />
-          </div>
-
-          {/* Docker Host LXC Status */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-slate-300 font-mono">
-            <HardDrive className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-slate-400">LXC:</span>
-            <span className="font-semibold text-slate-200">
-              {redactText('192.168.18.225', isPrivacyMode)}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-          </div>
-
-          {/* Tailscale Status Pill */}
+        {/* Meta strip */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-cockpit-border/60 py-2 font-mono text-[11px] text-cockpit-muted">
+          <span>
+            PVE <span className="text-cockpit-text">{redactText('192.168.18.224', isPrivacyMode)}</span>
+            <span className={`ml-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${pveOnline ? 'bg-state-good' : 'bg-state-warn'}`} />
+          </span>
+          <span className="text-cockpit-border">|</span>
+          <span>
+            LXC <span className="text-cockpit-text">{redactText('192.168.18.225', isPrivacyMode)}</span>
+            <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-state-good align-middle" />
+          </span>
           {tailscale && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-950/40 border border-indigo-500/30 text-indigo-300 font-mono">
-              <Network className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-slate-400">Tailnet:</span>
-              <span className="text-indigo-200 font-bold">{tailscale.totalOnline}/{tailscale.totalDevices}</span>
-            </div>
-          )}
-
-          {/* Active Container Count */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 font-mono">
-            <Activity className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-slate-400">Containers:</span>
-            <span className="text-emerald-400 font-bold">{runningCount}</span>
-            <span className="text-slate-500">/</span>
-            <span className="text-slate-300 font-semibold">{totalCount}</span>
-          </div>
-
-          {/* Privacy / Showcase Toggle */}
-          <button
-            onClick={onTogglePrivacy}
-            title={isPrivacyMode ? 'Privacy Mode ON (IPs & domains redacted for screenshots)' : 'Toggle Privacy Mode'}
-            className={`p-1.5 rounded-md border transition-colors ${
-              isPrivacyMode
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-            }`}
-          >
-            {isPrivacyMode ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          </button>
-
-          {/* Kiosk / Fullscreen Toggle */}
-          <button
-            onClick={onToggleFullscreen}
-            title={isFullscreen ? 'Exit Kiosk Fullscreen' : 'Enter Kiosk Fullscreen (Wall Display / Tablet)'}
-            className="p-1.5 rounded-md bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-          >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-          </button>
-
-          {/* Live Sync / WS Connection */}
-          <button
-            onClick={onRefresh}
-            title={lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Click to refresh'}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-mono transition-colors ${
-              isConnected
-                ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-400 hover:bg-emerald-950/50'
-                : 'bg-rose-950/30 border-rose-500/40 text-rose-400 hover:bg-rose-950/50'
-            }`}
-          >
-            {isConnected ? (
-              <>
-                <Wifi className="w-3.5 h-3.5" />
-                <span className="font-bold">LIVE</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-3.5 h-3.5 animate-pulse" />
-                <span>RECONNECTING</span>
-              </>
-            )}
-            {lastUpdated && (
-              <span className="text-[10px] opacity-70 border-l border-emerald-500/30 pl-1.5 hidden sm:inline">
-                {lastUpdated.toLocaleTimeString()}
+            <>
+              <span className="text-cockpit-border">|</span>
+              <span>
+                Tailnet{' '}
+                <span className="tabular-nums text-cockpit-text">
+                  {tailscale.totalOnline}/{tailscale.totalDevices}
+                </span>{' '}
+                peers
               </span>
-            )}
-            <RefreshCw className="w-3 h-3 ml-0.5 opacity-60 hover:opacity-100 transition-opacity" />
-          </button>
+            </>
+          )}
+          <span className="text-cockpit-border">|</span>
+          <span>
+            Containers{' '}
+            <span className="tabular-nums text-cockpit-text">
+              {runningCount}/{totalCount}
+            </span>{' '}
+            running
+          </span>
+          <span className="text-cockpit-border hidden sm:inline">|</span>
+          <span className="hidden sm:inline">Intel i5-7500 · 4C/4T · 32GB</span>
         </div>
-
       </div>
     </header>
   );

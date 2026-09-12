@@ -1,90 +1,53 @@
 import React from 'react';
 
+type SparkTone = 'accent' | 'warn' | 'bad' | 'muted';
+
 interface SparklineProps {
   data: number[];
-  color?: 'cyan' | 'emerald' | 'amber' | 'rose' | 'indigo';
+  tone?: SparkTone;
   height?: number;
   width?: number;
-  showPoints?: boolean;
 }
+
+const TONES: Record<SparkTone, string> = {
+  accent: '#7c9cff',
+  warn: '#f2a93c',
+  bad: '#f2554d',
+  muted: '#84899a',
+};
 
 export const Sparkline: React.FC<SparklineProps> = ({
   data,
-  color = 'cyan',
-  height = 24,
-  width = 70,
+  tone = 'accent',
+  height = 20,
+  width = 64,
 }) => {
   if (!data || data.length < 2) {
-    return <div style={{ width, height }} className="bg-slate-800/40 rounded animate-pulse" />;
+    return <div style={{ width, height }} className="rounded bg-cockpit-border/50" />;
   }
 
+  const stroke = TONES[tone];
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min === 0 ? 1 : max - min;
 
-  // Generate SVG path
   const paddingY = 3;
   const usableHeight = height - paddingY * 2;
   const points = data.map((val, index) => {
     const x = (index / (data.length - 1)) * width;
     const y = height - paddingY - ((val - min) / range) * usableHeight;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    return { x, y };
   });
 
-  const pathD = `M ${points.join(' L ')}`;
+  const pathD = `M ${points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')}`;
   const fillD = `${pathD} L ${width},${height} L 0,${height} Z`;
-
-  const colorMap = {
-    cyan: {
-      stroke: '#06B6D4',
-      fill: 'rgba(6, 182, 212, 0.18)',
-    },
-    emerald: {
-      stroke: '#10B981',
-      fill: 'rgba(16, 185, 129, 0.18)',
-    },
-    amber: {
-      stroke: '#F59E0B',
-      fill: 'rgba(245, 158, 11, 0.18)',
-    },
-    rose: {
-      stroke: '#F43F5E',
-      fill: 'rgba(244, 63, 94, 0.18)',
-    },
-    indigo: {
-      stroke: '#6366F1',
-      fill: 'rgba(99, 102, 241, 0.18)',
-    },
-  };
-
-  const selectedColor = colorMap[color] || colorMap.cyan;
+  const last = points[points.length - 1];
 
   return (
-    <svg width={width} height={height} className="overflow-visible inline-block">
-      <defs>
-        <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={selectedColor.stroke} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={selectedColor.stroke} stopOpacity="0.0" />
-        </linearGradient>
-      </defs>
-      <path d={fillD} fill={`url(#grad-${color})`} />
-      <path
-        d={pathD}
-        fill="none"
-        stroke={selectedColor.stroke}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Current point */}
-      {points.length > 0 && (
-        <circle
-          cx={points[points.length - 1].split(',')[0]}
-          cy={points[points.length - 1].split(',')[1]}
-          r="2"
-          fill={selectedColor.stroke}
-        />
-      )}
+    <svg width={width} height={height} className="inline-block align-middle" aria-hidden="true">
+      <path d={fillD} fill={stroke} fillOpacity="0.12" />
+      <path d={pathD} fill="none" stroke={stroke} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last.x.toFixed(1)} cy={last.y.toFixed(1)} r="1.8" fill={stroke} />
     </svg>
   );
 };

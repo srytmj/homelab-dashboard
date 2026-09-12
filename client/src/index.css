@@ -8,34 +8,185 @@
 
 body {
   margin: 0;
-  background-color: #070b14;
-  color: #f8fafc;
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #101115;
+  color: #eef0f4;
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Cockpit Scrollbar */
+@layer components {
+  .panel {
+    @apply rounded-panel border border-cockpit-border bg-cockpit-panel;
+  }
+
+  .panel-head {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-cockpit-border px-5 py-4;
+  }
+
+  .panel-title {
+    @apply text-[13.5px] font-bold tracking-tight text-cockpit-text;
+  }
+
+  .panel-sub {
+    @apply mt-0.5 text-[11.5px] text-cockpit-muted;
+  }
+
+  .label {
+    @apply font-mono text-[10px] uppercase tracking-[0.09em] text-cockpit-muted;
+  }
+
+  .metric {
+    @apply font-mono font-semibold tabular-nums text-cockpit-text;
+  }
+
+  .metric-lg {
+    @apply font-mono text-[23px] font-bold leading-none tabular-nums text-cockpit-text;
+  }
+
+  .metric-unit {
+    @apply ml-1 text-[12px] font-medium text-cockpit-muted;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.04em];
+  }
+
+  .pill-good {
+    @apply bg-state-good/10 text-state-good;
+  }
+
+  .pill-warn {
+    @apply bg-state-warn/10 text-state-warn;
+  }
+
+  .pill-bad {
+    @apply bg-state-bad/10 text-state-bad;
+  }
+
+  .pill-neutral {
+    @apply bg-cockpit-border/60 text-cockpit-muted;
+  }
+
+  .pill-accent {
+    @apply bg-cockpit-accent/10 text-cockpit-accent;
+  }
+
+  .track {
+    @apply h-1 w-full overflow-hidden rounded-full bg-cockpit-border;
+  }
+
+  .track-fill {
+    @apply block h-full rounded-full transition-[width] duration-500;
+  }
+
+  .data-row {
+    @apply flex items-center justify-between gap-3 border-b border-cockpit-border py-2.5 text-[13px] last:border-b-0;
+  }
+
+  .seg {
+    @apply flex items-center gap-0.5 rounded-lg border border-cockpit-border bg-cockpit-bg p-0.5;
+  }
+
+  .seg-btn {
+    @apply rounded-md px-2.5 py-1 font-mono text-[11px] text-cockpit-muted transition-all duration-150 hover:text-cockpit-text active:scale-95;
+  }
+
+  .seg-btn-on {
+    @apply bg-cockpit-accent/10 text-cockpit-accent;
+  }
+
+  .icon-btn {
+    @apply rounded-md border border-cockpit-border bg-cockpit-bg p-1.5 text-cockpit-muted transition-all duration-150 hover:border-cockpit-accent/40 hover:text-cockpit-text active:scale-90;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12.5px] font-semibold transition-all duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn bg-cockpit-accent text-[#0f1220] hover:bg-cockpit-accent/85;
+  }
+
+  .btn-ghost {
+    @apply btn border border-cockpit-border bg-cockpit-bg text-cockpit-muted hover:text-cockpit-text;
+  }
+
+  .btn-danger {
+    @apply btn bg-state-bad text-[#1a0a09] hover:bg-state-bad/85;
+  }
+
+  .field {
+    @apply rounded-lg border border-cockpit-border bg-cockpit-bg px-3 py-1.5 font-mono text-[12px] text-cockpit-text placeholder-cockpit-muted transition-colors duration-150 focus:border-cockpit-accent/60 focus:outline-none;
+  }
+
+  .overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm;
+    animation: overlayIn 0.15s ease-out;
+  }
+
+  .modal-panel {
+    animation: panelIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
+  background: #26272f;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #35374180;
+}
+
+:focus-visible {
+  outline: 2px solid #7c9cff;
+  outline-offset: 2px;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
   }
   to {
     opacity: 1;
@@ -44,5 +195,19 @@ body {
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.15s ease-out forwards;
+  animation: fadeIn 0.16s ease-out forwards;
+}
+
+.animate-popIn {
+  animation: popIn 0.18s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
