@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Terminal, Copy, Check, RefreshCw, ArrowDownToLine } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
+import { authFetch } from '../utils/api.js';
 
 interface LogModalProps {
   container: ContainerMetric | null;
@@ -22,7 +23,7 @@ export const LogModal: React.FC<LogModalProps> = ({ container, onClose }) => {
     const fetchLogs = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/containers/${container.id}/logs?tail=${tail}`);
+        const res = await authFetch(`/api/containers/${container.id}/logs?tail=${tail}`);
         if (res.ok) {
           const data = await res.json();
           if (isSubscribed) {
@@ -40,111 +41,101 @@ export const LogModal: React.FC<LogModalProps> = ({ container, onClose }) => {
 
     fetchLogs();
 
+    const interval = setInterval(fetchLogs, 3000);
     return () => {
       isSubscribed = false;
+      clearInterval(interval);
     };
   }, [container, tail]);
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(logs);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const copyLogs = () => {
+    navigator.clipboard.writeText(logs);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (!container) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[#0b101d] border border-slate-700/80 rounded-xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-[#0b101b] border border-slate-700/80 rounded-xl w-full max-w-4xl shadow-2xl flex flex-col h-[80vh] overflow-hidden">
         
         {/* Terminal Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#0f172a] border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded bg-cyan-950/70 border border-cyan-500/30 text-cyan-400">
-              <Terminal className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-slate-100">{container.name}</span>
-                <span className="text-[11px] font-mono text-slate-400 px-1.5 py-0.5 rounded bg-slate-800">
-                  {container.shortId}
-                </span>
-              </div>
-              <p className="text-[11px] font-mono text-slate-400">{container.image}</p>
-            </div>
+        <div className="flex items-center justify-between px-4 py-3 bg-[#080d16] border-b border-slate-800">
+          <div className="flex items-center gap-2 text-cyan-400 font-mono text-sm font-semibold">
+            <Terminal className="w-4 h-4" />
+            <span>Logs: {container.name}</span>
+            <span className="text-xs text-slate-500 font-normal">({container.id.slice(0, 12)})</span>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Tail count selector */}
-            <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-xs font-mono">
-              <span className="text-slate-500 text-[10px]">TAIL:</span>
-              {[50, 100, 250].map((num) => (
+            {/* Tail selection */}
+            <div className="flex items-center gap-1 text-xs font-mono text-slate-400 bg-slate-900 border border-slate-800 rounded px-2 py-1">
+              <span>Lines:</span>
+              {[50, 100, 250, 500].map((count) => (
                 <button
-                  key={num}
-                  onClick={() => setTail(num)}
-                  className={`px-1.5 py-0.5 rounded ${
-                    tail === num
-                      ? 'bg-cyan-500/20 text-cyan-300 font-bold'
-                      : 'text-slate-400 hover:text-slate-200'
+                  key={count}
+                  onClick={() => setTail(count)}
+                  className={`px-1.5 rounded hover:text-white transition-colors ${
+                    tail === count ? 'text-cyan-400 font-bold bg-slate-800' : ''
                   }`}
                 >
-                  {num}
+                  {count}
                 </button>
               ))}
             </div>
 
-            {/* Copy button */}
-            <button
-              onClick={copyToClipboard}
-              className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-              title="Copy logs"
-            >
-              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-            </button>
-
-            {/* Scroll bottom */}
             <button
               onClick={scrollToBottom}
-              className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
               title="Scroll to bottom"
+              className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
             >
-              <ArrowDownToLine className="w-4 h-4" />
+              <ArrowDownToLine className="w-3.5 h-3.5" />
             </button>
 
-            {/* Close button */}
+            <button
+              onClick={copyLogs}
+              title="Copy logs"
+              className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+
             <button
               onClick={onClose}
-              className="p-1.5 rounded bg-slate-800 hover:bg-rose-950 hover:text-rose-400 text-slate-400 transition-colors ml-1"
+              className="p-1.5 rounded bg-slate-800 hover:bg-rose-900 text-slate-300 hover:text-rose-200 transition-colors"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Terminal Body */}
-        <div className="p-4 bg-[#070b14] font-mono text-xs text-slate-300 overflow-y-auto flex-1 leading-relaxed selection:bg-cyan-500/30 selection:text-white">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16 gap-2 text-slate-500">
+        <div className="flex-1 p-4 bg-[#05080e] overflow-y-auto font-mono text-xs text-slate-300 select-text leading-relaxed whitespace-pre-wrap">
+          {isLoading && !logs ? (
+            <div className="flex items-center gap-2 text-slate-500">
               <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
-              <span>Streaming container logs...</span>
+              <span>Fetching container log stream...</span>
             </div>
           ) : (
-            <pre className="whitespace-pre-wrap break-all font-mono">
-              {logs || 'Empty output log.'}
-              <div ref={terminalEndRef} />
-            </pre>
+            logs
           )}
+          <div ref={terminalEndRef} />
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-2 bg-[#0d1424] border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-500">
-          <span>Live snapshot tail ({tail} lines)</span>
-          <span className="text-slate-400">Press ESC or click ✕ to close</span>
+        {/* Terminal Footer */}
+        <div className="px-4 py-2 bg-[#080d16] border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-500">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Streaming logs (poll 3s)</span>
+          </div>
+          <div>Image: {container.image}</div>
         </div>
+
       </div>
     </div>
   );

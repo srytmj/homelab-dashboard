@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { AuthScreen } from './components/AuthScreen.js';
 import { useCockpitData } from './hooks/useCockpitData.js';
 import { Header } from './components/Header.js';
 import { DasWatchdogAlert } from './components/DasWatchdogAlert.js';
@@ -15,7 +17,8 @@ import { CommandDeckModal } from './components/CommandDeckModal.js';
 import { ContainerMetric } from './types.js';
 import { Info } from 'lucide-react';
 
-export function App() {
+function CockpitDashboard() {
+  const { isAuthenticated, isLoading } = useAuth();
   const { snapshot, isConnected, lastUpdated, refetch } = useCockpitData();
 
   const [activeLogContainer, setActiveLogContainer] = useState<ContainerMetric | null>(null);
@@ -33,6 +36,19 @@ export function App() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#070b14] flex flex-col items-center justify-center font-mono text-xs text-slate-500 gap-2">
+        <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+        <span>Initializing Homelab Cockpit security...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+
   return (
     <div className="min-h-screen bg-[#070b14] text-[#F8FAFC] flex flex-col font-sans">
       {/* Header */}
@@ -49,16 +65,16 @@ export function App() {
       />
 
       {/* Main Cockpit Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-6 py-5 space-y-5">
         
         {/* DAS Canary Alert (Pulsing Red if any DAS mount has disconnected) */}
         <DasWatchdogAlert storage={snapshot?.storage} />
 
         {/* Notice for Proxmox API Token setup if demo or unconfigured */}
         {snapshot?.host.pve && !snapshot.host.pve.connected && (
-          <div className="rounded-lg bg-indigo-950/40 border border-indigo-500/30 p-3.5 flex items-start gap-3 text-xs font-mono">
+          <div className="rounded bg-indigo-950/40 border border-indigo-500/30 p-3 flex items-start gap-2.5 text-xs font-mono">
             <div className="p-1 rounded bg-indigo-500/20 text-indigo-400 shrink-0 mt-0.5">
-              <Info className="w-4 h-4" />
+              <Info className="w-3.5 h-3.5" />
             </div>
             <div className="text-slate-300">
               <span className="font-bold text-indigo-300">Proxmox VE API Integration:</span> Set your{' '}
@@ -97,7 +113,7 @@ export function App() {
         {/* 5. Homelab Sentinel (Telegram & Gemini AI Companion) */}
         <SentinelWidget sentinel={snapshot?.sentinel} />
 
-        {/* 6. Container Live Fleet with Smart Web UI Launcher & Speedometer */}
+        {/* 6. Container Fleet & Explicit Tailscale vs LAN Route */}
         <ContainerGridSection
           containers={snapshot?.containers}
           isPrivacyMode={isPrivacyMode}
@@ -139,19 +155,28 @@ export function App() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 bg-[#090d16] py-4 px-4 text-center text-xs font-mono text-slate-500">
+      <footer className="border-t border-slate-900 bg-[#090d16] py-3.5 px-4 text-center text-[11px] font-mono text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-cyan-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
             <span className="text-slate-400 font-semibold">Homelab Cockpit</span>
             <span>— Lenovo ThinkCentre M710q Tiny</span>
           </div>
           <div>
-            <span>DAS Canary Watchdog • Sentinel Telegram Bot • Proxmox vzdump • Command Deck</span>
+            <span>1x Owner Auth Guard • Tailscale Mesh Tracking • Zero AI Slop</span>
           </div>
         </div>
       </footer>
     </div>
   );
 }
+
+export function App() {
+  return (
+    <AuthProvider>
+      <CockpitDashboard />
+    </AuthProvider>
+  );
+}
+
 export default App;

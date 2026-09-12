@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { config } from './config.js';
+import { AuthService } from './services/auth.service.js';
 import { DockerService } from './services/docker.service.js';
 import { ProxmoxService } from './services/proxmox.service.js';
 import { SystemService } from './services/system.service.js';
@@ -31,6 +32,7 @@ async function bootstrap() {
   await app.register(fastifyWebsocket);
 
   // Initialize services
+  const authService = new AuthService();
   const dockerService = new DockerService();
   const proxmoxService = new ProxmoxService();
   const systemService = new SystemService();
@@ -56,12 +58,98 @@ async function bootstrap() {
   collectorService.start();
   sentinelService.start();
 
-  // WebSocket Route
-  app.get('/ws', { websocket: true }, (socket) => {
+  // Helper to extract bearer token
+  const extractToken = (req: any): string => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      return authHeader.substring(7).trim();
+    }
+    if (req.query && req.query.token) {
+      return req.query.token as string;
+    }
+    return '';
+  };
+
+  // Auth Protection Hook for /api/*
+  app.addHook('preHandler', async (request, reply) => {
+    const url = request.url.split('?')[0];
+
+    // Allow public health & auth routes
+    if (url === '/api/health' || url.startsWith('/api/auth/')) {
+      return;
+    }
+
+    // Only protect /api routes
+    if (url.startsWith('/api/')) {
+      // If no owner is registered yet, prompt client to register
+      if (!authService.isRegistered()) {
+        reply.status(401).send({ error: 'Initial owner registration required', code: 'SETUP_REQUIRED' });
+        return;
+      }
+
+      const token = extractToken(request);
+      if (!authService.validateToken(token)) {
+        reply.status(401).send({ error: 'Unauthorized access. Please login.', code: 'AUTH_REQUIRED' });
+        return;
+      }
+    }
+  });
+
+  // WebSocket Route with Auth Check
+  app.get('/ws', { websocket: true }, (socket, req) => {
+    if (!authService.isRegistered()) {
+      socket.send(JSON.stringify({ type: 'ERROR', message: 'Owner setup required' }));
+      socket.close();
+      return;
+    }
+
+    const token = extractToken(req);
+    if (!authService.validateToken(token)) {
+      socket.send(JSON.stringify({ type: 'ERROR', message: 'Unauthorized WebSocket' }));
+      socket.close();
+      return;
+    }
+
     collectorService.addClient(socket);
   });
 
-  // REST API Routes
+  // REST API: Public Auth Routes
+  app.get('/api/auth/status', async (req) => {
+    const token = extractToken(req);
+    const isAuthenticated = authService.validateToken(token);
+    return {
+      registered: authService.isRegistered(),
+      authenticated: isAuthenticated,
+    };
+  });
+
+  app.post('/api/auth/register', async (req, reply) => {
+    const body = req.body as { username?: string; password?: string };
+    const result = authService.registerOwner(body?.username || '', body?.password || '');
+    if (!result.success) {
+      reply.status(400);
+    }
+    return result;
+  });
+
+  app.post('/api/auth/login', async (req, reply) => {
+    const body = req.body as { username?: string; password?: string; rememberMe?: boolean };
+    const result = authService.login(body?.username || '', body?.password || '', body?.rememberMe ?? true);
+    if (!result.success) {
+      reply.status(401);
+    }
+    return result;
+  });
+
+  app.post('/api/auth/logout', async (req) => {
+    const token = extractToken(req);
+    if (token) {
+      authService.logout(token);
+    }
+    return { success: true, message: 'Logged out successfully.' };
+  });
+
+  // REST API: Protected Cockpit Routes
   app.get('/api/health', async () => {
     return {
       status: 'ok',

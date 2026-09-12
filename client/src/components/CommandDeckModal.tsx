@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ExternalLink, X, Shield, Terminal, Activity, Globe, Lock, Code2, Film, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExternalLink, X, Globe, Terminal, Copy, Check } from 'lucide-react';
 import { NativeConsoleItem } from '../types.js';
 import { redactText } from '../utils/formatters.js';
 
@@ -10,148 +10,122 @@ interface CommandDeckModalProps {
 }
 
 export const CommandDeckModal: React.FC<CommandDeckModalProps> = ({ consoles = [], isPrivacyMode, onClose }) => {
-  const [accessMode, setAccessMode] = useState<'lan' | 'tailscale'>('lan');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const getIconForCategory = (category: string) => {
-    switch (category) {
-      case 'hypervisor':
-        return <Shield className="w-5 h-5 text-purple-400" />;
-      case 'containers':
-        return <Terminal className="w-5 h-5 text-cyan-400" />;
-      case 'proxy':
-        return <Globe className="w-5 h-5 text-indigo-400" />;
-      case 'monitoring':
-        return <Activity className="w-5 h-5 text-emerald-400" />;
-      case 'security':
-        return <Lock className="w-5 h-5 text-amber-400" />;
-      case 'tools':
-        return <Code2 className="w-5 h-5 text-sky-400" />;
-      default:
-        return <Film className="w-5 h-5 text-pink-400" />;
-    }
-  };
-
-  const getTargetUrl = (item: NativeConsoleItem) => {
-    const host = accessMode === 'tailscale' ? item.tailscaleHost : item.lanHost;
-    const path = item.path || '';
-    return `${item.protocol}://${host}:${item.port}${path}`;
+  const copyUrl = (id: string, url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#0e1626] border border-slate-700/80 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-5">
+    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-3 sm:p-4 font-mono select-none">
+      <div className="bg-[#0d1424] border border-slate-800 rounded-xl max-w-2xl w-full p-4 sm:p-5 shadow-xl space-y-4">
         
-        {/* Modal Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-cyan-950/70 border border-cyan-500/40 text-cyan-400 shadow-md shadow-cyan-950/60">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-100 uppercase tracking-wide">
-                  Infrastructure Command Deck
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">
-                  Native Consoles
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Direct single-click gateway into hypervisor nodes, container engines & monitoring stacks
-              </p>
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-cyan-400" />
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-100">
+              Native Consoles & Web Gateways
+            </h3>
           </div>
-
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            {/* Routing Mode Toggle: LAN vs Tailscale */}
-            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
-              <button
-                onClick={() => setAccessMode('lan')}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  accessMode === 'lan'
-                    ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                LAN (192.168.18.x)
-              </button>
-              <button
-                onClick={() => setAccessMode('tailscale')}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  accessMode === 'tailscale'
-                    ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Tailscale (100.x)
-              </button>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Consoles Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+        {/* Consoles Table / Dense List */}
+        <div className="space-y-1.5 max-h-[65vh] overflow-y-auto pr-1">
           {consoles.map((item) => {
-            const url = getTargetUrl(item);
-            const hostDisplay = accessMode === 'tailscale' ? item.tailscaleHost : item.lanHost;
+            const lanUrl = `${item.protocol}://${item.lanHost}:${item.port}${item.path || ''}`;
+            const tsUrl = `${item.protocol}://${item.tailscaleHost}:${item.port}${item.path || ''}`;
 
             return (
-              <a
+              <div
                 key={item.id}
-                href={url}
-                target="_blank"
-                rel="noreferrer"
-                className="group p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900 transition-all flex items-start justify-between gap-3 shadow-sm hover:shadow-cyan-950/40"
+                className="p-2.5 rounded bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors"
               >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 group-hover:border-slate-700 transition-colors shrink-0 mt-0.5">
-                    {getIconForCategory(item.category)}
-                  </div>
+                {/* Left: Name & Port */}
+                <div className="flex items-center gap-2.5 min-w-[180px]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold text-slate-100 group-hover:text-cyan-400 transition-colors">
-                        {item.name}
-                      </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
-                        {item.badge}
+                    <div className="font-bold text-xs text-slate-100 flex items-center gap-1.5">
+                      <span>{item.name}</span>
+                      <span className="text-[10px] text-slate-400 font-normal px-1 rounded bg-slate-800 border border-slate-700">
+                        :{item.port}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 font-sans mt-0.5 line-clamp-1">
+                    <div className="text-[10px] text-slate-500">
                       {item.description}
-                    </p>
-                    <div className="mt-2 text-[11px] font-mono text-slate-500 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      <span>{item.protocol}://{redactText(hostDisplay, isPrivacyMode)}:{item.port}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-1 rounded-md text-slate-500 group-hover:text-cyan-400 transition-colors shrink-0">
-                  <ExternalLink className="w-4 h-4" />
+                {/* Right: Quick Launch Routes (LAN & Tailscale) */}
+                <div className="flex items-center gap-2 self-end sm:self-auto text-[11px]">
+                  {/* LAN Link */}
+                  <div className="flex items-center rounded bg-slate-950 border border-slate-800 px-2 py-1 gap-1.5">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">LAN</span>
+                    <a
+                      href={lanUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-300 hover:text-white hover:underline flex items-center gap-1"
+                    >
+                      <span>{redactText(item.lanHost, isPrivacyMode)}:{item.port}</span>
+                      <ExternalLink className="w-3 h-3 text-slate-500" />
+                    </a>
+                    <button
+                      onClick={() => copyUrl(`${item.id}_lan`, lanUrl)}
+                      title="Copy LAN URL"
+                      className="text-slate-500 hover:text-slate-300 pl-0.5"
+                    >
+                      {copiedId === `${item.id}_lan` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                    </button>
+                  </div>
+
+                  {/* Tailscale Link */}
+                  <div className="flex items-center rounded bg-indigo-950/40 border border-indigo-500/30 px-2 py-1 gap-1.5">
+                    <span className="text-[9px] font-bold text-indigo-300 uppercase">TS</span>
+                    <a
+                      href={tsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-indigo-300 hover:text-white hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      <span>{redactText(item.tailscaleHost, isPrivacyMode)}:{item.port}</span>
+                      <ExternalLink className="w-3 h-3 text-indigo-400" />
+                    </a>
+                    <button
+                      onClick={() => copyUrl(`${item.id}_ts`, tsUrl)}
+                      title="Copy Tailscale URL"
+                      className="text-slate-500 hover:text-slate-300 pl-0.5"
+                    >
+                      {copiedId === `${item.id}_ts` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                    </button>
+                  </div>
                 </div>
-              </a>
+
+              </div>
             );
           })}
         </div>
 
-        {/* Modal Footer */}
-        <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500">
-          <div className="flex items-center gap-1.5 text-emerald-400">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>All ports bound to 0.0.0.0 & exposed via local bridge</span>
-          </div>
+        {/* Footer */}
+        <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <Globe className="w-3 h-3 text-slate-400" />
+            <span>Click URL to launch in new tab</span>
+          </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-mono transition-colors"
+            className="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
           >
-            Close Deck
+            Close
           </button>
         </div>
 

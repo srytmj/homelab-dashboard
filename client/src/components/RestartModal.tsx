@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw, X, Check } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
+import { authFetch } from '../utils/api.js';
 
 interface RestartModalProps {
   container: ContainerMetric | null;
@@ -17,7 +18,7 @@ export const RestartModal: React.FC<RestartModalProps> = ({ container, onClose, 
   const handleRestart = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/containers/${container.id}/restart`, {
+      const res = await authFetch(`/api/containers/${container.id}/restart`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -53,67 +54,48 @@ export const RestartModal: React.FC<RestartModalProps> = ({ container, onClose, 
           </button>
         </div>
 
-        {/* Modal Content */}
-        <div className="p-5">
-          <p className="text-slate-300 text-sm mb-3">
-            Are you sure you want to trigger a reboot for this container?
+        {/* Modal Body */}
+        <div className="p-4 space-y-3 font-mono text-xs">
+          <p className="text-slate-300">
+            Are you sure you want to trigger a graceful restart for container{' '}
+            <strong className="text-white bg-slate-800 px-1.5 py-0.5 rounded">{container.name}</strong>?
           </p>
-          
-          <div className="bg-slate-950/80 rounded-lg p-3 border border-slate-800 font-mono text-xs mb-4">
-            <div className="flex justify-between py-1 border-b border-slate-900">
-              <span className="text-slate-500">Container:</span>
-              <span className="text-cyan-400 font-bold">{container.name}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-900">
-              <span className="text-slate-500">Short ID:</span>
-              <span className="text-slate-300">{container.shortId}</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-500">Current Status:</span>
-              <span className="text-emerald-400">{container.status}</span>
-            </div>
+
+          <div className="p-2.5 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+            <div>Image: <span className="text-slate-200">{container.image}</span></div>
+            <div>Uptime: <span className="text-slate-200">{container.uptime}</span></div>
+            {container.tailscaleUrl && (
+              <div>Tailscale Route: <span className="text-indigo-300">{container.tailscaleUrl}</span></div>
+            )}
           </div>
 
           {feedback && (
-            <div
-              className={`p-2.5 rounded-lg text-xs font-mono mb-4 flex items-center gap-2 ${
-                feedback.success
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-              }`}
-            >
+            <div className={`p-2.5 rounded border text-xs flex items-center gap-2 ${
+              feedback.success ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' : 'bg-rose-950/60 border-rose-500/50 text-rose-300'
+            }`}>
               {feedback.success ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
               <span>{feedback.message}</span>
             </div>
           )}
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5">
-            <button
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleRestart}
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg text-xs font-mono font-bold bg-amber-500 hover:bg-amber-600 text-black flex items-center gap-1.5 transition-colors shadow-md shadow-amber-500/20"
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Restarting...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Execute Restart</span>
-                </>
-              )}
-            </button>
-          </div>
+        {/* Modal Actions */}
+        <div className="flex items-center justify-end gap-2 px-4 py-3 bg-[#0a101f] border-t border-slate-800">
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-3 py-1.5 rounded text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRestart}
+            disabled={isSubmitting}
+            className="px-3 py-1.5 rounded text-xs font-mono font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSubmitting ? 'animate-spin' : ''}`} />
+            <span>{isSubmitting ? 'Restarting...' : 'Restart Container'}</span>
+          </button>
         </div>
 
       </div>
