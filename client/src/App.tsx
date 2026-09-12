@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useCockpitData } from './hooks/useCockpitData.js';
 import { Header } from './components/Header.js';
+import { DasWatchdogAlert } from './components/DasWatchdogAlert.js';
 import { HostHealthSection } from './components/HostHealthSection.js';
 import { TailscaleMatrixSection } from './components/TailscaleMatrixSection.js';
 import { StorageMatrixSection } from './components/StorageMatrixSection.js';
+import { SslTrackerSection } from './components/SslTrackerSection.js';
 import { ContainerGridSection } from './components/ContainerGridSection.js';
 import { LogModal } from './components/LogModal.js';
 import { RestartModal } from './components/RestartModal.js';
+import { PruneModal } from './components/PruneModal.js';
 import { ContainerMetric } from './types.js';
 import { Info } from 'lucide-react';
 
@@ -15,6 +18,7 @@ export function App() {
 
   const [activeLogContainer, setActiveLogContainer] = useState<ContainerMetric | null>(null);
   const [activeRestartContainer, setActiveRestartContainer] = useState<ContainerMetric | null>(null);
+  const [isPruneModalOpen, setIsPruneModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#070b14] text-[#F8FAFC] flex flex-col font-sans">
@@ -29,6 +33,9 @@ export function App() {
       {/* Main Cockpit Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
         
+        {/* DAS Canary Alert (Pulsing Red if any DAS mount has disconnected) */}
+        <DasWatchdogAlert storage={snapshot?.storage} />
+
         {/* Notice for Proxmox API Token setup if demo or unconfigured */}
         {snapshot?.host.pve && !snapshot.host.pve.connected && (
           <div className="rounded-lg bg-indigo-950/40 border border-indigo-500/30 p-3.5 flex items-start gap-3 text-xs font-mono">
@@ -39,21 +46,28 @@ export function App() {
               <span className="font-bold text-indigo-300">Proxmox VE API Integration:</span> Set your{' '}
               <code className="text-cyan-400 bg-slate-900 px-1 py-0.5 rounded">PROXMOX_TOKEN_ID</code> &{' '}
               <code className="text-cyan-400 bg-slate-900 px-1 py-0.5 rounded">PROXMOX_TOKEN_SECRET</code> in{' '}
-              <code className="text-amber-400">.env</code> to stream live hardware sensors from your Lenovo M710q Tiny PVE node (192.168.18.224). Displaying high-fidelity simulated telemetry.
+              <code className="text-amber-400">.env</code> to stream live hardware sensors & vzdump backups from your Lenovo M710q Tiny PVE node (192.168.18.224). Displaying high-fidelity simulated telemetry.
             </div>
           </div>
         )}
 
-        {/* 1. Real-time Node & Hardware Health */}
+        {/* 1. Real-time Node, Hardware & Proxmox Backup Vitals */}
         <HostHealthSection host={snapshot?.host} />
 
         {/* 2. Tailscale Mesh Network & Peer Tracking */}
         <TailscaleMatrixSection tailscale={snapshot?.tailscale} />
 
-        {/* 3. Storage Matrix */}
-        <StorageMatrixSection storage={snapshot?.storage} />
+        {/* 3. Storage Matrix & Docker NVMe Hygiene */}
+        <StorageMatrixSection
+          storage={snapshot?.storage}
+          hygiene={snapshot?.dockerHygiene}
+          onOpenPruneModal={() => setIsPruneModalOpen(true)}
+        />
 
-        {/* 4. Container Live Grid with Tailscale reachability */}
+        {/* 4. SSL Certificate & Domain Expiry Tracker (NPM Companion) */}
+        <SslTrackerSection certificates={snapshot?.sslCertificates} />
+
+        {/* 5. Container Live Fleet with Smart Web UI Launcher */}
         <ContainerGridSection
           containers={snapshot?.containers}
           onViewLogs={(c) => setActiveLogContainer(c)}
@@ -77,6 +91,14 @@ export function App() {
         />
       )}
 
+      {isPruneModalOpen && (
+        <PruneModal
+          hygiene={snapshot?.dockerHygiene}
+          onClose={() => setIsPruneModalOpen(false)}
+          onSuccess={() => refetch()}
+        />
+      )}
+
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-[#090d16] py-4 px-4 text-center text-xs font-mono text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -86,7 +108,7 @@ export function App() {
             <span>— Lenovo ThinkCentre M710q Tiny</span>
           </div>
           <div>
-            <span>Tailscale Overlay • Proxmox VE • Docker Runner</span>
+            <span>DAS Canary Watchdog • Proxmox vzdump • SSL Tracker • Tailscale Mesh</span>
           </div>
         </div>
       </footer>

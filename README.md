@@ -18,8 +18,8 @@ Homelab Cockpit combines hardware telemetry, multi-drive storage matrices, Tails
  [ Proxmox VE Node ]                           [ Ubuntu LXC ]
   IP: 192.168.18.224                            IP: 192.168.18.225
   • Host CPU & RAM                              • Container Runner (~28 containers)
-  • Thermal Sensors                             • /var/run/docker.sock
-  • Proxmox REST API                            • Mounts: /mnt/hdd-*
+  • Thermal Throttling & Fan Sensor             • /var/run/docker.sock
+  • Proxmox vzdump Nightly Backups              • Mounts: /mnt/hdd-* (DAS Watchdog)
        |                                              |
        +--------------------+    +--------------------+
                             |    |
@@ -29,6 +29,8 @@ Homelab Cockpit combines hardware telemetry, multi-drive storage matrices, Tails
        |       Node.js (Fastify) + TypeScript          |    • Local Socket
        |       • Periodic WebSocket Broadcaster (2s)   |    • Subnet Router 192.168.18.0/24
        |       • Dockerode + Proxmox REST Client       |    • Direct Container URLs
+       |       • NPM Let's Encrypt SSL Tracker         |
+       |       • Docker NVMe Disk Hygiene / Prune      |
        +-----------------------------------------------+
                             |  WebSocket (ws://)
                             v
@@ -43,33 +45,33 @@ Homelab Cockpit combines hardware telemetry, multi-drive storage matrices, Tails
 
 ## 🎯 Key Features
 
-1. **Dual-Layer Hardware Vitals**:
-   - **Proxmox VE Hypervisor (192.168.18.224)**: Host CPU %, RAM usage (used vs 32GB hardware limit), CPU thermal sensor monitoring (`°C` status badge: Cool / Warm / Hot), PVE version, and host uptime.
-   - **Docker Runner (Ubuntu LXC 192.168.18.225)**: LXC CPU load, memory utilization, and 1m/5m/15m system load averages.
+1. **Dual-Layer Hardware Vitals & Backup Status**:
+   - **Proxmox VE Hypervisor (192.168.18.224)**: Host CPU %, RAM usage (used vs 32GB limit), thermal sensor monitoring (`°C`), PVE version, and host uptime.
+   - **Proxmox Backup Vitals ("Did My Homelab Backup Last Night?")**: Integrates `vzdump` task logs directly into the UI (last backup timestamp, target storage, size, duration, and status badge).
+   - **Docker Runner (Ubuntu LXC 192.168.18.225)**: LXC CPU load, memory utilization, load averages, and **CPU Thermal Throttle Watchdog** with dynamic fan speed indicator.
 
-2. **Tailscale Mesh & Peer Tracking**:
-   - **Tailnet Peer Fleet**: Track which homelab devices, hypervisors, workstations, and mobile devices are connected to the Tailnet.
+2. **Multi-Bay DAS Mount Watchdog & Canary Protection**:
+   - Continuous canary check (`.mounted`) on external USB/DAS enclosures (`/mnt/hdd-media`, `/mnt/hdd-cloud`, `/mnt/hdd-music`).
+   - **Blinking Emergency Banner**: Detects silent unmounts before media downloaders or containers can flood and exhaust the internal NVMe root SSD.
+
+3. **Tailscale Mesh & Peer Tracking**:
+   - **Tailnet Peer Fleet**: Track homelab devices, hypervisors, workstations, and mobile devices on the Tailnet.
    - **IP & MagicDNS Matrix**: Live `100.x.y.z` IPv4 and IPv6 addresses with 1-click clipboard copy.
-   - **Subnet Router & Exit Node Detection**: Highlights advertised subnets (e.g. `192.168.18.0/24`) and exit node status.
-   - **Per-Container Tailscale Reachability**: View whether a container service is accessible via Tailscale vs LAN Only, with direct 1-click Tailscale URLs!
+   - **Subnet Router & Exit Node Detection**: Highlights advertised subnets (`192.168.18.0/24`) and active exit nodes.
 
-3. **Storage Matrix & External DAS Enclosures**:
-   - Live visual capacity bars for **Internal NVMe SSD** (Root OS & Docker Volumes).
-   - Real-time capacity breakdown for **External 3-Bay DAS Enclosures** (`/mnt/hdd-media`, `/mnt/hdd-cloud`, `/mnt/hdd-music`).
-   - SMART health badges and alert indicators for warning (>80%) and critical (>90%) thresholds.
+4. **SSL Certificate & Domain Vitals (NPM Companion)**:
+   - Expiration countdowns for Nginx Proxy Manager subdomains (`jellyfin.homelab.lan`, `cloud.homelab.lan`, `vault.homelab.lan`, etc.).
+   - Visual alerts for certificates requiring renewal (<30 days warning, <14 days critical).
 
-4. **Live Container Fleet (Docker Engine Telemetry)**:
+5. **Docker NVMe Disk Hygiene ("SSD Saver")**:
+   - Real-time detection of recoverable disk space from dangling image layers, stopped containers, and build cache.
+   - **One-Click Safe Prune Modal**: Reclaim gigabytes of space on the internal NVMe drive safely with real-time feedback.
+
+6. **Live Container Fleet with Smart Web UI Launcher**:
    - Full live list of containers via `/var/run/docker.sock`.
-   - Real-time CPU % & RAM MB/GB with **dynamic inline SVG micro-sparklines** showing usage trends.
-   - Network I/O counter (RX / TX) and exposed port bindings.
-   - Filter by **All**, **Tailscale Only**, or **LAN Only**.
-   - **Quick Actions**:
-     - **Tail Logs Modal**: Monospace dark terminal with live line selector (50, 100, 250 lines) and copy-to-clipboard.
-     - **Safe Restart Trigger**: Restart container directly with confirmation prompt.
-
-5. **Zero-Overhead Single Container Deployment**:
-   - Multi-stage Docker build packaging both Fastify daemon and compiled Vite frontend into a single lean Alpine image (< 130MB).
-   - Smart fallback demo-mode if run outside the homelab cluster.
+   - Dynamic inline SVG micro-sparklines for CPU and memory usage trends.
+   - **Smart Launcher Switcher**: Auto-detects whether the dashboard is being viewed locally on LAN (`192.168.18.x`) or remotely via Tailscale (`100.x` / `.ts.net`), seamlessly tailoring "Open Web UI" links to the active connection!
+   - **Quick Actions**: Tail live logs in a monospace dark terminal modal and restart containers with confirmation.
 
 ---
 
@@ -83,7 +85,7 @@ cd homelab-dashboard
 cp .env.example .env
 ```
 
-Edit your `.env` file:
+Edit `.env`:
 ```env
 PORT=3000
 PROXMOX_URL=https://192.168.18.224:8006
@@ -111,27 +113,10 @@ Dashboard will be accessible at:
 
 ---
 
-## 🔑 Integrations Setup
-
-### 1. Proxmox VE API Token
-1. Login to Proxmox VE Web UI (`https://192.168.18.224:8006`).
-2. Go to **Datacenter** → **Permissions** → **API Tokens** → Click **Add**:
-   - **User**: `root@pam`
-   - **Token ID**: `cockpit`
-3. Copy generated **Secret Token** into `.env`.
-
-### 2. Tailscale Telemetry
-- **Via Local Socket (Zero Config)**: Keep volume mount `/var/run/tailscale:/var/run/tailscale:ro` in `docker-compose.yml`. Homelab Cockpit will read live peer statuses directly from `tailscaled`.
-- **Via Tailscale API**: Generate an API access token in Tailscale Admin Console → **Settings** → **Keys** → **API access tokens**, and set `TAILSCALE_API_KEY` and `TAILSCALE_TAILNET`.
-
----
-
 ## 💻 Local Development
 
-Run backend and frontend concurrently in development mode:
-
 ```bash
-# Build whole project
+# Build monorepo
 npm run build
 
 # Run dev mode

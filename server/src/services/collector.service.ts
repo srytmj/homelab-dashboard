@@ -3,6 +3,7 @@ import { DockerService } from './docker.service.js';
 import { ProxmoxService } from './proxmox.service.js';
 import { SystemService } from './system.service.js';
 import { TailscaleService } from './tailscale.service.js';
+import { SslService } from './ssl.service.js';
 import { CockpitSnapshot } from '../types.js';
 import { config } from '../config.js';
 
@@ -11,6 +12,7 @@ export class CollectorService {
   private proxmoxService: ProxmoxService;
   private systemService: SystemService;
   private tailscaleService: TailscaleService;
+  private sslService: SslService;
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
   private lastSnapshot: CockpitSnapshot | null = null;
@@ -19,12 +21,14 @@ export class CollectorService {
     dockerService: DockerService,
     proxmoxService: ProxmoxService,
     systemService: SystemService,
-    tailscaleService: TailscaleService
+    tailscaleService: TailscaleService,
+    sslService: SslService
   ) {
     this.dockerService = dockerService;
     this.proxmoxService = proxmoxService;
     this.systemService = systemService;
     this.tailscaleService = tailscaleService;
+    this.sslService = sslService;
   }
 
   public start() {
@@ -71,11 +75,13 @@ export class CollectorService {
   }
 
   public async collect(): Promise<CockpitSnapshot> {
-    const [pveMetrics, dockerHostMetrics, tailscaleData, storageData] = await Promise.all([
+    const [pveMetrics, dockerHostMetrics, tailscaleData, storageData, sslCerts, diskHygiene] = await Promise.all([
       this.proxmoxService.getMetrics(),
       this.systemService.getDockerHostMetrics(),
       this.tailscaleService.getStatus(),
       this.systemService.getStorageMatrix(),
+      this.sslService.getCertificates(),
+      this.dockerService.getDiskHygiene(),
     ]);
 
     const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
@@ -90,6 +96,8 @@ export class CollectorService {
       storage: storageData,
       tailscale: tailscaleData,
       containers: containerData.containers,
+      sslCertificates: sslCerts,
+      dockerHygiene: diskHygiene,
       isDemoMode: !containerData.isLive || config.demoMode,
     };
 

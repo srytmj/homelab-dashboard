@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, RefreshCw, Terminal, Layers, ArrowUpDown, Network, Copy, Check } from 'lucide-react';
+import { Search, RefreshCw, Terminal, Layers, ArrowUpDown, Network, Copy, Check, ExternalLink, Globe } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
 import { formatBytes, getStatusColor } from '../utils/formatters.js';
@@ -18,9 +18,16 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
   const [networkFilter, setNetworkFilter] = useState<'all' | 'tailscale' | 'lan'>('all');
+  const [urlMode, setUrlMode] = useState<'auto' | 'tailscale' | 'lan'>('auto');
   const [sortBy, setSortBy] = useState<'cpu' | 'ram' | 'name'>('cpu');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  // Auto-detect current browser access environment
+  const isLoadedViaTailscale = typeof window !== 'undefined' && (
+    window.location.hostname.startsWith('100.') ||
+    window.location.hostname.endsWith('.ts.net')
+  );
 
   const filteredContainers = useMemo(() => {
     return containers
@@ -65,11 +72,17 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
     setTimeout(() => setCopiedUrl(null), 2000);
   };
 
+  const getContainerTargetUrl = (container: ContainerMetric): string | undefined => {
+    if (urlMode === 'tailscale') return container.tailscaleUrl;
+    if (urlMode === 'lan') return container.lanUrl;
+    return isLoadedViaTailscale ? (container.tailscaleUrl || container.lanUrl) : (container.lanUrl || container.tailscaleUrl);
+  };
+
   const tailscaleCount = containers.filter(c => c.tailscaleEnabled).length;
 
   return (
     <section className="rounded-xl bg-[#0d1424] border border-slate-800/90 p-4 lg:p-5 shadow-md">
-      {/* Header with Search and Filters */}
+      {/* Header with Search, Filters and URL Mode */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4 pb-3 border-b border-slate-800/70">
         
         {/* Title */}
@@ -87,12 +100,12 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-400 font-mono">
-              Docker Engine metrics + Tailscale routing reachability
+              Docker Engine metrics + Smart Web UI Launcher (LAN/Tailscale Auto-Switcher)
             </p>
           </div>
         </div>
 
-        {/* Controls: Search, Filter, Sort */}
+        {/* Controls: Search, Filter, Smart Launcher Mode */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Search Box */}
           <div className="relative">
@@ -102,11 +115,67 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
               placeholder="Filter container, image, port..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 w-44 sm:w-56"
+              className="pl-8 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 w-44 sm:w-48"
             />
           </div>
 
-          {/* Network Filter: All / Tailscale / LAN */}
+          {/* Status Filter: All / Running / Exited */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
+            {(['all', 'running', 'exited'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setStatusFilter(mode)}
+                className={`px-2 py-1 rounded-md capitalize transition-colors ${
+                  statusFilter === mode
+                    ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
+          {/* Smart Launcher Mode Selector */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
+            <button
+              onClick={() => setUrlMode('auto')}
+              title="Auto-detect whether you are accessing via LAN or Tailscale"
+              className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 ${
+                urlMode === 'auto'
+                  ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Globe className="w-3 h-3 text-cyan-400" />
+              <span>Auto</span>
+            </button>
+            <button
+              onClick={() => setUrlMode('lan')}
+              title="Force LAN IP (192.168.18.225)"
+              className={`px-2 py-1 rounded-md transition-colors ${
+                urlMode === 'lan'
+                  ? 'bg-slate-800 text-slate-200 font-bold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              LAN
+            </button>
+            <button
+              onClick={() => setUrlMode('tailscale')}
+              title="Force Tailscale IP (100.110.20.15)"
+              className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 ${
+                urlMode === 'tailscale'
+                  ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Network className="w-3 h-3 text-indigo-400" />
+              <span>TS</span>
+            </button>
+          </div>
+
+          {/* Network Filter */}
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
             <button
               onClick={() => setNetworkFilter('all')}
@@ -126,8 +195,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Network className="w-3 h-3 text-indigo-400" />
-              <span>Tailscale ({tailscaleCount})</span>
+              TS ({tailscaleCount})
             </button>
             <button
               onClick={() => setNetworkFilter('lan')}
@@ -139,23 +207,6 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             >
               LAN Only
             </button>
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
-            {(['all', 'running', 'exited'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setStatusFilter(mode)}
-                className={`px-2 py-1 rounded-md capitalize transition-colors ${
-                  statusFilter === mode
-                    ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
           </div>
 
           {/* Sort Dropdown */}
@@ -186,7 +237,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800 text-[11px] uppercase tracking-wider">
               <th className="py-2.5 px-3.5 font-bold">Service / Container</th>
               <th className="py-2.5 px-3 font-bold">State</th>
-              <th className="py-2.5 px-3 font-bold">Tailscale Routing</th>
+              <th className="py-2.5 px-3 font-bold">Web UI & Routing</th>
               <th className="py-2.5 px-3 font-bold cursor-pointer hover:text-cyan-400" onClick={() => toggleSort('cpu')}>
                 <div className="flex items-center gap-1">
                   <span>CPU %</span>
@@ -199,7 +250,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                   {sortBy === 'ram' && <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>}
                 </div>
               </th>
-              <th className="py-2.5 px-3 font-bold hidden md:table-cell">Net I/O (RX/TX)</th>
+              <th className="py-2.5 px-3 font-bold hidden md:table-cell">Net I/O</th>
               <th className="py-2.5 px-3 font-bold text-right">Actions</th>
             </tr>
           </thead>
@@ -207,7 +258,8 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             {filteredContainers.map((container) => {
               const isRunning = container.state === 'running';
               const cpuColors = getStatusColor(container.cpuPercent);
-              const isCopied = copiedUrl === container.tailscaleUrl;
+              const targetUrl = getContainerTargetUrl(container);
+              const isCopied = copiedUrl === targetUrl;
 
               return (
                 <tr
@@ -237,7 +289,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                             #{container.shortId}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 truncate max-w-[200px]" title={container.image}>
+                        <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={container.image}>
                           {container.image}
                         </div>
                       </div>
@@ -258,29 +310,31 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                     <div className="text-[10px] text-slate-500 mt-0.5">{container.uptime}</div>
                   </td>
 
-                  {/* Tailscale Routing Status */}
+                  {/* Smart Web UI & Routing */}
                   <td className="py-2.5 px-3">
-                    {container.tailscaleEnabled ? (
+                    {targetUrl ? (
                       <div className="flex items-center gap-1.5">
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 text-[11px]">
-                          <Network className="w-3 h-3 text-indigo-400 shrink-0" />
-                          <span className="font-semibold">
-                            {container.tailscaleIp || '100.x.y.z'}
-                          </span>
-                        </div>
-                        {container.tailscaleUrl && (
-                          <button
-                            onClick={() => copyToClipboard(container.tailscaleUrl!)}
-                            title={`Copy Tailscale URL: ${container.tailscaleUrl}`}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
-                          >
-                            {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                          </button>
-                        )}
+                        <a
+                          href={targetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 hover:text-white hover:border-indigo-400 transition-colors text-[11px] font-semibold"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>:{container.primaryPort}</span>
+                        </a>
+
+                        <button
+                          onClick={() => copyToClipboard(targetUrl)}
+                          title={`Copy URL: ${targetUrl}`}
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                        >
+                          {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
                       </div>
                     ) : (
                       <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500">
-                        LAN Only
+                        Internal
                       </span>
                     )}
                   </td>
@@ -295,7 +349,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                         <Sparkline
                           data={container.sparklineCpu}
                           color={container.cpuPercent > 10 ? 'amber' : 'cyan'}
-                          width={55}
+                          width={50}
                           height={18}
                         />
                       </div>
@@ -314,7 +368,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                         <Sparkline
                           data={container.sparklineMemory}
                           color="indigo"
-                          width={55}
+                          width={50}
                           height={18}
                         />
                       </div>

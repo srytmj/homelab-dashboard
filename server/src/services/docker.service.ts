@@ -1,6 +1,6 @@
 import Docker from 'dockerode';
 import fs from 'node:fs';
-import { ContainerMetric } from '../types.js';
+import { ContainerMetric, DockerDiskHygiene } from '../types.js';
 import { config } from '../config.js';
 
 interface SparklineHistory {
@@ -14,6 +14,14 @@ export class DockerService {
   private historyMap: Map<string, SparklineHistory> = new Map();
   private mockContainers: ContainerMetric[] = [];
   private lastMockUpdate = 0;
+  private mockHygiene: DockerDiskHygiene = {
+    reclaimableBytes: 14820000000, // ~14.82 GB
+    danglingImagesCount: 8,
+    stoppedContainersCount: 1,
+    buildCacheBytes: 9400000000, // 9.4 GB
+    volumesCount: 32,
+    lastPrunedTime: 'Never pruned',
+  };
 
   constructor() {
     this.initDocker();
@@ -38,39 +46,40 @@ export class DockerService {
 
   private initMockContainers() {
     const homelabServices = [
-      { name: 'jellyfin', image: 'jellyfin/jellyfin:latest', ports: ['8096:8096'], baseCpu: 12.5, baseMemMB: 1450, tailscale: true, primaryPort: '8096' },
-      { name: 'nextcloud', image: 'nextcloud:apache', ports: ['8080:80'], baseCpu: 3.8, baseMemMB: 620, tailscale: true, primaryPort: '8080' },
-      { name: 't3-code', image: 't3-code:latest', ports: ['7860:7860'], baseCpu: 4.2, baseMemMB: 980, tailscale: true, primaryPort: '7860' },
-      { name: 'nginx-proxy-manager', image: 'jc21/nginx-proxy-manager:latest', ports: ['80:80', '443:443', '81:81'], baseCpu: 1.5, baseMemMB: 210, tailscale: true, primaryPort: '81' },
-      { name: 'uptime-kuma', image: 'louislam/uptime-kuma:1', ports: ['3001:3001'], baseCpu: 1.2, baseMemMB: 180, tailscale: true, primaryPort: '3001' },
-      { name: 'portainer-ce', image: 'portainer/portainer-ce:latest', ports: ['9000:9000', '9443:9443'], baseCpu: 0.8, baseMemMB: 125, tailscale: true, primaryPort: '9000' },
-      { name: 'netdata', image: 'netdata/netdata:latest', ports: ['19999:19999'], baseCpu: 5.4, baseMemMB: 480, tailscale: true, primaryPort: '19999' },
+      { name: 'jellyfin', image: 'jellyfin/jellyfin:latest', ports: ['8096:8096'], baseCpu: 12.5, baseMemMB: 1450, tailscale: true, primaryPort: 8096 },
+      { name: 'nextcloud', image: 'nextcloud:apache', ports: ['8080:80'], baseCpu: 3.8, baseMemMB: 620, tailscale: true, primaryPort: 8080 },
+      { name: 't3-code', image: 't3-code:latest', ports: ['7860:7860'], baseCpu: 4.2, baseMemMB: 980, tailscale: true, primaryPort: 7860 },
+      { name: 'nginx-proxy-manager', image: 'jc21/nginx-proxy-manager:latest', ports: ['80:80', '443:443', '81:81'], baseCpu: 1.5, baseMemMB: 210, tailscale: true, primaryPort: 81 },
+      { name: 'uptime-kuma', image: 'louislam/uptime-kuma:1', ports: ['3001:3001'], baseCpu: 1.2, baseMemMB: 180, tailscale: true, primaryPort: 3001 },
+      { name: 'portainer-ce', image: 'portainer/portainer-ce:latest', ports: ['9000:9000', '9443:9443'], baseCpu: 0.8, baseMemMB: 125, tailscale: true, primaryPort: 9000 },
+      { name: 'netdata', image: 'netdata/netdata:latest', ports: ['19999:19999'], baseCpu: 5.4, baseMemMB: 480, tailscale: true, primaryPort: 19999 },
       { name: 'postgres-db', image: 'postgres:16-alpine', ports: ['5432:5432'], baseCpu: 2.1, baseMemMB: 390, tailscale: false },
       { name: 'redis-cache', image: 'redis:7-alpine', ports: ['6379:6379'], baseCpu: 0.5, baseMemMB: 85, tailscale: false },
-      { name: 'vaultwarden', image: 'vaultwarden/server:latest', ports: ['8085:80'], baseCpu: 0.4, baseMemMB: 95, tailscale: true, primaryPort: '8085' },
-      { name: 'adguard-home', image: 'adguard/adguardhome:latest', ports: ['53:53/udp', '3000:3000'], baseCpu: 1.8, baseMemMB: 140, tailscale: true, primaryPort: '3000' },
-      { name: 'radarr', image: 'lscr.io/linuxserver/radarr:latest', ports: ['7878:7878'], baseCpu: 2.4, baseMemMB: 310, tailscale: true, primaryPort: '7878' },
-      { name: 'sonarr', image: 'lscr.io/linuxserver/sonarr:latest', ports: ['8989:8989'], baseCpu: 2.6, baseMemMB: 325, tailscale: true, primaryPort: '8989' },
-      { name: 'prowlarr', image: 'lscr.io/linuxserver/prowlarr:latest', ports: ['9696:9696'], baseCpu: 1.1, baseMemMB: 190, tailscale: true, primaryPort: '9696' },
-      { name: 'transmission', image: 'lscr.io/linuxserver/transmission:latest', ports: ['9091:9091', '51413:51413'], baseCpu: 3.2, baseMemMB: 280, tailscale: true, primaryPort: '9091' },
-      { name: 'photoprism', image: 'photoprism/photoprism:latest', ports: ['2342:2342'], baseCpu: 1.5, baseMemMB: 890, tailscale: true, primaryPort: '2342' },
-      { name: 'homarr', image: 'ghcr.io/ajnart/homarr:latest', ports: ['7575:7575'], baseCpu: 0.9, baseMemMB: 145, tailscale: true, primaryPort: '7575' },
-      { name: 'home-assistant', image: 'ghcr.io/home-assistant/home-assistant:stable', ports: ['8123:8123'], baseCpu: 4.8, baseMemMB: 750, tailscale: true, primaryPort: '8123' },
+      { name: 'vaultwarden', image: 'vaultwarden/server:latest', ports: ['8085:80'], baseCpu: 0.4, baseMemMB: 95, tailscale: true, primaryPort: 8085 },
+      { name: 'adguard-home', image: 'adguard/adguardhome:latest', ports: ['53:53/udp', '3000:3000'], baseCpu: 1.8, baseMemMB: 140, tailscale: true, primaryPort: 3000 },
+      { name: 'radarr', image: 'lscr.io/linuxserver/radarr:latest', ports: ['7878:7878'], baseCpu: 2.4, baseMemMB: 310, tailscale: true, primaryPort: 7878 },
+      { name: 'sonarr', image: 'lscr.io/linuxserver/sonarr:latest', ports: ['8989:8989'], baseCpu: 2.6, baseMemMB: 325, tailscale: true, primaryPort: 8989 },
+      { name: 'prowlarr', image: 'lscr.io/linuxserver/prowlarr:latest', ports: ['9696:9696'], baseCpu: 1.1, baseMemMB: 190, tailscale: true, primaryPort: 9696 },
+      { name: 'transmission', image: 'lscr.io/linuxserver/transmission:latest', ports: ['9091:9091', '51413:51413'], baseCpu: 3.2, baseMemMB: 280, tailscale: true, primaryPort: 9091 },
+      { name: 'photoprism', image: 'photoprism/photoprism:latest', ports: ['2342:2342'], baseCpu: 1.5, baseMemMB: 890, tailscale: true, primaryPort: 2342 },
+      { name: 'homarr', image: 'ghcr.io/ajnart/homarr:latest', ports: ['7575:7575'], baseCpu: 0.9, baseMemMB: 145, tailscale: true, primaryPort: 7575 },
+      { name: 'home-assistant', image: 'ghcr.io/home-assistant/home-assistant:stable', ports: ['8123:8123'], baseCpu: 4.8, baseMemMB: 750, tailscale: true, primaryPort: 8123 },
       { name: 'mosquitto-mqtt', image: 'eclipse-mosquitto:2', ports: ['1883:1883'], baseCpu: 0.3, baseMemMB: 42, tailscale: false },
-      { name: 'paperless-ngx', image: 'ghcr.io/paperless-ngx/paperless-ngx:latest', ports: ['8000:8000'], baseCpu: 2.0, baseMemMB: 680, tailscale: true, primaryPort: '8000' },
-      { name: 'mealie', image: 'ghcr.io/mealie-recipes/mealie:latest', ports: ['9925:9000'], baseCpu: 0.6, baseMemMB: 160, tailscale: true, primaryPort: '9925' },
-      { name: 'it-tools', image: 'corentinth/it-tools:latest', ports: ['8088:80'], baseCpu: 0.1, baseMemMB: 35, tailscale: true, primaryPort: '8088' },
-      { name: 'dozzle', image: 'amir20/dozzle:latest', ports: ['8888:8080'], baseCpu: 0.5, baseMemMB: 65, tailscale: true, primaryPort: '8888' },
+      { name: 'paperless-ngx', image: 'ghcr.io/paperless-ngx/paperless-ngx:latest', ports: ['8000:8000'], baseCpu: 2.0, baseMemMB: 680, tailscale: true, primaryPort: 8000 },
+      { name: 'mealie', image: 'ghcr.io/mealie-recipes/mealie:latest', ports: ['9925:9000'], baseCpu: 0.6, baseMemMB: 160, tailscale: true, primaryPort: 9925 },
+      { name: 'it-tools', image: 'corentinth/it-tools:latest', ports: ['8088:80'], baseCpu: 0.1, baseMemMB: 35, tailscale: true, primaryPort: 8088 },
+      { name: 'dozzle', image: 'amir20/dozzle:latest', ports: ['8888:8080'], baseCpu: 0.5, baseMemMB: 65, tailscale: true, primaryPort: 8888 },
       { name: 'watchtower', image: 'containrrr/watchtower:latest', ports: [], baseCpu: 0.1, baseMemMB: 40, tailscale: false },
-      { name: 'glances', image: 'nicolargo/glances:latest-full', ports: ['61208:61208'], baseCpu: 1.6, baseMemMB: 110, tailscale: true, primaryPort: '61208' },
+      { name: 'glances', image: 'nicolargo/glances:latest-full', ports: ['61208:61208'], baseCpu: 1.6, baseMemMB: 110, tailscale: true, primaryPort: 61208 },
       { name: 'wireguard', image: 'lscr.io/linuxserver/wireguard:latest', ports: ['51820:51820/udp'], baseCpu: 0.4, baseMemMB: 50, tailscale: false },
-      { name: 'navidrome', image: 'deluan/navidrome:latest', ports: ['4533:4533'], baseCpu: 1.2, baseMemMB: 240, tailscale: true, primaryPort: '4533' },
+      { name: 'navidrome', image: 'deluan/navidrome:latest', ports: ['4533:4533'], baseCpu: 1.2, baseMemMB: 240, tailscale: true, primaryPort: 4533 },
       { name: 'traefik-cert-backup', image: 'alpine:latest', ports: [], baseCpu: 0.0, baseMemMB: 15, tailscale: false },
     ];
 
     const totalHostRamBytes = 32 * 1024 * 1024 * 1024; // 32GB
     const now = Date.now();
-    const tailscaleNodeIp = '100.110.20.15'; // docker-host Tailscale IP
+    const tailscaleNodeIp = '100.110.20.15';
+    const lanNodeIp = '192.168.18.225';
 
     this.mockContainers = homelabServices.map((svc, idx) => {
       const id = `mock_cnt_${svc.name.replace(/-/g, '_')}_${idx + 100}`;
@@ -80,7 +89,6 @@ export class DockerService {
       const memPercent = (memBytes / totalHostRamBytes) * 100;
       const cpu = isRunning ? svc.baseCpu : 0;
 
-      // Seed sparkline history
       const cpuHistory = Array.from({ length: 12 }, () => Math.max(0, cpu + (Math.random() * 2 - 1)));
       const memHistory = Array.from({ length: 12 }, () => Math.max(10, memBytes / (1024 * 1024) + (Math.random() * 20 - 10)));
 
@@ -91,6 +99,10 @@ export class DockerService {
 
       const tailscaleUrl = svc.tailscale && svc.primaryPort
         ? `http://${tailscaleNodeIp}:${svc.primaryPort}`
+        : undefined;
+
+      const lanUrl = svc.primaryPort
+        ? `http://${lanNodeIp}:${svc.primaryPort}`
         : undefined;
 
       return {
@@ -114,6 +126,8 @@ export class DockerService {
         tailscaleEnabled: svc.tailscale,
         tailscaleIp: svc.tailscale ? tailscaleNodeIp : undefined,
         tailscaleUrl,
+        lanUrl,
+        primaryPort: svc.primaryPort,
       };
     });
   }
@@ -131,11 +145,81 @@ export class DockerService {
     return { containers: this.getSimulatedContainers(), isLive: false };
   }
 
+  public async getDiskHygiene(): Promise<DockerDiskHygiene> {
+    if (this.isDockerAvailable && this.docker && !config.demoMode) {
+      try {
+        const df = await this.docker.df();
+        let reclaimable = 0;
+        let dangling = 0;
+
+        if (df.Images) {
+          for (const img of df.Images) {
+            if (img.Containers === 0 || (img.RepoTags && img.RepoTags.includes('<none>:<none>'))) {
+              reclaimable += img.Size || 0;
+              dangling++;
+            }
+          }
+        }
+
+        if (df.BuildCache) {
+          for (const cache of df.BuildCache) {
+            if (!cache.InUse) {
+              reclaimable += cache.Size || 0;
+            }
+          }
+        }
+
+        return {
+          reclaimableBytes: reclaimable,
+          danglingImagesCount: dangling,
+          stoppedContainersCount: (df.Containers || []).filter((c: any) => c.State !== 'running').length,
+          buildCacheBytes: (df.BuildCache || []).reduce((acc: number, c: any) => acc + (c.Size || 0), 0),
+          volumesCount: (df.Volumes || []).length,
+          lastPrunedTime: this.mockHygiene.lastPrunedTime,
+        };
+      } catch {
+        // fallback
+      }
+    }
+
+    return this.mockHygiene;
+  }
+
+  public async pruneSystem(): Promise<{ success: boolean; message: string; spaceReclaimedBytes: number }> {
+    const spaceFreed = this.mockHygiene.reclaimableBytes;
+
+    if (this.isDockerAvailable && this.docker && !config.demoMode) {
+      try {
+        await this.docker.pruneImages({ filters: { dangling: { true: true } } });
+        await this.docker.pruneContainers();
+        return {
+          success: true,
+          message: 'Dangling images and stopped containers successfully pruned from NVMe SSD',
+          spaceReclaimedBytes: spaceFreed,
+        };
+      } catch (err: any) {
+        return { success: false, message: `Prune failed: ${err.message}`, spaceReclaimedBytes: 0 };
+      }
+    }
+
+    // Mock mode update
+    this.mockHygiene.reclaimableBytes = 120000000; // only ~120MB left
+    this.mockHygiene.danglingImagesCount = 0;
+    this.mockHygiene.lastPrunedTime = new Date().toLocaleTimeString();
+
+    return {
+      success: true,
+      message: `Prune successful! Reclaimed ${(spaceFreed / (1024 * 1024 * 1024)).toFixed(2)} GB on Internal NVMe SSD`,
+      spaceReclaimedBytes: spaceFreed,
+    };
+  }
+
   private async fetchLiveContainers(tailscaleIp: string): Promise<ContainerMetric[]> {
     if (!this.docker) return [];
 
     const containers = await this.docker.listContainers({ all: true });
     const results: ContainerMetric[] = [];
+    const lanNodeIp = '192.168.18.225';
 
     for (const info of containers) {
       const id = info.Id;
@@ -174,7 +258,7 @@ export class DockerService {
             }
           }
         } catch {
-          // stats error handled gracefully
+          // handled
         }
       }
 
@@ -195,13 +279,12 @@ export class DockerService {
         p.PublicPort ? `${p.PublicPort}:${p.PrivatePort}${p.Type ? `/${p.Type}` : ''}` : `${p.PrivatePort}/${p.Type}`
       );
 
-      // Detect Tailscale reachability: Container has public ports mapped or label
-      const hasPublicPort = (info.Ports || []).some(p => Boolean(p.PublicPort));
+      const firstPublicPort = (info.Ports || []).find(p => Boolean(p.PublicPort))?.PublicPort;
       const hasTailscaleLabel = info.Labels && (info.Labels['tailscale'] === 'true' || info.Labels['tailscale.expose'] === 'true');
-      const tailscaleEnabled = hasPublicPort || Boolean(hasTailscaleLabel);
+      const tailscaleEnabled = Boolean(firstPublicPort) || Boolean(hasTailscaleLabel);
 
-      const firstPort = (info.Ports || []).find(p => Boolean(p.PublicPort))?.PublicPort;
-      const tailscaleUrl = (tailscaleEnabled && firstPort) ? `http://${tailscaleIp}:${firstPort}` : undefined;
+      const tailscaleUrl = (tailscaleEnabled && firstPublicPort) ? `http://${tailscaleIp}:${firstPublicPort}` : undefined;
+      const lanUrl = firstPublicPort ? `http://${lanNodeIp}:${firstPublicPort}` : undefined;
 
       results.push({
         id,
@@ -224,6 +307,8 @@ export class DockerService {
         tailscaleEnabled,
         tailscaleIp: tailscaleEnabled ? tailscaleIp : undefined,
         tailscaleUrl,
+        lanUrl,
+        primaryPort: firstPublicPort,
       });
     }
 

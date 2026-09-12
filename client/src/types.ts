@@ -1,3 +1,21 @@
+export interface ThermalThrottleVitals {
+  isThrottling: boolean;
+  throttleCount: number;
+  packageTempCelsius: number;
+  fanSpeedPercent?: number;
+}
+
+export interface PveBackupVitals {
+  status: 'succeeded' | 'failed' | 'running' | 'unknown';
+  lastBackupTime: string;
+  lastBackupTimestamp: number;
+  targetStorage: string;
+  backupSizeBytes: number;
+  durationSeconds: number;
+  vmid: string;
+  logSummary: string;
+}
+
 export interface PveHostMetrics {
   connected: boolean;
   nodeName: string;
@@ -11,6 +29,7 @@ export interface PveHostMetrics {
   ramPercent: number;
   uptimeSeconds: number;
   pveVersion?: string;
+  backupVitals?: PveBackupVitals;
 }
 
 export interface DockerHostMetrics {
@@ -23,6 +42,7 @@ export interface DockerHostMetrics {
   ramPercent: number;
   loadAverage: number[];
   uptimeSeconds: number;
+  thermalThrottle?: ThermalThrottleVitals;
 }
 
 export interface HostMetrics {
@@ -42,6 +62,28 @@ export interface StorageItem {
   status: 'healthy' | 'warning' | 'critical';
   isExternal: boolean;
   smartStatus?: 'PASSED' | 'WARNING' | 'FAILED' | 'UNKNOWN';
+  canaryPresent?: boolean;
+  isDisconnected?: boolean;
+}
+
+export interface SslCertificate {
+  id: string;
+  domain: string;
+  service: string;
+  issuer: string;
+  validTo: string;
+  daysRemaining: number;
+  status: 'healthy' | 'warning' | 'critical';
+  autoRenewEnabled: boolean;
+}
+
+export interface DockerDiskHygiene {
+  reclaimableBytes: number;
+  danglingImagesCount: number;
+  stoppedContainersCount: number;
+  buildCacheBytes: number;
+  volumesCount: number;
+  lastPrunedTime?: string;
 }
 
 export interface TailscaleDevice {
@@ -90,6 +132,8 @@ export interface ContainerMetric {
   tailscaleEnabled: boolean;
   tailscaleIp?: string;
   tailscaleUrl?: string;
+  lanUrl?: string;
+  primaryPort?: number;
 }
 
 export interface CockpitSnapshot {
@@ -98,5 +142,7 @@ export interface CockpitSnapshot {
   storage: StorageItem[];
   tailscale: TailscaleStatus;
   containers: ContainerMetric[];
+  sslCertificates: SslCertificate[];
+  dockerHygiene: DockerDiskHygiene;
   isDemoMode: boolean;
 }
