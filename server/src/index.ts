@@ -13,6 +13,7 @@ import { ProxmoxService } from './services/proxmox.service.js';
 import { SystemService } from './services/system.service.js';
 import { TailscaleService } from './services/tailscale.service.js';
 import { SslService } from './services/ssl.service.js';
+import { PinsService } from './services/pins.service.js';
 import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
 
@@ -38,6 +39,7 @@ async function bootstrap() {
   const systemService = new SystemService();
   const tailscaleService = new TailscaleService();
   const sslService = new SslService();
+  const pinsService = new PinsService();
 
   let sentinelService: SentinelService | null = null;
 
@@ -47,6 +49,7 @@ async function bootstrap() {
     systemService,
     tailscaleService,
     sslService,
+    pinsService,
     () => sentinelService?.getStatus()
   );
 
@@ -197,6 +200,19 @@ async function bootstrap() {
       reply.status(400);
     }
     return result;
+  });
+
+  app.post('/api/pins/:name', async (request) => {
+    const { name } = request.params as { name: string };
+    const body = request.body as { publicUrl?: string };
+    const record = pinsService.pin(name, body?.publicUrl);
+    return { success: true, pin: record };
+  });
+
+  app.delete('/api/pins/:name', async (request) => {
+    const { name } = request.params as { name: string };
+    pinsService.unpin(name);
+    return { success: true };
   });
 
   // Serve Client SPA in Production

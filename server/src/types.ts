@@ -144,6 +144,8 @@ export interface ContainerMetric {
   lanUrl?: string;
   primaryPort?: number;
   httpHealth?: HttpHealthProbe;
+  isPinned?: boolean;
+  publicUrl?: string;
 }
 
 export interface NativeConsoleItem {

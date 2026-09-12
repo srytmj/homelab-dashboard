@@ -4,6 +4,7 @@ import { ProxmoxService } from './proxmox.service.js';
 import { SystemService } from './system.service.js';
 import { TailscaleService } from './tailscale.service.js';
 import { SslService } from './ssl.service.js';
+import { PinsService } from './pins.service.js';
 import { CockpitSnapshot, NativeConsoleItem, SentinelStatus } from '../types.js';
 import { config } from '../config.js';
 
@@ -13,6 +14,7 @@ export class CollectorService {
   private systemService: SystemService;
   private tailscaleService: TailscaleService;
   private sslService: SslService;
+  private pinsService: PinsService;
   private getSentinelStatus?: () => SentinelStatus | undefined;
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
@@ -24,6 +26,7 @@ export class CollectorService {
     systemService: SystemService,
     tailscaleService: TailscaleService,
     sslService: SslService,
+    pinsService: PinsService,
     getSentinelStatus?: () => SentinelStatus | undefined
   ) {
     this.dockerService = dockerService;
@@ -31,6 +34,7 @@ export class CollectorService {
     this.systemService = systemService;
     this.tailscaleService = tailscaleService;
     this.sslService = sslService;
+    this.pinsService = pinsService;
     this.getSentinelStatus = getSentinelStatus;
   }
 
@@ -89,6 +93,14 @@ export class CollectorService {
 
     const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
     const containerData = await this.dockerService.getContainers(selfTailscaleIp);
+
+    const pins = this.pinsService.getAll();
+    const containers = containerData.containers.map(container => {
+      const pin = pins[container.name];
+      return pin
+        ? { ...container, isPinned: true, publicUrl: pin.publicUrl }
+        : container;
+    });
 
     const consoles: NativeConsoleItem[] = [
       {
@@ -199,7 +211,7 @@ export class CollectorService {
       },
       storage: storageData,
       tailscale: tailscaleData,
-      containers: containerData.containers,
+      containers,
       sslCertificates: sslCerts,
       dockerHygiene: diskHygiene,
       consoles,
