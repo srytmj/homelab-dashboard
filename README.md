@@ -111,6 +111,18 @@ TELEGRAM_ALLOWED_USER_IDS=12345678
 GEMINI_API_KEY=AIzaSy
 ```
 
+### Setup checklist
+
+Everything the dashboard shows about your machine — node name, CPU, RAM, IPs — comes from the snapshot at runtime; nothing about a specific brand of hardware is baked into the interface. What you do need to check when adapting this to your own homelab:
+
+- **`STORAGE_MOUNTS`** must be paths that exist on the machine running the daemon. A path that doesn't exist falls back to placeholder demo numbers, which is only useful for development, not a real reading of your disks.
+- **`STORAGE_LABELS`** is optional and positional — one label per entry in `STORAGE_MOUNTS`, same order, same count. Leave an entry blank to get an auto-generated name from that mount's folder instead of writing one.
+- **`DOCKER_SOCKET`** / **`DOCKER_HOST_NAME`** should match where the daemon itself runs. `DOCKER_HOSTS` is only for additional hosts reachable over your tailnet (see Multiple Docker hosts above) — leave it empty for a single-host setup.
+- **`PROXMOX_URL`**, **`PROXMOX_TOKEN_ID`** and **`PROXMOX_TOKEN_SECRET`** — without these the Overview and Infra pages show a `SIMULATED` badge and generated numbers, not your actual hardware.
+- A pinned container's **public domain** is normalized server-side (`https://` is added if you omit a scheme), but paste the real address a browser would use, not just a bare hostname you haven't verified resolves.
+
+If you're an AI agent setting this up or extending it: don't reintroduce hardware-specific strings into `client/src/` — host name, CPU model, IPs and per-drive labels must come from `snapshot.host`/`snapshot.storage` (or the config above), never a literal like a specific CPU model name or IP address written into a component. That was a real bug here once already (see [CLAUDE.md](CLAUDE.md)).
+
 ## Local development
 
 ```bash

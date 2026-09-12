@@ -42,7 +42,7 @@ Controls on the right, left to right:
 
 - **Pages** — jump straight to Overview, Fleet, Infra or Sentinel.
 - **Consoles** — the same native consoles as the old Command Deck grid (Proxmox, Portainer, Nginx Proxy Manager, Netdata, Uptime Kuma, AdGuard Home, the web IDE, Jellyfin), opened in a new tab.
-- **Pinned containers** — whatever you've pinned from the Fleet table, opened at its public domain if it has one, otherwise its LAN or Tailscale address.
+- **Pinned containers** — whatever you've pinned from the Fleet table, opened at its public domain if it has one, otherwise its Tailscale address, otherwise LAN. That order never changes based on how you're currently connected.
 
 Arrow keys move the selection, Enter opens it, Escape closes the palette.
 
@@ -96,7 +96,7 @@ Pins are stored on the daemon, not the browser, so they're the same whether you 
 
 **Docker hosts.** Only appears once a second Docker host is configured. One row per host, with a connected/simulated pill and how many containers it's currently reporting. CPU and memory aren't shown here — that's only ever readable for the machine the daemon itself runs on, so a second host contributes containers, not its own vitals.
 
-**Storage and DAS watchdog.** One row per volume with a usage bar. The line underneath carries the mount path, used and free space, and either the SMART result or the canary state for external bays. A `DETACHED` badge and a red banner at the top of the page mean an enclosure dropped: containers pointed at that path will silently write to the root NVMe until it fills, so stop them or remount before doing anything else.
+**Storage and DAS watchdog.** One row per volume, named from `STORAGE_LABELS` if the owner set one for that mount, otherwise auto-named from the mount's own folder. Each row has a usage bar. The line underneath carries the mount path, used and free space, and either the SMART result or the canary state for external bays. A `DETACHED` badge and a red banner at the top of the page mean an enclosure dropped: containers pointed at that path will silently write to the root NVMe until it fills, so stop them or remount before doing anything else.
 
 The footer button shows reclaimable Docker space and opens the prune dialog. Prune removes untagged image layers and builder cache only; running containers and named volumes are left alone.
 
