@@ -61,7 +61,7 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 
 **Pinned containers and public domains.** Pin any container from the fleet table, optionally with the public domain it answers on if it's exposed through a Cloudflare tunnel. Pins persist server-side in `data/pins.json`, so they follow you between browsers and devices.
 
-**Command palette.** `Ctrl+K` (or `Cmd+K`) from anywhere opens a searchable palette across the four pages, the native consoles (Proxmox, Portainer, Nginx Proxy Manager, Netdata, Uptime Kuma, AdGuard Home, the web IDE, Jellyfin), and pinned containers. Arrow keys move, Enter activates.
+**Command palette.** `Ctrl+K` (or `Cmd+K`) from anywhere opens a searchable palette across the four pages and every pinned container — its public domain if it has one, else Tailscale, else LAN, in that fixed order. Arrow keys move, Enter activates.
 
 **Pages.** Overview is a one-glance summary — device, spec, usage, container count. Fleet, Infra and Sentinel hold the detail. Direct links to any page work, since the daemon serves the client for every non-API route.
 

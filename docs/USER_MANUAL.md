@@ -38,13 +38,12 @@ Controls on the right, left to right:
 
 ## Command palette
 
-`Ctrl+K` (`Cmd+K` on a Mac) opens a search box over whatever page you're on. Type to filter across three groups:
+`Ctrl+K` (`Cmd+K` on a Mac) opens a search box over whatever page you're on. Type to filter across two groups:
 
 - **Pages** — jump straight to Overview, Fleet, Infra or Sentinel.
-- **Consoles** — the same native consoles as the old Command Deck grid (Proxmox, Portainer, Nginx Proxy Manager, Netdata, Uptime Kuma, AdGuard Home, the web IDE, Jellyfin), opened in a new tab.
-- **Pinned containers** — whatever you've pinned from the Fleet table, opened at its public domain if it has one, otherwise its Tailscale address, otherwise LAN. That order never changes based on how you're currently connected.
+- **Pinned containers** — whatever you've pinned from the Fleet table, opened at its public domain if it has one, otherwise its Tailscale address, otherwise LAN. That order never changes based on how you're currently connected. Nothing pinned yet shows a prompt to go pin something instead of an empty list.
 
-Arrow keys move the selection, Enter opens it, Escape closes the palette.
+Arrow keys move the selection, Enter opens it, Escape closes the palette. There's no separate "consoles" list any more — pinning is now the only way to get something into the palette, so pin the things you actually reach for.
 
 ## Overview
 
