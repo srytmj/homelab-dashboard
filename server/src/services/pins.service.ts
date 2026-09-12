@@ -58,12 +58,25 @@ export class PinsService {
   public pin(name: string, publicUrl?: string): PinRecord {
     const existing = this.db.pins[name];
     const record: PinRecord = {
-      publicUrl: publicUrl?.trim() || undefined,
+      publicUrl: this.normalizeUrl(publicUrl),
       pinnedAt: existing?.pinnedAt ?? Date.now(),
     };
     this.db.pins[name] = record;
     this.saveDb();
     return record;
+  }
+
+  /**
+   * A domain typed without a scheme (e.g. "vault.example.com") is not an
+   * absolute URL. Opening it client-side with window.open() then resolves
+   * it as a path relative to the dashboard's own origin instead of the
+   * container's actual address, so every stored publicUrl must carry a
+   * scheme before it ever reaches the client.
+   */
+  private normalizeUrl(raw?: string): string | undefined {
+    const trimmed = raw?.trim();
+    if (!trimmed) return undefined;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   }
 
   public unpin(name: string) {

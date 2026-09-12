@@ -46,6 +46,12 @@ export const config = {
     .split(',')
     .map(p => p.trim())
     .filter(Boolean),
+  // Positional: storageLabels[i] names storageMounts[i]. Leave an entry empty
+  // (e.g. "Movies,,Backups") to fall back to an auto-generated name for just
+  // that mount — this list is NOT filtered for blanks, so position matters.
+  storageLabels: (process.env.STORAGE_LABELS || '')
+    .split(',')
+    .map(label => label.trim()),
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || '2000', 10),
   demoMode: process.env.DEMO_MODE === 'true',
   sentinel: {

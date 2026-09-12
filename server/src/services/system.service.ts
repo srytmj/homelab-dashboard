@@ -82,26 +82,15 @@ export class SystemService {
     const results: StorageItem[] = [];
     const rootFsStats = this.safeStatfs('/');
 
-    for (const mountPath of config.storageMounts) {
+    for (let i = 0; i < config.storageMounts.length; i++) {
+      const mountPath = config.storageMounts[i];
       const stats = this.safeStatfs(mountPath);
       const isExternal = mountPath.startsWith('/mnt/');
-      
-      let label = 'Internal NVMe Root';
+
+      const label = config.storageLabels[i] || this.autoLabel(mountPath);
       let smartStatus: StorageItem['smartStatus'] = 'PASSED';
       let canaryPresent = true;
       let isDisconnected = false;
-
-      if (mountPath === '/') {
-        label = 'Internal NVMe (Root OS & Volumes)';
-      } else if (mountPath.includes('media')) {
-        label = 'DAS Bay 1: Media Library (8TB HDD)';
-      } else if (mountPath.includes('cloud')) {
-        label = 'DAS Bay 2: Nextcloud & Backups (4TB HDD)';
-      } else if (mountPath.includes('music')) {
-        label = 'DAS Bay 3: Lossless Music (2TB HDD)';
-      } else {
-        label = `Mount: ${mountPath}`;
-      }
 
       // DAS Canary Check
       if (isExternal) {
@@ -135,11 +124,18 @@ export class SystemService {
           isDisconnected,
         });
       } else {
-        results.push(this.getMockStorageItem(mountPath, label, isExternal));
+        results.push(this.getMockStorageItem(mountPath, label, isExternal, i));
       }
     }
 
     return results;
+  }
+
+  /** Turns a mount path into a readable name when no STORAGE_LABELS entry is set for it. */
+  private autoLabel(mountPath: string): string {
+    if (mountPath === '/') return 'Root filesystem';
+    const segment = mountPath.split('/').filter(Boolean).pop() || mountPath;
+    return segment.replace(/[-_]/g, ' ');
   }
 
   private checkCanaryFile(mountPath: string): boolean {
@@ -171,23 +167,13 @@ export class SystemService {
     }
   }
 
-  private getMockStorageItem(mountPath: string, label: string, isExternal: boolean): StorageItem {
-    let totalGB = 512;
-    let usedPercent = 68;
-
-    if (mountPath.includes('media')) {
-      totalGB = 8000; // 8TB
-      usedPercent = 74.2;
-    } else if (mountPath.includes('cloud')) {
-      totalGB = 4000; // 4TB
-      usedPercent = 61.5;
-    } else if (mountPath.includes('music')) {
-      totalGB = 2000; // 2TB
-      usedPercent = 43.8;
-    } else {
-      totalGB = 512; // NVMe Root
-      usedPercent = 48.2;
-    }
+  private getMockStorageItem(mountPath: string, label: string, isExternal: boolean, index: number): StorageItem {
+    // Placeholder sizes for demo mode only — shown when this mount doesn't
+    // actually exist on the machine running the daemon. Real numbers come
+    // from statfs once STORAGE_MOUNTS points at paths that do exist.
+    const demoSizesGB = [512, 4000, 8000, 2000, 1000];
+    const totalGB = mountPath === '/' ? 512 : demoSizesGB[index % demoSizesGB.length];
+    const usedPercent = mountPath === '/' ? 48.2 : 40 + ((index * 17) % 45);
 
     const totalBytes = totalGB * 1024 * 1024 * 1024;
     const usedBytes = Math.floor(totalBytes * (usedPercent / 100));
