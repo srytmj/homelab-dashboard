@@ -1,0 +1,30 @@
+services:
+  homelab-cockpit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homelab-cockpit
+    restart: unless-stopped
+    ports:
+      - "8050:3000" # Access UI at http://<DOCKER_HOST_IP>:8050
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DOCKER_SOCKET=/var/run/docker.sock
+      - PROXMOX_URL=https://192.168.18.224:8006
+      - PROXMOX_NODE=pve
+      - PROXMOX_TOKEN_ID=${PROXMOX_TOKEN_ID:-}
+      - PROXMOX_TOKEN_SECRET=${PROXMOX_TOKEN_SECRET:-}
+      - PROXMOX_REJECT_UNAUTHORIZED=false
+      - STORAGE_MOUNTS=/,/mnt/hdd-media,/mnt/hdd-cloud,/mnt/hdd-music
+      - POLL_INTERVAL_MS=2000
+      - DEMO_MODE=${DEMO_MODE:-false}
+    volumes:
+      # Docker Socket access for real-time container metrics & control
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Storage mount points (read-only) for storage capacity matrix
+      - /mnt/hdd-media:/mnt/hdd-media:ro
+      - /mnt/hdd-cloud:/mnt/hdd-cloud:ro
+      - /mnt/hdd-music:/mnt/hdd-music:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
