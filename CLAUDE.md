@@ -75,4 +75,8 @@ client/src/index.css             shared component classes
 
 ## Commits
 
-Conventional commits, enforced by commitlint: `type(scope): subject`, subject in lowercase imperative, no trailing period, header under 72 characters. Types in use: `feat`, `fix`, `refactor`, `style`, `docs`, `chore`, `build`. Scopes follow the repo map, for example `ui`, `client`, `server`, `docs`.
+Conventional commits, enforced on every commit by commitlint through a husky `commit-msg` hook. A message that does not parse is rejected before the commit exists, so fix the message and commit again rather than reaching for `--no-verify`.
+
+Format is `type(scope): subject`, subject in lowercase imperative with no trailing period, header at most 72 characters. Types come from `@commitlint/config-conventional`: `feat`, `fix`, `refactor`, `perf`, `style`, `docs`, `test`, `build`, `ci`, `chore`, `revert`. The scope is optional, but when present it must be one of `ui`, `client`, `server`, `auth`, `sentinel`, `docker`, `docs`, `deps`, `repo`. Add to that list in [commitlint.config.mjs](commitlint.config.mjs) rather than working around it.
+
+The hooks are installed by the `prepare` script, so they exist after `npm install` at the repo root. An agent working in a fresh clone that has not installed root dependencies will find commits passing unchecked; run the install first.

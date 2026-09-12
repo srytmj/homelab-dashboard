@@ -97,11 +97,14 @@ GEMINI_API_KEY=AIzaSy
 ## Local development
 
 ```bash
+npm install          # root, also installs the git hooks
 npm run dev:server   # Fastify daemon on :3000
 npm run dev:client   # Vite dev server on :5173, proxies /api and /ws
 ```
 
 `npm run build` builds both. `npm start` serves the built client from the daemon.
+
+Commit messages follow [conventional commits](https://www.conventionalcommits.org) and are checked by commitlint through a husky `commit-msg` hook, for example `feat(ui): add container pagination`. Allowed scopes live in `commitlint.config.mjs`.
 
 ## HTTP API
 
