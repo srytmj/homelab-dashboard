@@ -1,7 +1,7 @@
 import Docker from 'dockerode';
 import fs from 'node:fs';
 import { ContainerMetric, DockerDiskHygiene, HttpHealthProbe } from '../types.js';
-import { config } from '../config.js';
+import { config, DockerHostConfig } from '../config.js';
 
 interface SparklineHistory {
   cpu: number[];
@@ -12,6 +12,8 @@ interface SparklineHistory {
 }
 
 export class DockerService {
+  public readonly name: string;
+  private readonly providesMocks: boolean;
   private docker: Docker | null = null;
   private isDockerAvailable = false;
   private historyMap: Map<string, SparklineHistory> = new Map();
@@ -26,23 +28,36 @@ export class DockerService {
     lastPrunedTime: 'Never pruned',
   };
 
-  constructor() {
-    this.initDocker();
-    this.initMockContainers();
+  constructor(hostConfig: DockerHostConfig, providesMocks = false) {
+    this.name = hostConfig.name;
+    this.providesMocks = providesMocks;
+    this.initDocker(hostConfig);
+    if (this.providesMocks) {
+      this.initMockContainers();
+    }
   }
 
-  private initDocker() {
+  public isConnected(): boolean {
+    return this.isDockerAvailable && !config.demoMode;
+  }
+
+  private initDocker(hostConfig: DockerHostConfig) {
     try {
-      if (fs.existsSync(config.dockerSocket)) {
-        this.docker = new Docker({ socketPath: config.dockerSocket });
+      if (hostConfig.url) {
+        const parsed = new URL(hostConfig.url);
+        this.docker = new Docker({ host: parsed.hostname, port: Number(parsed.port) || 2375 });
         this.isDockerAvailable = true;
-        console.log(`[DockerService] Connected to Docker socket at ${config.dockerSocket}`);
+        console.log(`[DockerService:${this.name}] Connected to Docker at ${hostConfig.url}`);
+      } else if (hostConfig.socketPath && fs.existsSync(hostConfig.socketPath)) {
+        this.docker = new Docker({ socketPath: hostConfig.socketPath });
+        this.isDockerAvailable = true;
+        console.log(`[DockerService:${this.name}] Connected to Docker socket at ${hostConfig.socketPath}`);
       } else {
-        console.warn(`[DockerService] Docker socket not found at ${config.dockerSocket}. Using mock fallback.`);
+        console.warn(`[DockerService:${this.name}] No reachable Docker socket or URL configured.`);
         this.isDockerAvailable = false;
       }
     } catch (err) {
-      console.warn(`[DockerService] Failed to initialize Docker client:`, err);
+      console.warn(`[DockerService:${this.name}] Failed to initialize Docker client:`, err);
       this.isDockerAvailable = false;
     }
   }
@@ -146,6 +161,7 @@ export class DockerService {
         lanUrl,
         primaryPort: svc.primaryPort,
         httpHealth,
+        dockerHost: this.name,
       };
     });
   }
@@ -156,8 +172,12 @@ export class DockerService {
         const liveContainers = await this.fetchLiveContainers(tailscaleIp);
         return { containers: liveContainers, isLive: true };
       } catch (err) {
-        console.warn(`[DockerService] Live fetch failed, falling back to mock:`, err);
+        console.warn(`[DockerService:${this.name}] Live fetch failed, falling back to mock:`, err);
       }
+    }
+
+    if (!this.providesMocks) {
+      return { containers: [], isLive: false };
     }
 
     return { containers: this.getSimulatedContainers(), isLive: false };
@@ -347,6 +367,7 @@ export class DockerService {
         lanUrl,
         primaryPort: firstPublicPort,
         httpHealth,
+        dockerHost: this.name,
       });
     }
 

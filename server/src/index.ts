@@ -34,7 +34,10 @@ async function bootstrap() {
 
   // Initialize services
   const authService = new AuthService();
-  const dockerService = new DockerService();
+  const dockerServices = config.dockerHosts.map(
+    (hostConfig, index) => new DockerService(hostConfig, index === 0)
+  );
+  const primaryDockerService = dockerServices[0];
   const proxmoxService = new ProxmoxService();
   const systemService = new SystemService();
   const tailscaleService = new TailscaleService();
@@ -44,7 +47,7 @@ async function bootstrap() {
   let sentinelService: SentinelService | null = null;
 
   const collectorService = new CollectorService(
-    dockerService,
+    dockerServices,
     proxmoxService,
     systemService,
     tailscaleService,
@@ -53,8 +56,11 @@ async function bootstrap() {
     () => sentinelService?.getStatus()
   );
 
+  // The Sentinel bot and disk hygiene/prune only ever act on the primary
+  // Docker host — each additional host has its own separate disk and is
+  // not part of the managed-container whitelist.
   sentinelService = new SentinelService(
-    dockerService,
+    primaryDockerService,
     () => collectorService.getLastSnapshot()
   );
 
@@ -181,21 +187,23 @@ async function bootstrap() {
   });
 
   app.post('/api/docker/prune', async () => {
-    const result = await dockerService.pruneSystem();
+    const result = await primaryDockerService.pruneSystem();
     return result;
   });
 
-  app.get('/api/containers/:id/logs', async (request) => {
+  app.get('/api/containers/:id/logs', async (request, reply) => {
     const { id } = request.params as { id: string };
     const { tail } = request.query as { tail?: string };
     const tailCount = tail ? parseInt(tail, 10) : 100;
-    const logs = await dockerService.getLogs(id, tailCount);
+    const service = collectorService.getDockerServiceForContainer(id) || primaryDockerService;
+    const logs = await service.getLogs(id, tailCount);
     return logs;
   });
 
   app.post('/api/containers/:id/restart', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const result = await dockerService.restartContainer(id);
+    const service = collectorService.getDockerServiceForContainer(id) || primaryDockerService;
+    const result = await service.restartContainer(id);
     if (!result.success) {
       reply.status(400);
     }

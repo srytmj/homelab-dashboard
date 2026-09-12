@@ -5,11 +5,11 @@ import { SystemService } from './system.service.js';
 import { TailscaleService } from './tailscale.service.js';
 import { SslService } from './ssl.service.js';
 import { PinsService } from './pins.service.js';
-import { CockpitSnapshot, NativeConsoleItem, SentinelStatus } from '../types.js';
+import { CockpitSnapshot, NativeConsoleItem, SentinelStatus, DockerHostSummary } from '../types.js';
 import { config } from '../config.js';
 
 export class CollectorService {
-  private dockerService: DockerService;
+  private dockerServices: DockerService[];
   private proxmoxService: ProxmoxService;
   private systemService: SystemService;
   private tailscaleService: TailscaleService;
@@ -21,7 +21,7 @@ export class CollectorService {
   private lastSnapshot: CockpitSnapshot | null = null;
 
   constructor(
-    dockerService: DockerService,
+    dockerServices: DockerService[],
     proxmoxService: ProxmoxService,
     systemService: SystemService,
     tailscaleService: TailscaleService,
@@ -29,7 +29,7 @@ export class CollectorService {
     pinsService: PinsService,
     getSentinelStatus?: () => SentinelStatus | undefined
   ) {
-    this.dockerService = dockerService;
+    this.dockerServices = dockerServices;
     this.proxmoxService = proxmoxService;
     this.systemService = systemService;
     this.tailscaleService = tailscaleService;
@@ -88,14 +88,28 @@ export class CollectorService {
       this.tailscaleService.getStatus(),
       this.systemService.getStorageMatrix(),
       this.sslService.getCertificates(),
-      this.dockerService.getDiskHygiene(),
+      this.dockerServices[0].getDiskHygiene(),
     ]);
 
     const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
-    const containerData = await this.dockerService.getContainers(selfTailscaleIp);
+    const perHostResults = await Promise.all(
+      this.dockerServices.map(async (service) => ({
+        service,
+        result: await service.getContainers(selfTailscaleIp),
+      }))
+    );
+
+    const dockerHosts: DockerHostSummary[] = perHostResults.map(({ service, result }) => ({
+      name: service.name,
+      connected: service.isConnected(),
+      containerCount: result.containers.length,
+    }));
+
+    const anyLive = perHostResults.some(({ result }) => result.isLive);
+    const allContainers = perHostResults.flatMap(({ result }) => result.containers);
 
     const pins = this.pinsService.getAll();
-    const containers = containerData.containers.map(container => {
+    const containers = allContainers.map(container => {
       const pin = pins[container.name];
       return pin
         ? { ...container, isPinned: true, publicUrl: pin.publicUrl }
@@ -212,15 +226,22 @@ export class CollectorService {
       storage: storageData,
       tailscale: tailscaleData,
       containers,
+      dockerHosts,
       sslCertificates: sslCerts,
       dockerHygiene: diskHygiene,
       consoles,
       sentinel,
-      isDemoMode: !containerData.isLive || config.demoMode,
+      isDemoMode: !anyLive || config.demoMode,
     };
 
     this.lastSnapshot = snapshot;
     return snapshot;
+  }
+
+  public getDockerServiceForContainer(id: string): DockerService | undefined {
+    const container = this.lastSnapshot?.containers.find((c) => c.id === id || c.shortId === id);
+    if (!container) return undefined;
+    return this.dockerServices.find((service) => service.name === container.dockerHost);
   }
 
   private async collectAndBroadcast() {

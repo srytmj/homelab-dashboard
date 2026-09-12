@@ -1,10 +1,35 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+export interface DockerHostConfig {
+  name: string;
+  socketPath?: string;
+  url?: string;
+}
+
+function parseDockerHosts(raw: string | undefined): DockerHostConfig[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [name, url] = entry.split('=').map((s) => s.trim());
+      return { name, url };
+    })
+    .filter((host) => host.name && host.url);
+}
+
+const primaryDockerHost: DockerHostConfig = {
+  name: process.env.DOCKER_HOST_NAME || 'docker-host',
+  socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
+};
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   host: process.env.HOST || '0.0.0.0',
-  dockerSocket: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
+  dockerSocket: primaryDockerHost.socketPath!,
+  dockerHosts: [primaryDockerHost, ...parseDockerHosts(process.env.DOCKER_HOSTS)] as DockerHostConfig[],
   proxmox: {
     url: process.env.PROXMOX_URL || 'https://192.168.18.224:8006',
     node: process.env.PROXMOX_NODE || 'pve',

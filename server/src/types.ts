@@ -146,6 +146,13 @@ export interface ContainerMetric {
   httpHealth?: HttpHealthProbe;
   isPinned?: boolean;
   publicUrl?: string;
+  dockerHost: string;
+}
+
+export interface DockerHostSummary {
+  name: string;
+  connected: boolean;
+  containerCount: number;
 }
 
 export interface NativeConsoleItem {
@@ -179,6 +186,7 @@ export interface CockpitSnapshot {
   storage: StorageItem[];
   tailscale: TailscaleStatus;
   containers: ContainerMetric[];
+  dockerHosts: DockerHostSummary[];
   sslCertificates: SslCertificate[];
   dockerHygiene: DockerDiskHygiene;
   consoles: NativeConsoleItem[];
