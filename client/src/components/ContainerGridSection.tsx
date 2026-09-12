@@ -1,5 +1,19 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, RefreshCw, Terminal, Copy, Check, ExternalLink, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pin } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import {
+  Search,
+  RefreshCw,
+  Terminal,
+  Copy,
+  Check,
+  ExternalLink,
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Pin,
+  Server,
+} from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
 import { formatBytes, formatNetworkRate, redactText, getStatusColor } from '../utils/formatters.js';
@@ -15,6 +29,174 @@ interface ContainerGridSectionProps {
 type SortKey = 'cpu' | 'ram' | 'name' | 'network';
 
 const PAGE_SIZES = [10, 25, 50, 100];
+const HOST_DROPDOWN_THRESHOLD = 5;
+
+function useClickOutside(onOutside: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onOutside();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onOutside]);
+  return ref;
+}
+
+const WebUiMenu: React.FC<{ container: ContainerMetric; isPrivacyMode: boolean }> = ({
+  container,
+  isPrivacyMode,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const ref = useClickOutside(() => setIsOpen(false));
+
+  const links = [
+    { label: 'LAN', url: container.lanUrl },
+    { label: 'Tailscale', url: container.tailscaleUrl },
+    { label: 'Public domain', url: container.publicUrl },
+  ].filter((l): l is { label: string; url: string } => Boolean(l.url));
+
+  if (links.length === 0) {
+    return <span className="font-mono text-[11px] text-cockpit-muted">internal</span>;
+  }
+
+  const copy = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(null), 2000);
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setIsOpen((v) => !v)}
+        title="Choose which address to open"
+        className="inline-flex items-center gap-1 rounded-md border border-cockpit-border px-2 py-1 font-mono text-[11px] text-cockpit-accent transition-colors hover:border-cockpit-accent/40"
+      >
+        <ExternalLink className="h-3 w-3" />:{container.primaryPort}
+        <ChevronDown className="h-3 w-3 opacity-70" />
+      </button>
+
+      {isOpen && (
+        <div className="modal-panel absolute left-0 top-full z-30 mt-1.5 w-64 overflow-hidden rounded-lg border border-cockpit-border bg-cockpit-panel shadow-lg shadow-black/30">
+          {links.map((link) => (
+            <div
+              key={link.label}
+              className="flex items-center justify-between gap-2 border-b border-cockpit-border px-3 py-2 last:border-b-0 hover:bg-cockpit-panelHover"
+            >
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setIsOpen(false)}
+                className="min-w-0 flex-1"
+              >
+                <span className="block text-[11.5px] font-semibold text-cockpit-text">{link.label}</span>
+                <span className="block truncate font-mono text-[10.5px] text-cockpit-muted">
+                  {redactText(link.url, isPrivacyMode)}
+                </span>
+              </a>
+              <button onClick={() => copy(link.url)} title="Copy URL" className="icon-btn shrink-0 p-1">
+                {copiedUrl === link.url ? (
+                  <Check className="h-3 w-3 animate-popIn text-state-good" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const HostFilter: React.FC<{
+  hosts: string[];
+  value: string;
+  onChange: (host: string) => void;
+}> = ({ hosts, value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useClickOutside(() => setIsOpen(false));
+
+  if (hosts.length <= HOST_DROPDOWN_THRESHOLD) {
+    return (
+      <div className="seg">
+        <button onClick={() => onChange('all')} className={`seg-btn ${value === 'all' ? 'seg-btn-on' : ''}`}>
+          All docker
+        </button>
+        {hosts.map((host) => (
+          <button
+            key={host}
+            onClick={() => onChange(host)}
+            className={`seg-btn ${value === host ? 'seg-btn-on' : ''}`}
+          >
+            {host}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  const filteredHosts = hosts.filter((h) => h.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setIsOpen((v) => !v)} className="seg-btn seg-btn-on inline-flex items-center gap-1.5">
+        <Server className="h-3 w-3" />
+        {value === 'all' ? 'All docker' : value}
+        <ChevronDown className="h-3 w-3 opacity-70" />
+      </button>
+
+      {isOpen && (
+        <div className="modal-panel absolute left-0 top-full z-30 mt-1.5 w-56 overflow-hidden rounded-lg border border-cockpit-border bg-cockpit-panel shadow-lg shadow-black/30">
+          <div className="border-b border-cockpit-border p-2">
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search docker host…"
+              className="field w-full"
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto py-1">
+            <button
+              onClick={() => {
+                onChange('all');
+                setIsOpen(false);
+              }}
+              className={`block w-full px-3 py-1.5 text-left text-[12.5px] hover:bg-cockpit-panelHover ${
+                value === 'all' ? 'text-cockpit-accent' : 'text-cockpit-text'
+              }`}
+            >
+              All docker
+            </button>
+            {filteredHosts.map((host) => (
+              <button
+                key={host}
+                onClick={() => {
+                  onChange(host);
+                  setIsOpen(false);
+                }}
+                className={`block w-full truncate px-3 py-1.5 text-left text-[12.5px] hover:bg-cockpit-panelHover ${
+                  value === host ? 'text-cockpit-accent' : 'text-cockpit-text'
+                }`}
+              >
+                {host}
+              </button>
+            ))}
+            {filteredHosts.length === 0 && (
+              <p className="px-3 py-2 text-[12px] text-cockpit-muted">No host matches "{query}".</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   containers = [],
@@ -25,17 +207,16 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
-  const [networkFilter, setNetworkFilter] = useState<'all' | 'tailscale' | 'lan'>('all');
-  const [urlMode, setUrlMode] = useState<'auto' | 'tailscale' | 'lan'>('auto');
+  const [hostFilter, setHostFilter] = useState('all');
   const [sortBy, setSortBy] = useState<SortKey>('cpu');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  const isLoadedViaTailscale =
-    typeof window !== 'undefined' &&
-    (window.location.hostname.startsWith('100.') || window.location.hostname.endsWith('.ts.net'));
+  const hostNames = useMemo(
+    () => Array.from(new Set(containers.map((c) => c.dockerHost))).sort(),
+    [containers]
+  );
 
   const filteredContainers = useMemo(() => {
     return containers
@@ -49,8 +230,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
         if (!matchesSearch) return false;
         if (statusFilter === 'running' && c.state !== 'running') return false;
         if (statusFilter === 'exited' && c.state === 'running') return false;
-        if (networkFilter === 'tailscale' && !c.tailscaleEnabled) return false;
-        if (networkFilter === 'lan' && c.tailscaleEnabled) return false;
+        if (hostFilter !== 'all' && c.dockerHost !== hostFilter) return false;
         return true;
       })
       .sort((a, b) => {
@@ -63,7 +243,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
           (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
         return sortOrder === 'desc' ? -diff : diff;
       });
-  }, [containers, search, statusFilter, networkFilter, sortBy, sortOrder]);
+  }, [containers, search, statusFilter, hostFilter, sortBy, sortOrder]);
 
   const pageCount = Math.max(1, Math.ceil(filteredContainers.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -72,7 +252,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, networkFilter, pageSize]);
+  }, [search, statusFilter, hostFilter, pageSize]);
 
   const toggleSort = (column: SortKey) => {
     if (sortBy === column) {
@@ -83,21 +263,6 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
     }
   };
 
-  const copyToClipboard = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    setTimeout(() => setCopiedUrl(null), 2000);
-  };
-
-  const getContainerTargetUrl = (container: ContainerMetric): string | undefined => {
-    if (urlMode === 'tailscale') return container.tailscaleUrl;
-    if (urlMode === 'lan') return container.lanUrl;
-    return isLoadedViaTailscale
-      ? container.tailscaleUrl || container.lanUrl
-      : container.lanUrl || container.tailscaleUrl;
-  };
-
-  const tailscaleCount = containers.filter((c) => c.tailscaleEnabled).length;
   const runningCount = containers.filter((c) => c.state === 'running').length;
 
   const SortHeader: React.FC<{ column: SortKey; children: React.ReactNode; className?: string }> = ({
@@ -156,38 +321,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             ))}
           </div>
 
-          <div className="seg">
-            {([
-              ['all', 'All nets'],
-              ['tailscale', `Tailscale ${tailscaleCount}`],
-              ['lan', 'LAN'],
-            ] as const).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setNetworkFilter(mode)}
-                className={`seg-btn ${networkFilter === mode ? 'seg-btn-on' : ''}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="seg" title="Which address the service links point at">
-            <span className="label px-2">Links</span>
-            {([
-              ['auto', 'Auto'],
-              ['lan', 'LAN'],
-              ['tailscale', 'TS'],
-            ] as const).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setUrlMode(mode)}
-                className={`seg-btn ${urlMode === mode ? 'seg-btn-on' : ''}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {hostNames.length > 1 && <HostFilter hosts={hostNames} value={hostFilter} onChange={setHostFilter} />}
         </div>
       </div>
 
@@ -208,8 +342,6 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             {visibleContainers.map((container) => {
               const isRunning = container.state === 'running';
               const cpuTone = getStatusColor(container.cpuPercent);
-              const targetUrl = getContainerTargetUrl(container);
-              const isCopied = copiedUrl === targetUrl;
               const probe = container.httpHealth;
 
               return (
@@ -233,6 +365,11 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                         <div className="truncate font-mono text-[11px] text-cockpit-muted" title={container.image}>
                           {container.image}
                         </div>
+                        {hostNames.length > 1 && (
+                          <div className="mt-0.5 truncate font-mono text-[10px] text-cockpit-muted">
+                            {container.dockerHost}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -253,28 +390,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                   </td>
 
                   <td className="px-4 py-3">
-                    {targetUrl ? (
-                      <div className="flex items-center gap-1.5">
-                        <a
-                          href={targetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={`Open ${redactText(targetUrl, isPrivacyMode)}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-cockpit-border px-2 py-1 font-mono text-[11px] text-cockpit-accent transition-colors hover:border-cockpit-accent/40"
-                        >
-                          <ExternalLink className="h-3 w-3" />:{container.primaryPort}
-                        </a>
-                        <button
-                          onClick={() => copyToClipboard(targetUrl)}
-                          title="Copy URL"
-                          className="icon-btn p-1"
-                        >
-                          {isCopied ? <Check className="h-3 w-3 animate-popIn text-state-good" /> : <Copy className="h-3 w-3" />}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="font-mono text-[11px] text-cockpit-muted">internal</span>
-                    )}
+                    <WebUiMenu container={container} isPrivacyMode={isPrivacyMode} />
                   </td>
 
                   <td className="px-4 py-3">
