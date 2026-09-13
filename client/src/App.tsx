@@ -5,6 +5,7 @@ import { AuthScreen } from './components/AuthScreen.js';
 import { useCockpitData } from './hooks/useCockpitData.js';
 import { useTheme } from './hooks/useTheme.js';
 import { Header } from './components/Header.js';
+import { Sidebar } from './components/Sidebar.js';
 import { DasWatchdogAlert } from './components/DasWatchdogAlert.js';
 import { CommandPalette } from './components/CommandPalette.js';
 import { LogModal } from './components/LogModal.js';
@@ -75,23 +76,26 @@ function CockpitDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-cockpit-bg text-cockpit-text">
-      <Header
-        snapshot={snapshot}
-        isConnected={isConnected}
-        lastUpdated={lastUpdated}
-        isPrivacyMode={isPrivacyMode}
-        isFullscreen={isFullscreen}
-        theme={theme}
-        onTogglePrivacy={() => setIsPrivacyMode(!isPrivacyMode)}
-        onToggleFullscreen={toggleFullscreen}
-        onToggleTheme={toggleTheme}
-        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-        onRefresh={refetch}
-      />
+    <div className="flex min-h-screen bg-cockpit-bg text-cockpit-text">
+      <Sidebar />
 
-      <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-6 px-5 py-7 lg:px-8">
-        <DasWatchdogAlert storage={snapshot?.storage} />
+      <div className="flex min-h-screen flex-1 flex-col">
+        <Header
+          snapshot={snapshot}
+          isConnected={isConnected}
+          lastUpdated={lastUpdated}
+          isPrivacyMode={isPrivacyMode}
+          isFullscreen={isFullscreen}
+          theme={theme}
+          onTogglePrivacy={() => setIsPrivacyMode(!isPrivacyMode)}
+          onToggleFullscreen={toggleFullscreen}
+          onToggleTheme={toggleTheme}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onRefresh={refetch}
+        />
+
+        <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-6 px-5 py-7 lg:px-8">
+          <DasWatchdogAlert storage={snapshot?.storage} />
 
         {snapshot?.host.pve && !snapshot.host.pve.connected && (
           <p className="rounded-panel border border-cockpit-border bg-cockpit-panel px-5 py-3.5 text-[12.5px] leading-relaxed text-cockpit-muted">
@@ -135,7 +139,8 @@ function CockpitDashboard() {
             }
           />
         </Routes>
-      </main>
+        </main>
+      </div>
 
       <CommandPalette
         isOpen={isCommandPaletteOpen}

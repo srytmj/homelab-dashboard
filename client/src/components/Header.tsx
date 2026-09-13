@@ -5,6 +5,8 @@ import { CockpitSnapshot } from '../types.js';
 import { redactText, formatBytes } from '../utils/formatters.js';
 import { useAuth } from '../context/AuthContext.js';
 import { Theme } from '../hooks/useTheme.js';
+import { NAV_ROUTES } from './Sidebar.js';
+import { ClockWeatherWidget } from './ClockWeatherWidget.js';
 
 interface HeaderProps {
   snapshot: CockpitSnapshot | null;
@@ -19,16 +21,6 @@ interface HeaderProps {
   onOpenCommandPalette: () => void;
   onRefresh: () => void;
 }
-
-const NAV_ROUTES = [
-  { path: '/', label: 'Overview' },
-  { path: '/fleet', label: 'Fleet' },
-  { path: '/infra', label: 'Infra' },
-  { path: '/git-projects', label: 'Git projects' },
-  { path: '/processes', label: 'Processes' },
-  { path: '/terminal', label: 'Terminal' },
-  { path: '/sentinel', label: 'Sentinel' },
-];
 
 export const Header: React.FC<HeaderProps> = ({
   snapshot,
@@ -82,31 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          <nav className="hidden items-center gap-1 md:flex">
-            {NAV_ROUTES.map((route) => (
-              <NavLink
-                key={route.path}
-                to={route.path}
-                end={route.path === '/'}
-                className={({ isActive }) =>
-                  `relative rounded-md px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-200 ${
-                    isActive ? 'text-cockpit-accent' : 'text-cockpit-muted hover:text-cockpit-text'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {route.label}
-                    <span
-                      className={`absolute inset-x-3 -bottom-0.5 h-px origin-left bg-cockpit-accent transition-transform duration-300 ${
-                        isActive ? 'scale-x-100' : 'scale-x-0'
-                      }`}
-                    />
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </nav>
+          <ClockWeatherWidget />
 
           <div className="flex items-center gap-2">
             <button
