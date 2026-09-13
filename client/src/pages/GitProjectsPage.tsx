@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { GitBranch, Plus, RefreshCw } from 'lucide-react';
+import { Download, GitBranch, Plus, RefreshCw } from 'lucide-react';
 import { CockpitSnapshot, GitProjectStatus } from '../types.js';
 import { GitProjectModal } from '../components/GitProjectModal.js';
+import { GitPullModal } from '../components/GitPullModal.js';
 
 interface GitProjectsPageProps {
   snapshot: CockpitSnapshot | null;
@@ -10,13 +11,14 @@ interface GitProjectsPageProps {
 
 export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRefetch }) => {
   const [editingProject, setEditingProject] = useState<GitProjectStatus | null>(null);
+  const [pullingProject, setPullingProject] = useState<GitProjectStatus | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
   const projects = snapshot?.gitProjects ?? [];
   const containers = snapshot?.containers ?? [];
-  const isModalOpen = isAdding || editingProject !== null;
+  const isEditModalOpen = isAdding || editingProject !== null;
 
-  const closeModal = () => {
+  const closeEditModal = () => {
     setIsAdding(false);
     setEditingProject(null);
   };
@@ -44,55 +46,71 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
         </p>
       ) : (
         <div className="px-5 py-1.5">
-          {projects.map((project) => (
-            <button
-              key={project.containerName}
-              onClick={() => setEditingProject(project)}
-              className="data-row w-full text-left transition-colors hover:bg-cockpit-panelHover"
-            >
-              <span className="flex min-w-0 items-center gap-2.5">
-                <GitBranch className="h-3.5 w-3.5 shrink-0 text-cockpit-muted" />
-                <span className="min-w-0">
-                  <span className="block font-semibold text-cockpit-text">{project.containerName}</span>
-                  <span className="block truncate font-mono text-[11px] text-cockpit-muted">
-                    {project.repoOwner}/{project.repoName}@{project.branch}
-                  </span>
-                </span>
-              </span>
+          {projects.map((project) => {
+            const canPull = Boolean(project.localPath && project.rebuildCommand);
 
-              <span className="flex shrink-0 items-center gap-2.5">
-                {project.latestCommitMessage ? (
-                  <span className="hidden text-right sm:block">
-                    <span className="block max-w-[240px] truncate text-[12px] text-cockpit-text">
-                      {project.latestCommitMessage}
-                    </span>
-                    <span className="block font-mono text-[10.5px] text-cockpit-muted">
-                      {project.latestCommitDate ? new Date(project.latestCommitDate).toLocaleString() : ''}
+            return (
+              <div key={project.containerName} className="data-row gap-3">
+                <button
+                  onClick={() => setEditingProject(project)}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                  title="Edit this project"
+                >
+                  <GitBranch className="h-3.5 w-3.5 shrink-0 text-cockpit-muted" />
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-cockpit-text">{project.containerName}</span>
+                    <span className="block truncate font-mono text-[11px] text-cockpit-muted">
+                      {project.repoOwner}/{project.repoName}@{project.branch}
                     </span>
                   </span>
-                ) : (
-                  <span className="flex items-center gap-1 font-mono text-[11px] text-cockpit-muted">
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                    checking…
+                </button>
+
+                <div className="flex shrink-0 items-center gap-2.5">
+                  {project.latestCommitMessage ? (
+                    <span className="hidden text-right sm:block">
+                      <span className="block max-w-[240px] truncate text-[12px] text-cockpit-text">
+                        {project.latestCommitMessage}
+                      </span>
+                      <span className="block font-mono text-[10.5px] text-cockpit-muted">
+                        {project.latestCommitDate ? new Date(project.latestCommitDate).toLocaleString() : ''}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 font-mono text-[11px] text-cockpit-muted">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      checking…
+                    </span>
+                  )}
+                  <span className={`pill ${project.hasUpdate ? 'pill-warn' : 'pill-neutral'}`}>
+                    {project.hasUpdate ? 'Update available' : project.lastKnownSha ? 'Up to date' : 'Not deployed yet'}
                   </span>
-                )}
-                <span className={`pill ${project.hasUpdate ? 'pill-warn' : 'pill-neutral'}`}>
-                  {project.hasUpdate ? 'Update available' : project.lastKnownSha ? 'Up to date' : 'Not deployed yet'}
-                </span>
-              </span>
-            </button>
-          ))}
+                  <button
+                    onClick={() => setPullingProject(project)}
+                    disabled={!canPull}
+                    title={canPull ? 'Pull & rebuild' : 'Set a local path and rebuild command to enable this'}
+                    className="icon-btn hover:border-cockpit-accent/40 hover:text-cockpit-accent disabled:opacity-30"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {isModalOpen && (
+      {isEditModalOpen && (
         <GitProjectModal
           containers={containers}
           existingNames={projects.map((p) => p.containerName)}
           editingProject={editingProject}
-          onClose={closeModal}
+          onClose={closeEditModal}
           onSaved={onRefetch}
         />
+      )}
+
+      {pullingProject && (
+        <GitPullModal project={pullingProject} onClose={() => setPullingProject(null)} onSuccess={onRefetch} />
       )}
     </section>
   );

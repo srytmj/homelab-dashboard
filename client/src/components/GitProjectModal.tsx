@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { GitBranch, Trash2, X } from 'lucide-react';
-import { ContainerMetric, GitProjectStatus } from '../types.js';
+import { ContainerMetric, GitProjectStatus, RebuildCommand } from '../types.js';
 import { authFetch } from '../utils/api.js';
+
+const REBUILD_OPTIONS: { value: RebuildCommand; label: string }[] = [
+  { value: 'compose-up-build', label: 'docker compose up -d --build' },
+  { value: 'compose-up-build-force-recreate', label: 'docker compose up -d --build --force-recreate' },
+];
 
 interface GitProjectModalProps {
   containers: ContainerMetric[];
@@ -23,6 +28,8 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
     editingProject ? `${editingProject.repoOwner}/${editingProject.repoName}` : ''
   );
   const [branch, setBranch] = useState(editingProject?.branch ?? 'main');
+  const [localPath, setLocalPath] = useState(editingProject?.localPath ?? '');
+  const [rebuildCommand, setRebuildCommand] = useState<RebuildCommand | ''>(editingProject?.rebuildCommand ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +51,13 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
       await authFetch(`/api/git-projects/${encodeURIComponent(containerName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoOwner, repoName, branch: branch.trim() || 'main' }),
+        body: JSON.stringify({
+          repoOwner,
+          repoName,
+          branch: branch.trim() || 'main',
+          localPath: localPath.trim() || undefined,
+          rebuildCommand: rebuildCommand || undefined,
+        }),
       });
       onSaved();
       onClose();
@@ -132,6 +145,47 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
               className="field w-full"
             />
           </div>
+
+          <div className="space-y-1.5 border-t border-cockpit-border pt-4">
+            <label htmlFor="git-local-path" className="label block">
+              Local path (optional, enables pull &amp; rebuild)
+            </label>
+            <input
+              id="git-local-path"
+              type="text"
+              placeholder="myapp"
+              value={localPath}
+              onChange={(e) => setLocalPath(e.target.value)}
+              disabled={isSubmitting}
+              className="field w-full"
+            />
+            <p className="text-[11.5px] text-cockpit-muted">
+              Folder name under your Git Projects root (<code className="font-mono">GIT_PROJECTS_ROOT</code>) —
+              this project's working tree must already exist there.
+            </p>
+          </div>
+
+          {localPath.trim() && (
+            <div className="space-y-1.5">
+              <label htmlFor="git-rebuild-command" className="label block">
+                Rebuild command
+              </label>
+              <select
+                id="git-rebuild-command"
+                value={rebuildCommand}
+                onChange={(e) => setRebuildCommand(e.target.value as RebuildCommand)}
+                disabled={isSubmitting}
+                className="field w-full font-mono"
+              >
+                <option value="">Not set — pull &amp; rebuild stays disabled</option>
+                {REBUILD_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {error && <p className="text-[12px] text-state-bad">{error}</p>}
 
