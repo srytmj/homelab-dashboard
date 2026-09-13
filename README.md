@@ -60,7 +60,7 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 
 **Disk hygiene.** Reclaimable space across dangling layers and build cache, with a confirmation modal that runs a safe prune. Running containers and named volumes are never touched.
 
-**Git projects.** Track a container that's built from your own repo — separate from off-the-shelf services like Jellyfin — and see its latest upstream commit against what you last deployed, checked against GitHub every few minutes (not on every poll tick, to stay well under GitHub's rate limit). Read-only for now: pulling and rebuilding from the dashboard is a planned follow-up, not built yet.
+**Git projects.** Track a container that's built from your own repo — separate from off-the-shelf services like Jellyfin — and see its latest upstream commit against what you last deployed, checked against GitHub every few minutes (not on every poll tick, to stay well under GitHub's rate limit). Set a local path and a rebuild command and the dashboard can pull and rebuild it directly, with a heuristic warning first if the changed files look like they touch a database migration. This is the one feature that runs a command against the host — see Git project pull/rebuild below before enabling it.
 
 **Pinned containers and public domains.** Pin any container from the fleet table, optionally with the public domain it answers on if it's exposed through a Cloudflare tunnel. Pins persist server-side in `data/pins.json`, so they follow you between browsers and devices.
 
@@ -112,6 +112,10 @@ STORAGE_MOUNTS=/,/mnt/hdd-media,/mnt/hdd-cloud,/mnt/hdd-music
 # allows tracking private repos)
 GITHUB_TOKEN=
 
+# Only needed if you'll use pull/rebuild from the Git projects page — see
+# "Git project pull/rebuild" below before setting this
+GIT_PROJECTS_ROOT=/opt/homelab-projects
+
 # Optional Telegram companion
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF
 TELEGRAM_ALLOWED_USER_IDS=12345678
@@ -127,6 +131,16 @@ Everything the dashboard shows about your machine — node name, CPU, RAM, IPs �
 - **`DOCKER_SOCKET`** / **`DOCKER_HOST_NAME`** should match where the daemon itself runs. `DOCKER_HOSTS` is only for additional hosts reachable over your tailnet (see Multiple Docker hosts above) — leave it empty for a single-host setup.
 - **`PROXMOX_URL`**, **`PROXMOX_TOKEN_ID`** and **`PROXMOX_TOKEN_SECRET`** — without these the Overview and Infra pages show a `SIMULATED` badge and generated numbers, not your actual hardware.
 - A pinned container's **public domain** is normalized server-side (`https://` is added if you omit a scheme), but paste the real address a browser would use, not just a bare hostname you haven't verified resolves.
+
+### Git project pull/rebuild
+
+This is the one feature where the dashboard runs a command against your host rather than just reading data from it, so it's worth understanding before you turn it on.
+
+The container image now includes `git` and the `docker` CLI, talking to the same `docker.sock` already mounted for container metrics — this is the standard "Docker outside of Docker" pattern (the same one Portainer or Watchtower use), not a separate Docker-in-Docker install. `GIT_PROJECTS_ROOT` on the host is bind-mounted read-write to `/projects` inside the container. Every project you want to pull/rebuild through the dashboard needs its working tree already cloned somewhere under that directory, e.g. `$GIT_PROJECTS_ROOT/myapp` — the dashboard never clones a repo for you, only pulls one that's already there.
+
+When you register a project's **local path** as `myapp` and pick a **rebuild command**, pulling runs, in order: `git -C /projects/myapp fetch`, a read-only diff to check for migration risk, then (once you confirm) `git -C /projects/myapp pull` and the chosen `docker compose up -d --build[...]` with `cwd` set to that same directory. The rebuild command is a fixed choice from a short list, resolved server-side — the dashboard's UI never lets you type an arbitrary shell command, and the API never accepts one either.
+
+Skip `GIT_PROJECTS_ROOT` entirely if you only want commit tracking (Track a project still works without it) — pull/rebuild for a project without a local path and rebuild command configured stays disabled on that row.
 
 If you're an AI agent setting this up or extending it: don't reintroduce hardware-specific strings into `client/src/` — host name, CPU model, IPs and per-drive labels must come from `snapshot.host`/`snapshot.storage` (or the config above), never a literal like a specific CPU model name or IP address written into a component. That was a real bug here once already (see [CLAUDE.md](CLAUDE.md)).
 
@@ -162,8 +176,10 @@ Everything except `/api/health` and `/api/auth/*` requires `Authorization: Beare
 | POST | `/api/docker/prune` | Safe prune of layers and build cache |
 | POST | `/api/pins/:name` | Pin a container, optionally with `{ publicUrl }` |
 | DELETE | `/api/pins/:name` | Unpin a container |
-| POST | `/api/git-projects/:containerName` | Track a container's repo — `{ repoOwner, repoName, branch }` |
+| POST | `/api/git-projects/:containerName` | Track a container's repo — `{ repoOwner, repoName, branch, localPath?, rebuildCommand? }` |
 | DELETE | `/api/git-projects/:containerName` | Stop tracking |
+| POST | `/api/git-projects/:containerName/check-pull` | Read-only: lists files that would change, flags migration risk |
+| POST | `/api/git-projects/:containerName/pull` | Pull and run the configured rebuild command |
 | WS | `/ws` | Snapshot broadcast every 2 seconds |
 
 ## Documentation

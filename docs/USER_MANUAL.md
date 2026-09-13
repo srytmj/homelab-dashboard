@@ -106,9 +106,19 @@ The footer button shows reclaimable Docker space and opens the prune dialog. Pru
 
 ## Git projects
 
-For containers that are your own projects — not off-the-shelf services like Jellyfin or Kavita. **Track a project** links a container to a GitHub repo and branch; the daemon checks that repo's latest commit every few minutes and shows an **Update available** pill when it differs from what you last deployed. **Not deployed yet** means the project is tracked but no deployed commit has been recorded — that only happens once pull/rebuild from the dashboard ships; for now this page is read-only.
+For containers that are your own projects — not off-the-shelf services like Jellyfin or Kavita. **Track a project** links a container to a GitHub repo and branch; the daemon checks that repo's latest commit every few minutes and shows an **Update available** pill when it differs from what you last deployed.
 
-Click a tracked row to edit its repo/branch or stop tracking it.
+Click a tracked row to edit its repo/branch, set a local path and rebuild command, or stop tracking it.
+
+### Pull and rebuild
+
+The download icon on a row pulls and rebuilds that project — it's disabled until the project has both a **local path** (the folder name under your `GIT_PROJECTS_ROOT`, where the project's working tree actually lives on the host) and a **rebuild command** set in the edit dialog.
+
+Clicking it first checks what would change, without touching anything:
+
+- If the changed files include something that looks like a database migration (a `migrations/` folder, `prisma/schema.prisma`, `alembic/`, or a `.sql` file), you get a warning listing exactly which files matched before you can continue. This is a pattern match, not a guarantee — it can miss a real migration named unusually, or flag a file that isn't one. Read the list.
+- Confirming runs `git pull` followed by the configured rebuild command in that project's directory. This can take a while for a slow build; the dialog stays open until it finishes.
+- The record of "what's deployed" only updates through this button. Deploying the same project some other way (SSH, a separate CI job) leaves the dashboard showing the old commit as deployed until you pull through here again.
 
 ## Sentinel
 
