@@ -155,11 +155,15 @@ export interface DockerHostSummary {
   containerCount: number;
 }
 
+export type RebuildCommand = 'compose-up-build' | 'compose-up-build-force-recreate';
+
 export interface GitProjectStatus {
   containerName: string;
   repoOwner: string;
   repoName: string;
   branch: string;
+  localPath?: string;
+  rebuildCommand?: RebuildCommand;
   latestSha?: string;
   latestCommitMessage?: string;
   latestCommitDate?: string;

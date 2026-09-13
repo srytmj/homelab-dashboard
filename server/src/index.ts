@@ -14,7 +14,7 @@ import { SystemService } from './services/system.service.js';
 import { TailscaleService } from './services/tailscale.service.js';
 import { SslService } from './services/ssl.service.js';
 import { PinsService } from './services/pins.service.js';
-import { GitProjectsService } from './services/git-projects.service.js';
+import { GitProjectsService, RebuildCommand } from './services/git-projects.service.js';
 import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
 
@@ -228,12 +228,25 @@ async function bootstrap() {
 
   app.post('/api/git-projects/:containerName', async (request, reply) => {
     const { containerName } = request.params as { containerName: string };
-    const body = request.body as { repoOwner?: string; repoName?: string; branch?: string };
+    const body = request.body as {
+      repoOwner?: string;
+      repoName?: string;
+      branch?: string;
+      localPath?: string;
+      rebuildCommand?: RebuildCommand;
+    };
     if (!body?.repoOwner || !body?.repoName) {
       reply.status(400);
       return { success: false, message: 'repoOwner and repoName are required' };
     }
-    const record = gitProjectsService.register(containerName, body.repoOwner, body.repoName, body.branch || 'main');
+    const record = gitProjectsService.register(
+      containerName,
+      body.repoOwner,
+      body.repoName,
+      body.branch || 'main',
+      body.localPath,
+      body.rebuildCommand
+    );
     return { success: true, project: record };
   });
 
@@ -241,6 +254,20 @@ async function bootstrap() {
     const { containerName } = request.params as { containerName: string };
     gitProjectsService.unregister(containerName);
     return { success: true };
+  });
+
+  app.post('/api/git-projects/:containerName/check-pull', async (request) => {
+    const { containerName } = request.params as { containerName: string };
+    return gitProjectsService.checkPull(containerName);
+  });
+
+  app.post('/api/git-projects/:containerName/pull', async (request, reply) => {
+    const { containerName } = request.params as { containerName: string };
+    const result = await gitProjectsService.pullAndRebuild(containerName);
+    if (!result.success) {
+      reply.status(400);
+    }
+    return result;
   });
 
   // Serve Client SPA in Production

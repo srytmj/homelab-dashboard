@@ -1,16 +1,35 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile as execFileCb } from 'node:child_process';
+import { promisify } from 'node:util';
 import { config } from '../config.js';
 import { GitProjectStatus } from '../types.js';
 
+const execFile = promisify(execFileCb);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+export type RebuildCommand = 'compose-up-build' | 'compose-up-build-force-recreate';
+
+const REBUILD_ARGS: Record<RebuildCommand, string[]> = {
+  'compose-up-build': ['compose', 'up', '-d', '--build'],
+  'compose-up-build-force-recreate': ['compose', 'up', '-d', '--build', '--force-recreate'],
+};
+
+// Files matching any of these are treated as a signal that pulling might
+// change the database — a heuristic, not a guarantee. See docs/USER_MANUAL.md.
+const MIGRATION_RISK_PATTERNS = [/migrations\//i, /prisma\/schema\.prisma$/i, /alembic\//i, /\.sql$/i];
+
+const EXEC_OPTS = { timeout: 5 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 };
 
 interface GitProjectRecord {
   repoOwner: string;
   repoName: string;
   branch: string;
+  localPath?: string;
+  rebuildCommand?: RebuildCommand;
   lastKnownSha?: string;
   // Cached result of the last successful GitHub check, so every collector
   // tick can return instantly without hitting the network.
@@ -27,6 +46,19 @@ interface GitProjectsDb {
 interface GithubCommit {
   sha: string;
   commit: { message: string; committer?: { date?: string } };
+}
+
+export interface CheckPullResult {
+  ok: boolean;
+  message?: string;
+  riskyFiles: string[];
+  changedFiles: string[];
+}
+
+export interface PullResult {
+  success: boolean;
+  message: string;
+  newSha?: string;
 }
 
 export class GitProjectsService {
@@ -70,12 +102,21 @@ export class GitProjectsService {
     return this.db.projects;
   }
 
-  public register(containerName: string, repoOwner: string, repoName: string, branch: string): GitProjectRecord {
+  public register(
+    containerName: string,
+    repoOwner: string,
+    repoName: string,
+    branch: string,
+    localPath?: string,
+    rebuildCommand?: RebuildCommand
+  ): GitProjectRecord {
     const existing = this.db.projects[containerName];
     const record: GitProjectRecord = {
       repoOwner: repoOwner.trim(),
       repoName: repoName.trim(),
       branch: branch.trim() || 'main',
+      localPath: localPath?.trim() || existing?.localPath,
+      rebuildCommand: rebuildCommand || existing?.rebuildCommand,
       lastKnownSha: existing?.lastKnownSha,
     };
     this.db.projects[containerName] = record;
@@ -146,6 +187,86 @@ export class GitProjectsService {
       this.saveDb();
     } catch (err) {
       console.warn(`[GitProjectsService] Check failed for ${record.repoOwner}/${record.repoName}:`, err);
+    }
+  }
+
+  /**
+   * Resolves a project's working tree to an absolute path and confirms it's
+   * actually inside config.gitProjectsRoot — localPath is owner-entered, so
+   * this blocks a value like "../../etc" from escaping the mounted directory.
+   */
+  private resolveWorkingTree(record: GitProjectRecord): string {
+    if (!record.localPath) {
+      throw new Error('This project has no local path configured yet — edit it to add one.');
+    }
+    const resolved = path.resolve(config.gitProjectsRoot, record.localPath);
+    const root = path.resolve(config.gitProjectsRoot);
+    if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+      throw new Error('localPath must resolve inside the Git Projects root.');
+    }
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`${resolved} does not exist inside the container — check the bind mount and localPath.`);
+    }
+    return resolved;
+  }
+
+  /**
+   * Read-only: fetches upstream and lists which files would change on pull,
+   * flagging any that match a migration-risk pattern. Never modifies the
+   * working tree — safe to call speculatively before the owner confirms.
+   */
+  public async checkPull(containerName: string): Promise<CheckPullResult> {
+    const record = this.db.projects[containerName];
+    if (!record) return { ok: false, message: 'Not tracked.', riskyFiles: [], changedFiles: [] };
+
+    try {
+      const cwd = this.resolveWorkingTree(record);
+      await execFile('git', ['-C', cwd, 'fetch', 'origin', record.branch], EXEC_OPTS);
+      const { stdout } = await execFile(
+        'git',
+        ['-C', cwd, 'diff', '--name-only', `HEAD..origin/${record.branch}`],
+        EXEC_OPTS
+      );
+      const changedFiles = stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+      const riskyFiles = changedFiles.filter((f) => MIGRATION_RISK_PATTERNS.some((p) => p.test(f)));
+      return { ok: true, riskyFiles, changedFiles };
+    } catch (err: any) {
+      return { ok: false, message: err.message, riskyFiles: [], changedFiles: [] };
+    }
+  }
+
+  /**
+   * git pull followed by the project's fixed rebuild command. The request
+   * only ever names *which* registered project — the argv actually run is
+   * resolved here from rebuildCommand, never taken from the request body.
+   */
+  public async pullAndRebuild(containerName: string): Promise<PullResult> {
+    const record = this.db.projects[containerName];
+    if (!record) return { success: false, message: 'Not tracked.' };
+    if (!record.rebuildCommand) {
+      return { success: false, message: 'No rebuild command configured — edit this project to set one.' };
+    }
+
+    let cwd: string;
+    try {
+      cwd = this.resolveWorkingTree(record);
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+
+    try {
+      await execFile('git', ['-C', cwd, 'pull', 'origin', record.branch], EXEC_OPTS);
+      const { stdout: shaOut } = await execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], EXEC_OPTS);
+      const newSha = shaOut.trim();
+
+      await execFile('docker', REBUILD_ARGS[record.rebuildCommand], { ...EXEC_OPTS, cwd });
+
+      record.lastKnownSha = newSha;
+      this.saveDb();
+
+      return { success: true, message: `Pulled and rebuilt at ${newSha.slice(0, 7)}.`, newSha };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Pull/rebuild failed.' };
     }
   }
 }

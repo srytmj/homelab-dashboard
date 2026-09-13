@@ -29,6 +29,8 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
       - MANAGED_CONTAINERS=${MANAGED_CONTAINERS:-jellyfin,nextcloud,t3-code,nginx-proxy-manager,uptime-kuma,portainer-ce,transmission,paperless-ngx,home-assistant}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_CHECK_INTERVAL_MS=${GITHUB_CHECK_INTERVAL_MS:-300000}
     volumes:
       # Persistent Owner Auth & Sessions
       - ./data:/app/data
@@ -40,5 +42,10 @@ services:
       - /mnt/hdd-media:/mnt/hdd-media:ro
       - /mnt/hdd-cloud:/mnt/hdd-cloud:ro
       - /mnt/hdd-music:/mnt/hdd-music:ro
+      # Git Projects: working trees for pull/rebuild live here on the host,
+      # e.g. ${GIT_PROJECTS_ROOT}/myapp. Read-write — git pull writes to it.
+      # Each project's docker-compose build context must also live under
+      # this same tree so the daemon's `docker compose build` can read it.
+      - ${GIT_PROJECTS_ROOT:-/opt/homelab-projects}:/projects
     labels:
       - "com.centurylinklabs.watchtower.enable=true"

@@ -57,6 +57,9 @@ export const config = {
   // the dashboard's own poll rate — checking every 2s would exhaust GitHub's
   // rate limit (60/hr unauthenticated) within seconds.
   githubCheckIntervalMs: parseInt(process.env.GITHUB_CHECK_INTERVAL_MS || '300000', 10),
+  // Fixed inside the container regardless of where GIT_PROJECTS_ROOT points
+  // on the host — docker-compose.yml always bind-mounts it to /projects.
+  gitProjectsRoot: '/projects',
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || '2000', 10),
   demoMode: process.env.DEMO_MODE === 'true',
   sentinel: {

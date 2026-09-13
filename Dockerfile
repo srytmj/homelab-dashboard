@@ -26,6 +26,11 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
+# git + docker CLI (talks to the host's dockerd over the mounted socket, aka
+# "docker outside of docker") back the Git Projects pull/rebuild feature.
+# No other feature in this image needs a shell command run against the host.
+RUN apk add --no-cache git docker-cli docker-cli-compose
+
 # Install production dependencies only
 COPY server/package*.json ./server/
 RUN cd server && npm ci --omit=dev
