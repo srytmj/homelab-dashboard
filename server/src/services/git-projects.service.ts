@@ -107,7 +107,7 @@ export class GitProjectsService {
     return this.db.projects;
   }
 
-  public register(
+  public async register(
     containerName: string,
     repoOwner: string,
     repoName: string,
@@ -115,7 +115,7 @@ export class GitProjectsService {
     localPath?: string,
     rebuildCommand?: RebuildCommand,
     autoDeploy?: boolean
-  ): GitProjectRecord {
+  ): Promise<GitProjectRecord> {
     const existing = this.db.projects[containerName];
     const record: GitProjectRecord = {
       repoOwner: repoOwner.trim(),
@@ -127,6 +127,23 @@ export class GitProjectsService {
       autoDeploy: autoDeploy ?? existing?.autoDeploy ?? false,
     };
     this.db.projects[containerName] = record;
+
+    // A project usually already exists and is running by the time it's
+    // tracked here — without a baseline it would show "Not deployed yet"
+    // forever until the owner found the manual mark-deployed button. Best
+    // effort: if this is the first time localPath is set and there's no
+    // baseline yet, read whatever commit is actually checked out right now.
+    if (record.localPath && !record.lastKnownSha) {
+      try {
+        const cwd = this.resolveWorkingTree(record);
+        const { stdout } = await execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], EXEC_OPTS);
+        record.lastKnownSha = stdout.trim();
+      } catch {
+        // No working tree there yet, or it's not a git repo — leave it
+        // unset, same as before; the owner can still use the manual button.
+      }
+    }
+
     this.saveDb();
     return record;
   }

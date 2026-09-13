@@ -319,7 +319,7 @@ async function bootstrap() {
       reply.status(400);
       return { success: false, message: 'repoOwner and repoName are required' };
     }
-    const record = gitProjectsService.register(
+    const record = await gitProjectsService.register(
       containerName,
       body.repoOwner,
       body.repoName,
