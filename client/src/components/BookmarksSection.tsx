@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ExternalLink, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Check, ExternalLink, GitBranch, GripVertical, Pencil, Plus, Trash2, X, ArrowUpDown } from 'lucide-react';
 import { authFetch } from '../utils/api.js';
 
 interface Bookmark {
@@ -120,13 +120,19 @@ const BookmarkModal: React.FC<{
 
 export const BookmarksSection: React.FC = () => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [originalBookmarks, setOriginalBookmarks] = useState<Bookmark[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editing, setEditing] = useState<Bookmark | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   const load = () => {
     authFetch('/api/bookmarks')
       .then((res) => res.json())
-      .then(setBookmarks)
+      .then((data: Bookmark[]) => {
+        setBookmarks(data);
+      })
       .catch(() => {});
   };
 
@@ -134,48 +140,197 @@ export const BookmarksSection: React.FC = () => {
     load();
   }, []);
 
+  const handleStartReorder = () => {
+    setOriginalBookmarks([...bookmarks]);
+    setIsReordering(true);
+  };
+
+  const handleCancelReorder = () => {
+    setBookmarks(originalBookmarks);
+    setIsReordering(false);
+    setDraggedIndex(null);
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSavingOrder(true);
+    try {
+      const res = await authFetch('/api/bookmarks/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: bookmarks.map((b) => b.id) }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.bookmarks) {
+          setBookmarks(data.bookmarks);
+        }
+      }
+      setIsReordering(false);
+      setDraggedIndex(null);
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const updated = [...bookmarks];
+    const [draggedItem] = updated.splice(draggedIndex, 1);
+    updated.splice(index, 0, draggedItem);
+    setDraggedIndex(index);
+    setBookmarks(updated);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   return (
-    <section className="panel">
+    <section className="panel animate-fade-in-up stagger-2">
       <div className="panel-head">
         <div>
           <h2 className="panel-title">Shortcuts</h2>
-          <p className="panel-sub">Personal links, opened in a new tab</p>
+          <p className="panel-sub">
+            {isReordering
+              ? 'Drag & drop kotak shortcut untuk mengatur urutan, lalu klik Save'
+              : 'Personal links, opened in a new tab'}
+          </p>
         </div>
-        <button onClick={() => setIsAdding(true)} className="btn-ghost">
-          <Plus className="h-3.5 w-3.5" />
-          Add
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Quick link shortcut to GitHub Repo */}
+          <a
+            href="https://github.com/srytmj/homelab-dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-ghost"
+            title="Open GitHub Repository"
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Repo</span>
+          </a>
+
+          {isReordering ? (
+            <>
+              <button
+                onClick={handleCancelReorder}
+                disabled={isSavingOrder}
+                className="btn-ghost"
+                title="Cancel reordering"
+              >
+                <X className="h-3.5 w-3.5" />
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveOrder}
+                disabled={isSavingOrder}
+                className="btn-primary"
+                title="Save new order"
+              >
+                <Check className="h-3.5 w-3.5" />
+                {isSavingOrder ? 'Saving...' : 'Save'}
+              </button>
+            </>
+          ) : (
+            <>
+              {bookmarks.length > 1 && (
+                <button
+                  onClick={handleStartReorder}
+                  className="btn-ghost"
+                  title="Edit urutan shortcut (drag & drop)"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Edit Order</span>
+                </button>
+              )}
+              <button onClick={() => setIsAdding(true)} className="btn-ghost">
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {bookmarks.length === 0 ? (
-        <p className="px-5 py-8 text-center text-[13px] text-cockpit-muted">
-          No shortcuts yet — add the links you reach for every day.
-        </p>
+        <div className="px-5 py-8 text-center">
+          <p className="text-[13px] text-cockpit-muted">
+            Belum ada shortcut tersimpan — tambahkan link yang sering kamu gunakan.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2.5 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {bookmarks.map((b) => {
+          {bookmarks.map((b, index) => {
             const favicon = faviconFor(b.url);
+
+            if (isReordering) {
+              return (
+                <div
+                  key={b.id}
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={`group relative flex flex-col items-center justify-center gap-2 rounded-lg border p-3.5 text-center select-none transition-all cursor-grab active:cursor-grabbing ${
+                    draggedIndex === index
+                      ? 'border-cockpit-accent bg-cockpit-accent/15 opacity-40 scale-95 shadow-inner'
+                      : 'border-cockpit-accent/40 bg-cockpit-accent/5 hover:border-cockpit-accent hover:bg-cockpit-panel'
+                  }`}
+                  title="Drag untuk memindahkan urutan"
+                >
+                  <div className="absolute left-1.5 top-1.5 text-cockpit-accent/70">
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </div>
+                  {favicon ? (
+                    <img src={favicon} alt="" className="pointer-events-none h-7 w-7 rounded object-contain" />
+                  ) : (
+                    <ExternalLink className="pointer-events-none h-7 w-7 text-cockpit-accent" />
+                  )}
+                  <span className="pointer-events-none w-full truncate text-[11.5px] font-medium text-cockpit-text">
+                    {b.name}
+                  </span>
+                </div>
+              );
+            }
+
             return (
-              <div
+              <a
                 key={b.id}
-                className="group relative flex flex-col items-center gap-1.5 rounded-lg border border-cockpit-border bg-cockpit-bg p-3 transition-colors hover:border-cockpit-accent/40"
+                href={b.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Open ${b.name} (${b.url}) in new tab`}
+                className="group relative flex flex-col items-center justify-center gap-2 rounded-lg border border-cockpit-border bg-cockpit-bg p-3.5 text-center transition-all hover:border-cockpit-accent/50 hover:bg-cockpit-panel/60 active:scale-[0.98] cursor-pointer"
               >
                 <button
-                  onClick={() => setEditing(b)}
-                  title="Edit"
-                  className="absolute right-1 top-1 rounded p-1 text-cockpit-muted opacity-0 transition-opacity hover:text-cockpit-text group-hover:opacity-100"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setEditing(b);
+                  }}
+                  title="Edit shortcut"
+                  className="absolute right-1.5 top-1.5 z-10 rounded p-1 text-cockpit-muted opacity-0 transition-opacity hover:bg-cockpit-panel hover:text-cockpit-text group-hover:opacity-100"
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
-                <a href={b.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1.5">
-                  {favicon ? (
-                    <img src={favicon} alt="" className="h-6 w-6 rounded" />
-                  ) : (
-                    <ExternalLink className="h-6 w-6 text-cockpit-muted" />
-                  )}
-                  <span className="max-w-full truncate text-[11.5px] text-cockpit-text">{b.name}</span>
-                </a>
-              </div>
+                {favicon ? (
+                  <img src={favicon} alt="" className="h-7 w-7 rounded object-contain" />
+                ) : (
+                  <ExternalLink className="h-7 w-7 text-cockpit-muted" />
+                )}
+                <span className="w-full truncate text-[11.5px] font-medium text-cockpit-text">
+                  {b.name}
+                </span>
+              </a>
             );
           })}
         </div>

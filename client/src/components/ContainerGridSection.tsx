@@ -284,7 +284,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   );
 
   return (
-    <section className="panel overflow-hidden">
+    <section className="panel overflow-hidden animate-fade-in-up">
       <div className="panel-head">
         <div>
           <h2 className="panel-title">Container fleet</h2>

@@ -14,7 +14,10 @@ export type NotificationType =
   | 'git-pull-start'
   | 'git-pull-success'
   | 'git-pull-failed'
-  | 'git-auto-deploy';
+  | 'git-auto-deploy'
+  | 'app-update-start'
+  | 'app-update-success'
+  | 'app-update-failed';
 
 export interface NotificationEntry {
   id: string;
@@ -72,7 +75,11 @@ export class NotificationsService {
     }
   }
 
-  public add(type: NotificationType, message: string): NotificationEntry {
+  public getAll(): NotificationEntry[] {
+    return this.db.entries;
+  }
+
+  public add(type: NotificationType, message: string) {
     const entry: NotificationEntry = {
       id: crypto.randomUUID(),
       type,
@@ -80,13 +87,10 @@ export class NotificationsService {
       createdAt: Date.now(),
     };
     this.db.entries.unshift(entry);
-    this.db.entries = this.db.entries.slice(0, MAX_ENTRIES);
+    if (this.db.entries.length > MAX_ENTRIES) {
+      this.db.entries = this.db.entries.slice(0, MAX_ENTRIES);
+    }
     this.saveDb();
-    return entry;
-  }
-
-  public getAll(): NotificationEntry[] {
-    return this.db.entries;
   }
 
   public clear() {

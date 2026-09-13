@@ -2,7 +2,6 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal, LogOut, Sun, Moon } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
-import { redactText, formatBytes } from '../utils/formatters.js';
 import { useAuth } from '../context/AuthContext.js';
 import { Theme } from '../hooks/useTheme.js';
 import { NAV_ROUTES } from './Sidebar.js';
@@ -37,19 +36,12 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
 }) => {
   const { username, logout } = useAuth();
-  const runningCount = snapshot?.containers.filter((c) => c.state === 'running').length || 0;
-  const totalCount = snapshot?.containers.length || 0;
-  const tailscale = snapshot?.tailscale;
   const pve = snapshot?.host.pve;
-  const dockerHost = snapshot?.host.dockerHost;
   const pveOnline = pve?.connected ?? false;
   const allHealthy = isConnected && pveOnline;
-  const spec = pve
-    ? `${pve.cpuModel || `${pve.cpuCores} cores`} · ${formatBytes(dockerHost?.ramTotalBytes ?? 0)} RAM`
-    : null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-cockpit-border bg-cockpit-topbar/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-cockpit-border bg-cockpit-topbar/80 backdrop-blur-xl shadow-sm">
       <div className="mx-auto w-full max-w-[1400px] px-5 lg:px-8">
         {/* Primary bar */}
         <div className="flex items-center justify-between gap-6 py-3.5">
@@ -149,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
               key={route.path}
               to={route.path}
               end={route.path === '/'}
-              className={({ isActive }) =>
+              className={({ isActive }: { isActive: boolean }) =>
                 `rounded-md px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors ${
                   isActive ? 'bg-cockpit-accent/10 text-cockpit-accent' : 'text-cockpit-muted'
                 }`
@@ -159,46 +151,6 @@ export const Header: React.FC<HeaderProps> = ({
             </NavLink>
           ))}
         </nav>
-
-        {/* Meta strip */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-cockpit-border/60 py-2 font-mono text-[11px] text-cockpit-muted">
-          <span>
-            PVE <span className="text-cockpit-text">{redactText(pve?.ip || '—', isPrivacyMode)}</span>
-            <span className={`ml-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${pveOnline ? 'bg-state-good' : 'bg-state-warn'}`} />
-          </span>
-          <span className="text-cockpit-border">|</span>
-          <span>
-            {dockerHost?.hostname || 'LXC'}{' '}
-            <span className="text-cockpit-text">{redactText(dockerHost?.ip || '—', isPrivacyMode)}</span>
-            <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-state-good align-middle" />
-          </span>
-          {tailscale && (
-            <>
-              <span className="text-cockpit-border">|</span>
-              <span>
-                Tailnet{' '}
-                <span className="tabular-nums text-cockpit-text">
-                  {tailscale.totalOnline}/{tailscale.totalDevices}
-                </span>{' '}
-                peers
-              </span>
-            </>
-          )}
-          <span className="text-cockpit-border">|</span>
-          <span>
-            Containers{' '}
-            <span className="tabular-nums text-cockpit-text">
-              {runningCount}/{totalCount}
-            </span>{' '}
-            running
-          </span>
-          {spec && (
-            <>
-              <span className="text-cockpit-border hidden sm:inline">|</span>
-              <span className="hidden sm:inline">{spec}</span>
-            </>
-          )}
-        </div>
       </div>
     </header>
   );

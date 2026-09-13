@@ -2,170 +2,177 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Color tokens are stored as "R G B" triplets (not hex) so Tailwind's
-   opacity modifiers (bg-cockpit-accent/10) can compose them via
-   rgb(var(--x) / <alpha-value>) in tailwind.config.js. */
 :root {
   color-scheme: dark;
 
-  --cockpit-bg: 16 17 21;
-  --cockpit-panel: 23 24 30;
-  --cockpit-panel-hover: 28 29 36;
-  --cockpit-topbar: 19 20 25;
-  --cockpit-border: 38 39 47;
-  --cockpit-text: 238 240 244;
-  --cockpit-muted: 132 137 154;
-  --cockpit-accent: 124 156 255;
+  /* Deeper, more modern dark background */
+  --cockpit-bg: 10 11 15;
+  --cockpit-panel: 18 19 25;
+  --cockpit-panel-hover: 23 24 32;
+  --cockpit-topbar: 13 14 18;
+  --cockpit-border: 40 43 55;
+  --cockpit-text: 242 244 248;
+  --cockpit-muted: 140 146 163;
+  --cockpit-accent: 99 135 255; /* Vibrant electric blue */
 
-  --state-good: 72 213 151;
-  --state-warn: 242 169 60;
-  --state-bad: 242 85 77;
+  --state-good: 52 211 153; /* Emerald 400 */
+  --state-warn: 251 191 36; /* Amber 400 */
+  --state-bad: 248 113 113; /* Red 400 */
 }
 
 :root.light {
   color-scheme: light;
 
-  --cockpit-bg: 244 245 247;
+  /* Fresh, bright light background */
+  --cockpit-bg: 248 250 252;
   --cockpit-panel: 255 255 255;
-  --cockpit-panel-hover: 238 240 244;
+  --cockpit-panel-hover: 241 245 249;
   --cockpit-topbar: 255 255 255;
-  --cockpit-border: 221 224 230;
-  --cockpit-text: 20 22 28;
-  --cockpit-muted: 98 105 122;
-  --cockpit-accent: 79 111 224;
+  --cockpit-border: 226 232 240;
+  --cockpit-text: 15 23 42;
+  --cockpit-muted: 100 116 139;
+  --cockpit-accent: 79 70 229; /* Indigo 600 */
 
-  --state-good: 23 138 92;
-  --state-warn: 168 98 10;
-  --state-bad: 201 58 53;
+  --state-good: 16 185 129; /* Emerald 500 */
+  --state-warn: 217 119 6; /* Amber 600 */
+  --state-bad: 239 68 68; /* Red 500 */
 }
 
 body {
   margin: 0;
   background-color: var(--cockpit-bg);
+  /* Apply a very subtle radial gradient via CSS */
+  background-image: radial-gradient(
+    circle at 50% 0%, 
+    rgba(var(--cockpit-accent) / 0.05) 0%, 
+    transparent 70%
+  );
+  background-attachment: fixed;
   color: var(--cockpit-text);
   font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 @layer components {
   .panel {
-    @apply rounded-panel border border-cockpit-border bg-cockpit-panel;
+    @apply rounded-panel border border-cockpit-border/60 bg-cockpit-panel/85 backdrop-blur-xl shadow-panel transition-all duration-300;
   }
 
   .panel-head {
-    @apply flex flex-wrap items-center justify-between gap-3 border-b border-cockpit-border px-5 py-4;
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-cockpit-border/60 px-6 py-4 bg-white/5 dark:bg-black/10 rounded-t-panel;
   }
 
   .panel-title {
-    @apply text-[13.5px] font-bold tracking-tight text-cockpit-text;
+    @apply text-[14px] font-bold tracking-tight text-cockpit-text;
   }
 
   .panel-sub {
-    @apply mt-0.5 text-[11.5px] text-cockpit-muted;
+    @apply mt-1 text-[12px] text-cockpit-muted;
   }
 
   .label {
-    @apply font-mono text-[10px] uppercase tracking-[0.09em] text-cockpit-muted;
+    @apply font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-cockpit-muted;
   }
 
   .metric {
-    @apply font-mono font-semibold tabular-nums text-cockpit-text;
+    @apply font-mono font-bold tabular-nums text-cockpit-text tracking-tight;
   }
 
   .metric-lg {
-    @apply font-mono text-[23px] font-bold leading-none tabular-nums text-cockpit-text;
+    @apply font-mono text-[26px] font-extrabold leading-none tabular-nums text-cockpit-text tracking-tighter drop-shadow-sm;
   }
 
   .metric-unit {
-    @apply ml-1 text-[12px] font-medium text-cockpit-muted;
+    @apply ml-1.5 text-[12px] font-semibold text-cockpit-muted tracking-normal;
   }
 
   .pill {
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.04em];
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.05em] shadow-sm;
   }
 
   .pill-good {
-    @apply bg-state-good/10 text-state-good;
+    @apply bg-state-good/15 text-state-good shadow-[0_0_10px_rgba(var(--state-good)/0.2)] border border-state-good/20;
   }
 
   .pill-warn {
-    @apply bg-state-warn/10 text-state-warn;
+    @apply bg-state-warn/15 text-state-warn shadow-[0_0_10px_rgba(var(--state-warn)/0.2)] border border-state-warn/20;
   }
 
   .pill-bad {
-    @apply bg-state-bad/10 text-state-bad;
+    @apply bg-state-bad/15 text-state-bad shadow-[0_0_10px_rgba(var(--state-bad)/0.2)] border border-state-bad/20;
   }
 
   .pill-neutral {
-    @apply bg-cockpit-border/60 text-cockpit-muted;
+    @apply bg-cockpit-border border border-cockpit-border text-cockpit-muted shadow-[0_0_10px_rgba(var(--cockpit-border)/0.2)];
   }
 
   .pill-accent {
-    @apply bg-cockpit-accent/10 text-cockpit-accent;
+    @apply bg-cockpit-accent/15 text-cockpit-accent shadow-[0_0_10px_rgba(var(--cockpit-accent)/0.2)] border border-cockpit-accent/20;
   }
 
   .track {
-    @apply h-1 w-full overflow-hidden rounded-full bg-cockpit-border;
+    @apply h-1.5 w-full overflow-hidden rounded-full bg-cockpit-border/80 shadow-inner;
   }
 
   .track-fill {
-    @apply block h-full rounded-full transition-[width] duration-500;
+    @apply block h-full rounded-full transition-[width] duration-700 ease-out;
   }
 
   .data-row {
-    @apply flex items-center justify-between gap-3 border-b border-cockpit-border py-2.5 text-[13px] last:border-b-0;
+    @apply flex items-center justify-between gap-3 border-b border-cockpit-border/40 py-3 text-[13.5px] last:border-b-0 transition-colors hover:bg-white/[0.03] dark:hover:bg-black/[0.03] px-2 -mx-2 rounded-lg;
   }
 
   .seg {
-    @apply flex items-center gap-0.5 rounded-lg border border-cockpit-border bg-cockpit-bg p-0.5;
+    @apply flex items-center gap-0.5 rounded-lg border border-cockpit-border/80 bg-cockpit-bg/50 p-1 shadow-inner backdrop-blur-md;
   }
 
   .seg-btn {
-    @apply rounded-md px-2.5 py-1 font-mono text-[11px] text-cockpit-muted transition-all duration-150 hover:text-cockpit-text active:scale-95;
+    @apply rounded-md px-3 py-1.5 font-mono text-[11.5px] font-medium text-cockpit-muted transition-all duration-200 hover:text-cockpit-text active:scale-95;
   }
 
   .seg-btn-on {
-    @apply bg-cockpit-accent/10 text-cockpit-accent;
+    @apply bg-cockpit-accent/20 text-cockpit-accent shadow-sm;
   }
 
   .icon-btn {
-    @apply rounded-md border border-cockpit-border bg-cockpit-bg p-1.5 text-cockpit-muted transition-all duration-150 hover:border-cockpit-accent/40 hover:text-cockpit-text active:scale-90;
+    @apply rounded-xl border border-cockpit-border/60 bg-cockpit-bg/80 p-2 text-cockpit-muted shadow-sm backdrop-blur-md transition-all duration-200 hover:border-cockpit-accent/50 hover:text-cockpit-text hover:shadow-glow-accent active:scale-95;
   }
 
   .btn {
-    @apply inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12.5px] font-semibold transition-all duration-150 active:scale-95 disabled:pointer-events-none disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-bold shadow-sm transition-all duration-200 active:scale-95 disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-primary {
-    @apply btn bg-cockpit-accent text-white hover:bg-cockpit-accent/85;
+    @apply btn bg-cockpit-accent text-white hover:bg-cockpit-accent/90 hover:shadow-glow-accent border border-cockpit-accent;
   }
 
   .btn-ghost {
-    @apply btn border border-cockpit-border bg-cockpit-bg text-cockpit-muted hover:text-cockpit-text;
+    @apply btn border border-cockpit-border/80 bg-cockpit-bg/50 text-cockpit-text backdrop-blur-md hover:bg-cockpit-panelHover hover:border-cockpit-border shadow-none;
   }
 
   .btn-danger {
-    @apply btn bg-state-bad text-white hover:bg-state-bad/85;
+    @apply btn bg-state-bad text-white hover:bg-state-bad/90 hover:shadow-glow-bad border border-state-bad;
   }
 
   .field {
-    @apply rounded-lg border border-cockpit-border bg-cockpit-bg px-3 py-1.5 font-mono text-[12px] text-cockpit-text placeholder-cockpit-muted transition-colors duration-150 focus:border-cockpit-accent/60 focus:outline-none;
+    @apply rounded-xl border border-cockpit-border/80 bg-cockpit-bg/50 px-3.5 py-2 font-mono text-[12.5px] text-cockpit-text shadow-inner placeholder-cockpit-muted backdrop-blur-md transition-all duration-200 focus:border-cockpit-accent focus:bg-cockpit-bg focus:shadow-glow-accent focus:outline-none focus:ring-1 focus:ring-cockpit-accent/50;
   }
 
   .overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm;
-    animation: overlayIn 0.15s ease-out;
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md;
+    animation: overlayIn 0.25s ease-out forwards;
   }
 
   .modal-panel {
-    animation: panelIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    @apply border border-cockpit-border/60 shadow-2xl;
+    animation: panelIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   }
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -174,7 +181,8 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--cockpit-border);
-  border-radius: 4px;
+  border-radius: 5px;
+  border: 2px solid var(--cockpit-bg);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -186,60 +194,26 @@ body {
   outline-offset: 2px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes overlayIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes panelIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes popIn {
-  from {
-    opacity: 0;
-    transform: scale(0.7);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(12px); }
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.16s ease-out forwards;
+  animation: fadeIn 0.2s ease-out forwards;
 }
 
 .animate-popIn {
-  animation: popIn 0.18s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* Staggered lists if we want them */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

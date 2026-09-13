@@ -225,6 +225,44 @@ export interface SentinelStatus {
   lastCommand?: string;
 }
 
+export interface UpdateAnnouncement {
+  id: string;
+  version?: string;
+  title: string;
+  date: string;
+  description: string;
+  highlights?: string[];
+  commitSha?: string;
+  commitUrl?: string;
+}
+
+export interface AppUpdateState {
+  status: 'idle' | 'updating' | 'success' | 'failed';
+  log: string[];
+  startedAt?: number;
+  finishedAt?: number;
+  message?: string;
+}
+
+export interface AppUpdateStatus {
+  repoUrl: string;
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+  currentSha: string;
+  currentCommitDate?: string;
+  currentCommitSubject?: string;
+  latestSha?: string;
+  latestCommitDate?: string;
+  latestCommitMessage?: string;
+  hasUpdate: boolean;
+  behindBy: number;
+  announcement?: UpdateAnnouncement;
+  recentCommits?: Array<{ sha: string; message: string; date?: string }>;
+  lastCheckedAt: number;
+  updateState: AppUpdateState;
+}
+
 export interface CockpitSnapshot {
   timestamp: number;
   host: HostMetrics;

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, BellRing, Check, GitBranch, Pin, PinOff, Trash2, X } from 'lucide-react';
+import { Bell, BellRing, Check, GitBranch, Pin, PinOff, Trash2, X, ArrowUpCircle } from 'lucide-react';
 import { NotificationEntry } from '../types.js';
 import { authFetch } from '../utils/api.js';
 
@@ -16,6 +16,9 @@ const ICONS: Record<NotificationEntry['type'], React.ReactNode> = {
   'git-pull-success': <Check className="h-3.5 w-3.5 text-state-good" />,
   'git-pull-failed': <X className="h-3.5 w-3.5 text-state-bad" />,
   'git-auto-deploy': <GitBranch className="h-3.5 w-3.5 text-cockpit-accent" />,
+  'app-update-start': <ArrowUpCircle className="h-3.5 w-3.5 text-cockpit-accent" />,
+  'app-update-success': <Check className="h-3.5 w-3.5 text-state-good" />,
+  'app-update-failed': <X className="h-3.5 w-3.5 text-state-bad" />,
 };
 
 function timeAgo(ts: number): string {

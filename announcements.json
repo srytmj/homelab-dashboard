@@ -1,0 +1,17 @@
+[
+  {
+    "id": "2026-09-13-update-system",
+    "version": "1.1.0",
+    "title": "Fitur Update Otomatis, Drag & Drop Shortcuts & Header Cleanup",
+    "date": "2026-09-13",
+    "description": "Dashboard kini dapat diupdate langsung dari Overview dengan sekali klik tanpa perlu manual pull & redeploy. Menambahkan sistem pengumuman update otomatis dari commit/announcements, reorder shortcuts dengan drag & drop, card shortcut dapat diklik seluruhnya, dan pembersihan info hardware di header.",
+    "highlights": [
+      "Fitur One-Click Update homelab-dashboard dari Overview tanpa perlu manual pull & redeploy",
+      "Announcement sistem update otomatis dengan ringkasan pembaruan",
+      "Shortcut langsung ke repository GitHub",
+      "Penyusunan urutan shortcuts dengan fitur Drag and Drop lalu klik Save",
+      "Seluruh kotak shortcut dapat diklik untuk membuka tautan di tab baru",
+      "Pembersihan strip info hardware PVE, Docker host, Tailnet, Containers, dan CPU di Header"
+    ]
+  }
+]

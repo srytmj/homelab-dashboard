@@ -177,7 +177,7 @@ function CockpitDashboard() {
         />
       )}
 
-      <footer className="border-t border-cockpit-border bg-cockpit-topbar px-5 py-4 lg:px-8">
+      <footer className="border-t border-cockpit-border bg-cockpit-topbar/80 backdrop-blur-xl px-5 py-4 lg:px-8">
         <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-2 font-mono text-[11px] text-cockpit-muted sm:flex-row">
           <span>Homelab Cockpit{snapshot?.host.pve.nodeName ? ` · ${snapshot.host.pve.nodeName}` : ''}</span>
           <span>Polling every 2s over WebSocket</span>

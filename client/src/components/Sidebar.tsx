@@ -47,7 +47,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`sticky top-4 z-10 my-4 ml-4 hidden max-h-[calc(100vh-2rem)] shrink-0 flex-col self-start rounded-panel border border-cockpit-border bg-cockpit-panel shadow-lg shadow-black/10 transition-all duration-200 md:flex ${
+      className={`sticky top-4 z-10 my-4 ml-4 hidden max-h-[calc(100vh-2rem)] shrink-0 flex-col self-start rounded-panel border border-cockpit-border bg-cockpit-panel/80 backdrop-blur-xl shadow-panel transition-all duration-200 md:flex ${
         isCollapsed ? 'w-[60px]' : 'w-[190px]'
       }`}
     >

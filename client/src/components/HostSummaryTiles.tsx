@@ -12,7 +12,7 @@ interface HostSummaryTilesProps {
 export const HostSummaryTiles: React.FC<HostSummaryTilesProps> = ({ host, throughput }) => {
   if (!host) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in-up stagger-1">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="panel h-[104px] animate-pulse" />
         ))}
@@ -28,7 +28,7 @@ export const HostSummaryTiles: React.FC<HostSummaryTilesProps> = ({ host, throug
   const tempScale = ((temp - 30) / 60) * 100;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in-up stagger-1">
       <Tile label="CPU · Proxmox">
         <div className="metric-lg">
           {pve.cpuPercent.toFixed(1)}

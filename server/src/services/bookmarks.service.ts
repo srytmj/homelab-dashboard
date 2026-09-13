@@ -84,6 +84,25 @@ export class BookmarksService {
     return record;
   }
 
+  public reorder(orderedIds: string[]): BookmarkRecord[] {
+    const map = new Map(this.db.bookmarks.map((b) => [b.id, b]));
+    const reordered: BookmarkRecord[] = [];
+    for (const id of orderedIds) {
+      const item = map.get(id);
+      if (item) {
+        reordered.push(item);
+        map.delete(id);
+      }
+    }
+    // Append any remaining bookmarks not specified in orderedIds
+    for (const item of map.values()) {
+      reordered.push(item);
+    }
+    this.db.bookmarks = reordered;
+    this.saveDb();
+    return this.db.bookmarks;
+  }
+
   public remove(id: string) {
     this.db.bookmarks = this.db.bookmarks.filter((b) => b.id !== id);
     this.saveDb();

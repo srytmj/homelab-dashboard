@@ -134,3 +134,8 @@ Conventional commits, enforced on every commit by commitlint through a husky `co
 Format is `type(scope): subject`, subject in lowercase imperative with no trailing period, header at most 72 characters. Types come from `@commitlint/config-conventional`: `feat`, `fix`, `refactor`, `perf`, `style`, `docs`, `test`, `build`, `ci`, `chore`, `revert`. The scope is optional, but when present it must be one of `ui`, `client`, `server`, `auth`, `sentinel`, `docker`, `docs`, `deps`, `repo`. Add to that list in [commitlint.config.mjs](commitlint.config.mjs) rather than working around it.
 
 The hooks are installed by the `prepare` script, so they exist after `npm install` at the repo root. An agent working in a fresh clone that has not installed root dependencies will find commits passing unchecked; run the install first.
+
+## Agent Workflow Rules
+
+- **ALWAYS propose and review first:** When asked to audit, add a feature, or modify code, provide a detailed review or a step-by-step proposal of what you intend to do. 
+- **Wait for explicit permission to code:** Do NOT execute code changes (via `run_command`, `edit_file`, etc.) until the user has explicitly approved your proposal. This is mandatory to prevent merge conflicts with other agents concurrently working on the project.

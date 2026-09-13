@@ -21,6 +21,7 @@ import { BackupService } from './services/backup.service.js';
 import { TerminalService } from './services/terminal.service.js';
 import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
+import { AppUpdateService } from './services/app-update.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,7 +33,7 @@ async function bootstrap() {
 
   await app.register(cors, {
     origin: true,
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
   await app.register(fastifyWebsocket);
@@ -53,6 +54,7 @@ async function bootstrap() {
   const gitProjectsService = new GitProjectsService(notificationsService);
   const backupService = new BackupService();
   const terminalService = new TerminalService();
+  const appUpdateService = new AppUpdateService(notificationsService);
 
   let sentinelService: SentinelService | null = null;
 
@@ -297,6 +299,16 @@ async function bootstrap() {
     return { success: true, bookmark: record };
   });
 
+  app.put('/api/bookmarks/reorder', async (request, reply) => {
+    const body = request.body as { ids?: string[] };
+    if (!Array.isArray(body?.ids)) {
+      reply.status(400);
+      return { success: false, message: 'ids array is required' };
+    }
+    const bookmarks = bookmarksService.reorder(body.ids);
+    return { success: true, bookmarks };
+  });
+
   app.put('/api/bookmarks/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as { name?: string; url?: string };
@@ -381,6 +393,27 @@ async function bootstrap() {
   app.get('/api/git-projects/:containerName/pull-status', async (request) => {
     const { containerName } = request.params as { containerName: string };
     return gitProjectsService.getPullState(containerName);
+  });
+
+  // Self App-Update Routes
+  app.get('/api/app-update/status', async () => {
+    return appUpdateService.getStatus();
+  });
+
+  app.post('/api/app-update/check', async () => {
+    return appUpdateService.checkForUpdates(true);
+  });
+
+  app.post('/api/app-update/update', async (request, reply) => {
+    const result = appUpdateService.startUpdate();
+    if (!result.started) {
+      reply.status(400);
+    }
+    return result;
+  });
+
+  app.get('/api/app-update/update-status', async () => {
+    return appUpdateService.getUpdateState();
   });
 
   app.get('/api/ssh-targets', async () => {
