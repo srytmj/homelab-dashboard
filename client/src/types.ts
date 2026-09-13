@@ -281,6 +281,13 @@ export interface AppUpdateStatus {
   updateState: AppUpdateState;
 }
 
+export interface AppVersionInfo {
+  version: string;
+  commitSha: string;
+  branch: string;
+  buildDate?: string;
+}
+
 export interface CockpitSnapshot {
   timestamp: number;
   host: HostMetrics;
@@ -293,4 +300,5 @@ export interface CockpitSnapshot {
   gitProjects: GitProjectStatus[];
   sentinel?: SentinelStatus;
   isDemoMode: boolean;
+  appVersion?: AppVersionInfo;
 }

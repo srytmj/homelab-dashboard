@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile as execFileCb, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { config } from '../config.js';
-import { AppUpdateStatus, AppUpdateState, UpdateAnnouncement } from '../types.js';
+import { AppUpdateStatus, AppUpdateState, UpdateAnnouncement, AppVersionInfo } from '../types.js';
 import { NotificationsService } from './notifications.service.js';
 
 const execFile = promisify(execFileCb);
@@ -33,6 +33,7 @@ export class AppUpdateService {
   private branch: string = 'main';
   private repoUrl: string = 'https://github.com/srytmj/homelab-dashboard';
 
+  private version: string = '1.1.0';
   private currentSha: string = 'unknown';
   private currentCommitDate?: string;
   private currentCommitSubject?: string;
@@ -52,17 +53,96 @@ export class AppUpdateService {
   };
 
   constructor(private notifications: NotificationsService) {
-    this.repoRoot = process.env.APP_ROOT || path.resolve(__dirname, '../../..');
+    this.repoRoot = this.detectRepoRoot();
     this.isGitRepo = fs.existsSync(path.join(this.repoRoot, '.git'));
+    this.loadBaselineVersion();
     this.inspectLocalRepo().catch((err) => {
       console.warn('[AppUpdateService] Initial git inspect warning:', err.message);
     });
   }
 
+  private detectRepoRoot(): string {
+    const candidates = [
+      process.env.APP_ROOT,
+      path.resolve(__dirname, '../../..'),
+      path.resolve(__dirname, '../..'),
+      process.cwd(),
+      '/projects/homelab-dashboard',
+      '/app',
+    ].filter(Boolean) as string[];
+
+    for (const c of candidates) {
+      if (fs.existsSync(path.join(c, '.git'))) {
+        return c;
+      }
+    }
+
+    for (const c of candidates) {
+      if (fs.existsSync(path.join(c, 'package.json'))) {
+        return c;
+      }
+    }
+
+    return process.cwd();
+  }
+
+  private loadBaselineVersion() {
+    // 1. Try package.json as fallback base
+    const pkgFile = path.join(this.repoRoot, 'package.json');
+    if (fs.existsSync(pkgFile)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf-8'));
+        if (pkg.version) this.version = pkg.version;
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Try announcements.json for initial announcement & baseline sha
+    const announceFile = path.join(this.repoRoot, 'announcements.json');
+    if (fs.existsSync(announceFile)) {
+      try {
+        const aData = JSON.parse(fs.readFileSync(announceFile, 'utf-8'));
+        if (Array.isArray(aData) && aData.length > 0) {
+          const top = aData[0];
+          if (top.version) this.version = top.version;
+          if (top.commitSha && this.currentSha === 'unknown') {
+            this.currentSha = top.commitSha;
+          }
+          this.announcement = {
+            id: top.id || 'initial',
+            version: top.version,
+            title: top.title,
+            date: top.date,
+            description: top.description,
+            highlights: top.highlights || [],
+            commitSha: top.commitSha,
+            commitUrl: top.commitUrl || (top.commitSha ? `${this.repoUrl}/commit/${top.commitSha}` : undefined),
+          };
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. Try version.json (highest precedence)
+    const versionFile = path.join(this.repoRoot, 'version.json');
+    if (fs.existsSync(versionFile)) {
+      try {
+        const vData = JSON.parse(fs.readFileSync(versionFile, 'utf-8'));
+        if (vData.version) this.version = vData.version;
+        if (vData.commitSha) this.currentSha = vData.commitSha;
+        if (vData.branch) this.branch = vData.branch;
+        if (vData.date) this.currentCommitDate = vData.date;
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   private async inspectLocalRepo() {
     if (!this.isGitRepo) {
-      console.log('[AppUpdateService] Running without local .git directory');
-      this.currentSha = 'head';
+      console.log(`[AppUpdateService] No local .git at ${this.repoRoot}, running on static version baseline v${this.version} (${this.currentSha.slice(0, 7)})`);
       return;
     }
 
@@ -93,6 +173,15 @@ export class AppUpdateService {
     } catch (err: any) {
       console.warn('[AppUpdateService] Git inspection failed:', err.message);
     }
+  }
+
+  public getVersionInfo(): AppVersionInfo {
+    return {
+      version: this.version,
+      commitSha: this.currentSha,
+      branch: this.branch,
+      buildDate: this.currentCommitDate,
+    };
   }
 
   public getStatus(): AppUpdateStatus {
@@ -127,7 +216,9 @@ export class AppUpdateService {
 
   public async checkForUpdates(force: boolean = false): Promise<AppUpdateStatus> {
     this.lastCheckedAt = Date.now();
-    await this.inspectLocalRepo();
+    if (this.isGitRepo) {
+      await this.inspectLocalRepo();
+    }
 
     try {
       const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
@@ -149,26 +240,7 @@ export class AppUpdateService {
         this.latestCommitDate = latest.commit.committer?.date;
         this.latestCommitMessage = latest.commit.message.split('\n')[0];
 
-        const currentIndex = commits.findIndex((c) => c.sha.startsWith(this.currentSha) || this.currentSha.startsWith(c.sha));
-        if (currentIndex > 0) {
-          this.hasUpdate = true;
-          this.behindBy = currentIndex;
-        } else if (currentIndex === 0) {
-          this.hasUpdate = false;
-          this.behindBy = 0;
-        } else {
-          // Current SHA not found in top 15 commits
-          this.hasUpdate = this.latestSha !== this.currentSha;
-          this.behindBy = this.hasUpdate ? commits.length : 0;
-        }
-
-        this.recentCommits = commits.slice(0, 10).map((c) => ({
-          sha: c.sha.slice(0, 7),
-          message: c.commit.message.split('\n')[0],
-          date: c.commit.committer?.date,
-        }));
-
-        // Load announcements: check raw github first, then fallback to local repo announcements.json
+        // Fetch remote announcement early so we can compare version semantically
         let announcementsData: UpdateAnnouncement[] = [];
         try {
           const rawAnnounceUrl = `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/${this.branch}/announcements.json`;
@@ -191,8 +263,59 @@ export class AppUpdateService {
           }
         }
 
-        if (Array.isArray(announcementsData) && announcementsData.length > 0) {
-          const topAnnouncement = announcementsData[0];
+        const topAnnouncement = announcementsData[0];
+        const remoteVersion = topAnnouncement?.version;
+
+        // Check if current SHA matches any of the remote commits
+        const currentIndex = commits.findIndex(
+          (c) =>
+            (this.currentSha !== 'unknown' &&
+              (c.sha.startsWith(this.currentSha) || this.currentSha.startsWith(c.sha)))
+        );
+
+        if (currentIndex === 0) {
+          // User is exactly at the latest commit
+          this.hasUpdate = false;
+          this.behindBy = 0;
+        } else if (currentIndex > 0) {
+          // User is on a known earlier commit
+          this.hasUpdate = true;
+          this.behindBy = currentIndex;
+        } else {
+          // Current SHA not found in top 15 commits.
+          // Compare version strings: if remoteVersion is defined and matches our current version, we are up-to-date!
+          if (remoteVersion && remoteVersion === this.version) {
+            this.hasUpdate = false;
+            this.behindBy = 0;
+          } else if (this.isGitRepo) {
+            // Check git rev-list to see if origin has commits ahead of us
+            try {
+              const { stdout: revCount } = await execFile(
+                'git',
+                ['-C', this.repoRoot, 'rev-list', '--count', `HEAD..origin/${this.branch}`],
+                EXEC_OPTS
+              );
+              const count = parseInt(revCount.trim(), 10);
+              this.hasUpdate = count > 0;
+              this.behindBy = count;
+            } catch {
+              this.hasUpdate = false;
+              this.behindBy = 0;
+            }
+          } else {
+            // Static environment without git: only update if remoteVersion is different
+            this.hasUpdate = Boolean(remoteVersion && remoteVersion !== this.version);
+            this.behindBy = this.hasUpdate ? 1 : 0;
+          }
+        }
+
+        this.recentCommits = commits.slice(0, 10).map((c) => ({
+          sha: c.sha.slice(0, 7),
+          message: c.commit.message.split('\n')[0],
+          date: c.commit.committer?.date,
+        }));
+
+        if (topAnnouncement) {
           this.announcement = {
             id: topAnnouncement.id || this.latestSha,
             version: topAnnouncement.version,
@@ -200,14 +323,19 @@ export class AppUpdateService {
             date: topAnnouncement.date || this.latestCommitDate || new Date().toISOString(),
             description: topAnnouncement.description,
             highlights: topAnnouncement.highlights || [],
-            commitSha: this.latestSha,
-            commitUrl: latest.html_url || `${this.repoUrl}/commit/${this.latestSha}`,
+            commitSha: topAnnouncement.commitSha || this.latestSha,
+            commitUrl: topAnnouncement.commitUrl || (topAnnouncement.commitSha ? `${this.repoUrl}/commit/${topAnnouncement.commitSha}` : undefined),
           };
         } else {
           // Synthesize announcement from latest commit messages
           const lines = latest.commit.message.split('\n');
           const title = lines[0].trim();
-          const desc = lines.slice(1).map((l) => l.trim()).filter(Boolean).join(' ') || 'Pembaruan baru telah dipublikasikan ke repository.';
+          const desc =
+            lines
+              .slice(1)
+              .map((l) => l.trim())
+              .filter(Boolean)
+              .join(' ') || 'Pembaruan baru telah dipublikasikan ke repository.';
           const highlights = commits
             .slice(0, Math.min(this.behindBy || 3, 5))
             .map((c) => c.commit.message.split('\n')[0].trim());
@@ -232,11 +360,14 @@ export class AppUpdateService {
 
   public startUpdate(): { started: boolean; message?: string } {
     if (this.updateState.status === 'updating') {
-      return { started: false, message: 'Update is already in progress.' };
+      return { started: false, message: 'Update sedang berjalan. Mohon tunggu proses selesai.' };
     }
 
     if (!this.isGitRepo) {
-      return { started: false, message: 'Current environment is not a git repository. Bind-mount the repo or pull new image.' };
+      return {
+        started: false,
+        message: 'Direktori aplikasi saat ini bukan git repository. Pastikan folder repo terhubung atau lakukan pull image container terbaru.',
+      };
     }
 
     this.notifications.add('app-update-start', 'Memulai pembaruan Homelab Dashboard...');
@@ -259,6 +390,18 @@ export class AppUpdateService {
     };
 
     try {
+      // Check for local modifications and stash if necessary to prevent merge conflicts
+      try {
+        const { stdout: statusOut } = await execFile('git', ['-C', this.repoRoot, 'status', '--porcelain'], EXEC_OPTS);
+        if (statusOut.trim()) {
+          appendLog('$ git stash');
+          appendLog('ℹ Menemukan perubahan file lokal. Menyimpan sementara via stash...');
+          await this.spawnCapture('git', ['-C', this.repoRoot, 'stash'], this.repoRoot, appendLog);
+        }
+      } catch {
+        // ignore stash errors
+      }
+
       appendLog(`[1/4] Menarik commit terbaru dari origin/${this.branch}...`);
       appendLog(`$ git fetch origin ${this.branch}`);
       await this.spawnCapture('git', ['-C', this.repoRoot, 'fetch', 'origin', this.branch], this.repoRoot, appendLog);
@@ -282,6 +425,9 @@ export class AppUpdateService {
       this.currentSha = newSha;
       this.hasUpdate = false;
       this.behindBy = 0;
+
+      // Reload baseline version if version.json updated
+      this.loadBaselineVersion();
 
       appendLog(`✓ Berhasil! Homelab Dashboard kini berjalan di commit ${newSha.slice(0, 7)}.`);
       appendLog('Aset web telah diperbarui dan siap digunakan.');
@@ -309,19 +455,26 @@ export class AppUpdateService {
           const lines = buffer.split('\n');
           buffer = lines.pop() ?? '';
           for (const line of lines) {
-            onLine(line);
+            const clean = line.replace(/\r/g, '').trimEnd();
+            if (clean) onLine(clean);
           }
         });
         stream.on('end', () => {
-          if (buffer.trim()) onLine(buffer);
+          const clean = buffer.replace(/\r/g, '').trim();
+          if (clean) onLine(clean);
         });
       };
-      pipe(child.stdout);
-      pipe(child.stderr);
+
+      if (child.stdout) pipe(child.stdout);
+      if (child.stderr) pipe(child.stderr);
+
       child.on('error', (err) => reject(err));
       child.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`${cmd} exited with code ${code}`));
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Command '${cmd} ${args.join(' ')}' exited with code ${code}`));
+        }
       });
     });
   }

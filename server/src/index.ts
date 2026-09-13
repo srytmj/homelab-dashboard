@@ -66,7 +66,8 @@ async function bootstrap() {
     sslService,
     pinsService,
     gitProjectsService,
-    () => sentinelService?.getStatus()
+    () => sentinelService?.getStatus(),
+    () => appUpdateService.getVersionInfo()
   );
 
   // The Sentinel bot and disk hygiene/prune only ever act on the primary

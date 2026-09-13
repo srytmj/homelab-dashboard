@@ -6,7 +6,7 @@ import { TailscaleService } from './tailscale.service.js';
 import { SslService } from './ssl.service.js';
 import { PinsService } from './pins.service.js';
 import { GitProjectsService } from './git-projects.service.js';
-import { CockpitSnapshot, SentinelStatus, DockerHostSummary } from '../types.js';
+import { CockpitSnapshot, SentinelStatus, DockerHostSummary, AppVersionInfo } from '../types.js';
 import { config } from '../config.js';
 
 export class CollectorService {
@@ -18,6 +18,7 @@ export class CollectorService {
   private pinsService: PinsService;
   private gitProjectsService: GitProjectsService;
   private getSentinelStatus?: () => SentinelStatus | undefined;
+  private getAppVersion?: () => AppVersionInfo | undefined;
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
   private lastSnapshot: CockpitSnapshot | null = null;
@@ -30,7 +31,8 @@ export class CollectorService {
     sslService: SslService,
     pinsService: PinsService,
     gitProjectsService: GitProjectsService,
-    getSentinelStatus?: () => SentinelStatus | undefined
+    getSentinelStatus?: () => SentinelStatus | undefined,
+    getAppVersion?: () => AppVersionInfo | undefined
   ) {
     this.dockerServices = dockerServices;
     this.proxmoxService = proxmoxService;
@@ -40,6 +42,7 @@ export class CollectorService {
     this.pinsService = pinsService;
     this.gitProjectsService = gitProjectsService;
     this.getSentinelStatus = getSentinelStatus;
+    this.getAppVersion = getAppVersion;
   }
 
   public start() {
@@ -96,6 +99,7 @@ export class CollectorService {
     ]);
 
     const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
+
     const perHostResults = await Promise.all(
       this.dockerServices.map(async (service) => ({
         service,
@@ -122,6 +126,7 @@ export class CollectorService {
 
     const gitProjects = this.gitProjectsService.getSnapshot();
     const sentinel = this.getSentinelStatus ? this.getSentinelStatus() : undefined;
+    const appVersion = this.getAppVersion ? this.getAppVersion() : undefined;
 
     const snapshot: CockpitSnapshot = {
       timestamp: Date.now(),
@@ -138,6 +143,7 @@ export class CollectorService {
       gitProjects,
       sentinel,
       isDemoMode: !anyLive || config.demoMode,
+      appVersion,
     };
 
     this.lastSnapshot = snapshot;

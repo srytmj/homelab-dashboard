@@ -97,48 +97,48 @@ function CockpitDashboard() {
         <main className="w-full min-w-0 flex-1 space-y-6 px-5 py-7 lg:px-8">
           <DasWatchdogAlert storage={snapshot?.storage} />
 
-        {snapshot?.host.pve && !snapshot.host.pve.connected && (
-          <p className="rounded-panel border border-cockpit-border bg-cockpit-panel px-5 py-3.5 text-[12.5px] leading-relaxed text-cockpit-muted">
-            <span className="font-semibold text-cockpit-text">Proxmox API not connected.</span> Set{' '}
-            <code className="font-mono text-cockpit-accent">PROXMOX_TOKEN_ID</code> and{' '}
-            <code className="font-mono text-cockpit-accent">PROXMOX_TOKEN_SECRET</code> in{' '}
-            <code className="font-mono text-cockpit-accent">.env</code> to stream real hardware sensors and vzdump
-            history from the PVE node. Showing simulated telemetry until then.
-          </p>
-        )}
+          {snapshot?.host.pve && !snapshot.host.pve.connected && (
+            <p className="rounded-panel border border-cockpit-border bg-cockpit-panel px-5 py-3.5 text-[12.5px] leading-relaxed text-cockpit-muted">
+              <span className="font-semibold text-cockpit-text">Proxmox API not connected.</span> Set{' '}
+              <code className="font-mono text-cockpit-accent">PROXMOX_TOKEN_ID</code> and{' '}
+              <code className="font-mono text-cockpit-accent">PROXMOX_TOKEN_SECRET</code> in{' '}
+              <code className="font-mono text-cockpit-accent">.env</code> to stream real hardware sensors and vzdump
+              history from the PVE node. Showing simulated telemetry until then.
+            </p>
+          )}
 
-        <Routes>
-          <Route path="/" element={<HomePage snapshot={snapshot} throughput={throughput} isPrivacyMode={isPrivacyMode} />} />
-          <Route
-            path="/fleet"
-            element={
-              <FleetPage
-                containers={snapshot?.containers}
-                isPrivacyMode={isPrivacyMode}
-                onViewLogs={(c) => setActiveLogContainer(c)}
-                onRestartContainer={(c) => setActiveRestartContainer(c)}
-                onPinContainer={(c) => setActivePinContainer(c)}
-              />
-            }
-          />
-          <Route
-            path="/infra"
-            element={
-              <InfraPage snapshot={snapshot} isPrivacyMode={isPrivacyMode} onOpenPruneModal={() => setIsPruneModalOpen(true)} />
-            }
-          />
-          <Route path="/processes" element={<ProcessesPage />} />
-          <Route path="/sentinel" element={<SentinelPage sentinel={snapshot?.sentinel} />} />
-          <Route path="/git-projects" element={<GitProjectsPage snapshot={snapshot} onRefetch={refetch} />} />
-          <Route
-            path="/terminal"
-            element={
-              <Suspense fallback={<p className="label">Loading terminal…</p>}>
-                <TerminalPage />
-              </Suspense>
-            }
-          />
-        </Routes>
+          <Routes>
+            <Route path="/" element={<HomePage snapshot={snapshot} throughput={throughput} isPrivacyMode={isPrivacyMode} />} />
+            <Route
+              path="/fleet"
+              element={
+                <FleetPage
+                  containers={snapshot?.containers}
+                  isPrivacyMode={isPrivacyMode}
+                  onViewLogs={(c) => setActiveLogContainer(c)}
+                  onRestartContainer={(c) => setActiveRestartContainer(c)}
+                  onPinContainer={(c) => setActivePinContainer(c)}
+                />
+              }
+            />
+            <Route
+              path="/infra"
+              element={
+                <InfraPage snapshot={snapshot} isPrivacyMode={isPrivacyMode} onOpenPruneModal={() => setIsPruneModalOpen(true)} />
+              }
+            />
+            <Route path="/processes" element={<ProcessesPage />} />
+            <Route path="/sentinel" element={<SentinelPage sentinel={snapshot?.sentinel} />} />
+            <Route path="/git-projects" element={<GitProjectsPage snapshot={snapshot} onRefetch={refetch} />} />
+            <Route
+              path="/terminal"
+              element={
+                <Suspense fallback={<p className="label">Loading terminal…</p>}>
+                  <TerminalPage />
+                </Suspense>
+              }
+            />
+          </Routes>
         </main>
       </div>
 
@@ -178,9 +178,26 @@ function CockpitDashboard() {
       )}
 
       <footer className="border-t border-cockpit-border bg-cockpit-topbar/80 backdrop-blur-xl px-5 py-4 lg:px-8">
-        <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-2 font-mono text-[11px] text-cockpit-muted sm:flex-row">
-          <span>Homelab Cockpit{snapshot?.host.pve.nodeName ? ` · ${snapshot.host.pve.nodeName}` : ''}</span>
-          <span>Polling every 2s over WebSocket</span>
+        <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-2.5 font-mono text-[11px] text-cockpit-muted sm:flex-row">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-cockpit-text">Homelab Cockpit</span>
+            <span className="rounded bg-cockpit-border/60 px-1.5 py-0.5 text-[10.5px] font-medium text-cockpit-accent">
+              v{snapshot?.appVersion?.version || '1.1.0'}
+              {snapshot?.appVersion?.commitSha && snapshot.appVersion.commitSha !== 'unknown'
+                ? ` (${snapshot.appVersion.commitSha.slice(0, 7)})`
+                : ''}
+            </span>
+            {snapshot?.host.pve.nodeName && (
+              <span>· {snapshot.host.pve.nodeName}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-cockpit-muted">
+            <span>
+              Branch: <span className="text-cockpit-text">{snapshot?.appVersion?.branch || 'main'}</span>
+            </span>
+            <span>·</span>
+            <span>Polling every 2s over WebSocket</span>
+          </div>
         </div>
       </footer>
     </div>
