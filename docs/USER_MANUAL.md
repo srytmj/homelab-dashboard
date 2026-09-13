@@ -10,14 +10,15 @@ The first time the dashboard is opened it asks you to create the owner account. 
 
 ## Layout
 
-Five pages, reachable from the header nav or by typing the address directly — each has its own URL and survives a reload or a bookmark:
+Six pages, reachable from the header nav or by typing the address directly — each has its own URL and survives a reload or a bookmark:
 
 | Page | What it holds |
 | --- | --- |
 | Overview (`/`) | Device identity, spec, the four headline tiles, and shortcuts into Fleet and Infra |
 | Fleet (`/fleet`) | The container table |
-| Infra (`/infra`) | Proxmox node, LXC runner and backup panels, plus storage, Tailscale mesh and SSL certificates |
+| Infra (`/infra`) | Proxmox node, LXC runner and backup panels, plus storage, Tailscale mesh, SSL certificates, and the backup panel |
 | Git projects (`/git-projects`) | Containers built from your own repos, and whether they have new commits upstream |
+| Terminal (`/terminal`) | A real shell to Proxmox or a configured Docker host, over SSH |
 | Sentinel (`/sentinel`) | Telegram companion status and command reference |
 
 The nav underlines whichever page you're on.
@@ -127,6 +128,12 @@ Clicking it first checks what would change, without touching anything:
 - If the changed files include something that looks like a database migration (a `migrations/` folder, `prisma/schema.prisma`, `alembic/`, or a `.sql` file), you get a warning listing exactly which files matched before you can continue. This is a pattern match, not a guarantee — it can miss a real migration named unusually, or flag a file that isn't one. Read the list.
 - Confirming runs `git pull` followed by the configured rebuild command in that project's directory. This can take a while for a slow build; the dialog stays open until it finishes.
 - The record of "what's deployed" only updates through this button. Deploying the same project some other way (SSH, a separate CI job) leaves the dashboard showing the old commit as deployed until you pull through here again.
+
+## Terminal
+
+A real shell, in the browser, to any host listed in `SSH_TARGETS`. Pick a target and it connects immediately — there's no confirmation step, because unlike every other action in this dashboard, a terminal isn't one specific thing to confirm; read the security note in the [README](../README.md#terminal) if you haven't already before turning this on.
+
+The connection status shows in the terminal's own header bar. **Disconnect** closes the session cleanly; closing the browser tab or navigating away does the same. If a target doesn't appear in the list, it isn't configured in `SSH_TARGETS` — this page never lets you type in a host to connect to, only pick from what's pre-configured.
 
 ## Sentinel
 

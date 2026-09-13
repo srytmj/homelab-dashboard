@@ -35,10 +35,11 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
                     - pinned-container registry (data/pins.json)
                     - GitHub commit tracking for tracked projects
                     - rclone backup / restore, plus small-config import
+                    - SSH terminal bridge (no command whitelist)
                     - optional Telegram bot with Gemini Q&A
                                  |
                     React client (Vite + Tailwind + React Router)
-                    - Overview / Fleet / Infra / Git projects / Sentinel pages
+                    - Overview / Fleet / Infra / Git projects / Terminal / Sentinel pages
                     - Ctrl+K command palette
                     - light and dark theme
 ```
@@ -74,6 +75,8 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 **Light and dark theme.** Toggles from the header, remembers your choice, otherwise follows the OS setting.
 
 **Privacy mode and kiosk mode.** Redact IPs and domains before taking screenshots; go fullscreen for a wall display.
+
+**Terminal.** A real interactive shell, in the browser, to Proxmox or any configured Docker host over SSH — for the one-off `tail -f` you don't want to leave the dashboard for. This is deliberately the one feature with no command whitelist: it's full shell access, by design, to hosts named in `SSH_TARGETS` and nowhere else. See Terminal below before enabling it.
 
 **Sentinel companion (optional).** A Telegram bot embedded in the same daemon. Tier 1 is read-only telemetry, tier 2 answers questions through Gemini without acting, tier 3 restarts containers or prunes disk behind a whitelist and a 60-second confirmation. Unknown Telegram user IDs are ignored silently.
 
@@ -125,6 +128,10 @@ BACKUP_RCLONE_REMOTE=nextcloud:homelab-backup
 BACKUP_SOURCE_PATHS=/app/data,/projects
 BACKUP_INTERVAL_HOURS=0
 
+# Only needed for the in-browser terminal — see "Terminal" below before
+# setting this. No command whitelist; real shell access to whatever's named.
+SSH_TARGETS=proxmox=root@192.168.18.224,docker-host=root@192.168.18.225:22
+
 # Optional Telegram companion
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF
 TELEGRAM_ALLOWED_USER_IDS=12345678
@@ -159,6 +166,14 @@ Skip `GIT_PROJECTS_ROOT` entirely if you only want commit tracking (Track a proj
 - **Restore** copies the same paths back down, overwriting whatever's currently there — this is what you run after reinstalling the daemon on a replacement disk, once `BACKUP_RCLONE_REMOTE` points at the same remote as before. It's confirmed explicitly in the UI and the API rejects it without `{ confirm: true }`.
 
 Leave `BACKUP_RCLONE_REMOTE` empty to skip backup/restore entirely — **Import config from a link** on the Infra page works independently of it. That one is intentionally narrow: it downloads one small zip from a public link (a Google Drive "Anyone with the link" share is rewritten to a direct-download URL automatically; any other direct-download URL works as-is), extracts only `pins.json` and `git-projects.json` by name, and copies just those into `data/`. It never touches `data/auth.json`, so an import can't lock you out of your own dashboard, and it's capped at 20MB — this is for Cockpit's own small config, not a way to move fleet data around.
+
+### Terminal
+
+Read this before setting `SSH_TARGETS`. Every other host-touching feature in this app runs one fixed, pre-chosen command — git pull, a rebuild, an rclone sync. The terminal is different on purpose: it's a real interactive shell, so there's no whitelist to design, because the feature *is* "run anything as this user on this host."
+
+The mitigations are real but limited: it uses SSH key auth (never a password), targets are fixed in `.env` at deploy time and can't be added while the app is running, and it sits behind the same single-owner login as the rest of the dashboard. That last point matters — anyone with a valid Cockpit session already has this ceiling of access in practice, since the daemon's own Docker socket access already reaches every configured host's containers. The terminal doesn't grant a new class of access so much as make an existing one convenient.
+
+Setup: generate a dedicated key pair yourself (`ssh-keygen`), put the public half in `~/.ssh/authorized_keys` on every host you list in `SSH_TARGETS`, and point `SSH_PRIVATE_KEY_PATH` in `docker-compose.yml` at the private half — it's bind-mounted read-only, never uploaded through the dashboard or stored in `data/`. Leave `SSH_TARGETS` empty to disable the feature entirely; the Terminal page then just says there's nothing configured.
 
 If you're an AI agent setting this up or extending it: don't reintroduce hardware-specific strings into `client/src/` — host name, CPU model, IPs and per-drive labels must come from `snapshot.host`/`snapshot.storage` (or the config above), never a literal like a specific CPU model name or IP address written into a component. That was a real bug here once already (see [CLAUDE.md](CLAUDE.md)).
 
@@ -202,7 +217,9 @@ Everything except `/api/health` and `/api/auth/*` requires `Authorization: Beare
 | POST | `/api/backup/run` | Run a backup now |
 | POST | `/api/backup/restore` | Restore from the remote — requires `{ confirm: true }` |
 | POST | `/api/backup/import-config` | Import `pins.json`/`git-projects.json` from a link — `{ url }` |
+| GET | `/api/ssh-targets` | Configured SSH target names (never host/user/key details) |
 | WS | `/ws` | Snapshot broadcast every 2 seconds |
+| WS | `/ws/terminal?target=<name>` | Interactive shell to that target — no command whitelist |
 
 ## Documentation
 

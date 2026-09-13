@@ -24,7 +24,7 @@ The daemon runs without any configuration: with no Docker socket and no Proxmox 
 
 ```
 server/src/index.ts              routes, auth guard, WebSocket broadcast
-server/src/services/             one file per data source, including auth, pins, git projects and backup
+server/src/services/             one file per data source, including auth, pins, git projects, backup and terminal
 server/src/types.ts              server-side shape of the snapshot
 client/src/context/AuthContext   session state, login, register, logout
 client/src/utils/api.ts          authFetch, the only way to call /api
@@ -82,6 +82,8 @@ client/src/index.css             token values per theme, shared component classe
 
 **Restore and config import are two different features at two different scales — don't conflate them.** `BackupService.runRestore()` reverses the same `rclone sync` used for backup and is meant for disaster recovery (the whole fleet, potentially large); it requires `{ confirm: true }` in the request body on top of the client's own confirmation modal, because it overwrites live paths. `importConfig()` is deliberately narrow: it downloads at most `IMPORT_MAX_BYTES` (20MB) from a public link, verifies zip magic bytes before touching disk, and extracts *only* `pins.json`/`git-projects.json` by name via `unzip`'s explicit-member-list form — never `data/auth.json`, so a bad or malicious import can't lock the owner out or swap their credentials. If either limit or the auth.json exclusion ever needs lifting, that's a decision for the owner to make explicitly, not something to relax while extending the feature.
 
+**`TerminalService` is deliberately the one exception to "closed set of commands, resolved server-side."** Every other host-touching service (`GitProjectsService`, `BackupService`) runs one fixed command chosen ahead of time; the terminal is a real interactive shell over SSH with no whitelist, because the feature *is* "run anything." Its containment comes from a different direction: `config.sshTargets` is parsed once from `SSH_TARGETS` at boot and there is no route that registers, edits or lists more than target *names* (`GET /api/ssh-targets` never returns host/user/port) — never add a way to add or modify a target from a running request. Don't reuse `TerminalService`'s pattern (raw byte-stream bridging over a WebSocket with no per-message validation) for anything else in this repo; it's correct here only because the whole point is unrestricted shell access to a host the owner already trusts, which is not true of any other feature.
+
 ## Common tasks
 
 **Adding a metric to an existing section.** Add the field to both `types.ts` files, populate it in the relevant service, render it as a `.data-row` or a tile. Keep the label short and lowercase-with-capital, not a sentence.
@@ -94,7 +96,7 @@ client/src/index.css             token values per theme, shared component classe
 
 ## What not to do
 
-- Do not add a charting or component library. The sparklines are hand-written SVG and the whole client is 200 KB for a reason.
+- Do not add a charting or component library. The sparklines are hand-written SVG for a reason. `react-router-dom` (structural routing) and `@xterm/xterm`+`@xterm/addon-fit` (an actual terminal emulator, not realistically hand-rolled) are the two exceptions, and `TerminalPage` is lazy-loaded (`React.lazy` in `App.tsx`) specifically so xterm's ~330KB only loads for someone who opens that page. Any future library addition needs the same justification and, if it's non-trivial in size, the same lazy-loading treatment.
 - Do not put emoji in the interface, in documentation, or in commit messages.
 - Do not add backwards-compatibility shims, feature flags or defensive checks for states that cannot occur. This is a single-owner tool with no external consumers.
 - Do not commit generated output. `client/dist` is ignored; `client/tsconfig.tsbuildinfo` is tracked for historical reasons and its churn can be ignored.
