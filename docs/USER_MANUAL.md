@@ -101,6 +101,8 @@ Pins are stored on the daemon, not the browser, so they're the same whether you 
 
 The footer button shows reclaimable Docker space and opens the prune dialog. Prune removes untagged image layers and builder cache only; running containers and named volumes are left alone.
 
+**Disk performance.** A tab per volume, and below it a graph of active time (how much of the last stretch that disk was busy) plus four readouts: active time, average response time, read speed and write speed — the same shape as Task Manager's own Performance tab for a disk. This reads `/proc/diskstats` directly, so it only has data on a Linux host; elsewhere it says so instead of showing empty tabs. A volume on top of LVM or device-mapper shows the mapper device's own numbers, not the physical disk underneath — the usual limitation for any tool built this way.
+
 **Tailscale mesh.** Peers with online state, address and last-seen time. `THIS HOST` marks the machine serving the dashboard, `EXIT` marks an exit node, and a peer advertising routes shows them in place of its MagicDNS name. Hover a row to copy its address.
 
 **SSL certificates.** Days remaining per domain, amber under 30 days, red under 14. The header pill shows the soonest expiry across all of them.
