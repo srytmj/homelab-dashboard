@@ -157,6 +157,8 @@ export class GitProjectsService {
         repoOwner: record.repoOwner,
         repoName: record.repoName,
         branch: record.branch,
+        localPath: record.localPath,
+        rebuildCommand: record.rebuildCommand,
         latestSha: record.cachedLatestSha,
         latestCommitMessage: record.cachedLatestMessage,
         latestCommitDate: record.cachedLatestDate,
