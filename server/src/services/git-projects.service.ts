@@ -37,6 +37,11 @@ interface GitProjectRecord {
   cachedLatestMessage?: string;
   cachedLatestDate?: string;
   lastCheckedAt?: number;
+  // Opt-in per project — see pullIfSafe() below for what "safe" means.
+  autoDeploy?: boolean;
+  // Set when autoDeploy found a migration-risk file and backed off, so the
+  // UI can explain why an update is sitting there instead of deploying itself.
+  autoDeployBlocked?: boolean;
 }
 
 interface GitProjectsDb {
@@ -108,7 +113,8 @@ export class GitProjectsService {
     repoName: string,
     branch: string,
     localPath?: string,
-    rebuildCommand?: RebuildCommand
+    rebuildCommand?: RebuildCommand,
+    autoDeploy?: boolean
   ): GitProjectRecord {
     const existing = this.db.projects[containerName];
     const record: GitProjectRecord = {
@@ -118,6 +124,7 @@ export class GitProjectsService {
       localPath: localPath?.trim() || existing?.localPath,
       rebuildCommand: rebuildCommand || existing?.rebuildCommand,
       lastKnownSha: existing?.lastKnownSha,
+      autoDeploy: autoDeploy ?? existing?.autoDeploy ?? false,
     };
     this.db.projects[containerName] = record;
     this.saveDb();
@@ -135,6 +142,36 @@ export class GitProjectsService {
     if (!record) return;
     record.lastKnownSha = sha;
     this.saveDb();
+  }
+
+  /**
+   * Reads whatever commit is actually checked out on disk right now and
+   * records that as deployed — for a project that was already running
+   * before it was tracked here (a manual `git pull` outside the dashboard,
+   * or the initial deploy). Without this, a freshly-tracked project always
+   * starts as "Not deployed yet" even though it's clearly running, because
+   * this dashboard has no baseline until either this or a pull happens.
+   */
+  public async markDeployedFromLocal(containerName: string): Promise<PullResult> {
+    const record = this.db.projects[containerName];
+    if (!record) return { success: false, message: 'Not tracked.' };
+
+    let cwd: string;
+    try {
+      cwd = this.resolveWorkingTree(record);
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+
+    try {
+      const { stdout } = await execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], EXEC_OPTS);
+      const sha = stdout.trim();
+      record.lastKnownSha = sha;
+      this.saveDb();
+      return { success: true, message: `Marked ${sha.slice(0, 7)} as deployed.`, newSha: sha };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Could not read the current commit.' };
+    }
   }
 
   /**
@@ -159,6 +196,8 @@ export class GitProjectsService {
         branch: record.branch,
         localPath: record.localPath,
         rebuildCommand: record.rebuildCommand,
+        autoDeploy: record.autoDeploy ?? false,
+        autoDeployBlocked: record.autoDeployBlocked ?? false,
         latestSha: record.cachedLatestSha,
         latestCommitMessage: record.cachedLatestMessage,
         latestCommitDate: record.cachedLatestDate,
@@ -198,8 +237,45 @@ export class GitProjectsService {
       record.cachedLatestMessage = commit.commit.message.split('\n')[0];
       record.cachedLatestDate = commit.commit.committer?.date;
       this.saveDb();
+
+      if (record.autoDeploy && record.lastKnownSha && record.cachedLatestSha !== record.lastKnownSha) {
+        await this.autoDeployIfSafe(containerName, record);
+      }
     } catch (err) {
       console.warn(`[GitProjectsService] Check failed for ${record.repoOwner}/${record.repoName}:`, err);
+    }
+  }
+
+  /**
+   * Auto-deploy is opt-in per project (see the `autoDeploy` toggle) and only
+   * ever proceeds when checkPull() reports zero migration-risk files — the
+   * same heuristic the manual Pull & rebuild confirmation shows the owner.
+   * A migration-risk file sets autoDeployBlocked instead of deploying, so
+   * the project waits for a manual, informed click rather than silently
+   * running something that might touch the database unattended.
+   */
+  private async autoDeployIfSafe(containerName: string, record: GitProjectRecord): Promise<void> {
+    if (!record.localPath || !record.rebuildCommand) return;
+
+    const check = await this.checkPull(containerName);
+    if (!check.ok) return;
+
+    if (check.riskyFiles.length > 0) {
+      if (!record.autoDeployBlocked) {
+        record.autoDeployBlocked = true;
+        this.saveDb();
+        console.warn(
+          `[GitProjectsService] Auto-deploy paused for ${containerName}: migration-risk files detected`,
+          check.riskyFiles
+        );
+      }
+      return;
+    }
+
+    record.autoDeployBlocked = false;
+    const result = await this.pullAndRebuild(containerName);
+    if (!result.success) {
+      console.warn(`[GitProjectsService] Auto-deploy failed for ${containerName}:`, result.message);
     }
   }
 

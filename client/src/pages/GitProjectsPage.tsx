@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, GitBranch, Plus, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Download, GitBranch, Plus, RefreshCw } from 'lucide-react';
 import { CockpitSnapshot, GitProjectStatus } from '../types.js';
 import { GitProjectModal } from '../components/GitProjectModal.js';
 import { GitPullModal } from '../components/GitPullModal.js';
@@ -15,6 +15,7 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
   const [pullingProject, setPullingProject] = useState<GitProjectStatus | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [markingDeployed, setMarkingDeployed] = useState<string | null>(null);
 
   const projects = snapshot?.gitProjects ?? [];
   const containers = snapshot?.containers ?? [];
@@ -32,6 +33,16 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
       onRefetch();
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleMarkDeployed = async (containerName: string) => {
+    setMarkingDeployed(containerName);
+    try {
+      await authFetch(`/api/git-projects/${encodeURIComponent(containerName)}/mark-deployed`, { method: 'POST' });
+      onRefetch();
+    } finally {
+      setMarkingDeployed(null);
     }
   };
 
@@ -71,9 +82,10 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
         <div className="px-5 py-1.5">
           {projects.map((project) => {
             const canPull = Boolean(project.localPath && project.rebuildCommand);
+            const canMarkDeployed = Boolean(project.localPath && !project.lastKnownSha);
 
             return (
-              <div key={project.containerName} className="data-row gap-3">
+              <div key={project.containerName} className="data-row flex-wrap gap-3">
                 <button
                   onClick={() => setEditingProject(project)}
                   className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
@@ -81,10 +93,22 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
                 >
                   <GitBranch className="h-3.5 w-3.5 shrink-0 text-cockpit-muted" />
                   <span className="min-w-0">
-                    <span className="block font-semibold text-cockpit-text">{project.containerName}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="block font-semibold text-cockpit-text">{project.containerName}</span>
+                      {project.autoDeploy && (
+                        <span className="pill pill-accent" title="Auto-deploys safe commits on its own">
+                          Auto
+                        </span>
+                      )}
+                    </span>
                     <span className="block truncate font-mono text-[11px] text-cockpit-muted">
                       {project.repoOwner}/{project.repoName}@{project.branch}
                     </span>
+                    {project.autoDeployBlocked && (
+                      <span className="block text-[11px] text-state-warn">
+                        Auto-deploy paused — a migration-risk file was detected, pull manually to review it
+                      </span>
+                    )}
                   </span>
                 </button>
 
@@ -107,6 +131,18 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
                   <span className={`pill ${project.hasUpdate ? 'pill-warn' : 'pill-neutral'}`}>
                     {project.hasUpdate ? 'Update available' : project.lastKnownSha ? 'Up to date' : 'Not deployed yet'}
                   </span>
+                  {canMarkDeployed && (
+                    <button
+                      onClick={() => handleMarkDeployed(project.containerName)}
+                      disabled={markingDeployed === project.containerName}
+                      title="Already running this project? Record whatever commit is checked out right now as deployed."
+                      className="icon-btn hover:border-state-good/40 hover:text-state-good disabled:opacity-30"
+                    >
+                      <CheckCircle2
+                        className={`h-3.5 w-3.5 ${markingDeployed === project.containerName ? 'animate-pulse' : ''}`}
+                      />
+                    </button>
+                  )}
                   <button
                     onClick={() => setPullingProject(project)}
                     disabled={!canPull}

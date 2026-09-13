@@ -313,6 +313,7 @@ async function bootstrap() {
       branch?: string;
       localPath?: string;
       rebuildCommand?: RebuildCommand;
+      autoDeploy?: boolean;
     };
     if (!body?.repoOwner || !body?.repoName) {
       reply.status(400);
@@ -324,7 +325,8 @@ async function bootstrap() {
       body.repoName,
       body.branch || 'main',
       body.localPath,
-      body.rebuildCommand
+      body.rebuildCommand,
+      body.autoDeploy
     );
     return { success: true, project: record };
   });
@@ -343,6 +345,15 @@ async function bootstrap() {
   app.post('/api/git-projects/:containerName/check-pull', async (request) => {
     const { containerName } = request.params as { containerName: string };
     return gitProjectsService.checkPull(containerName);
+  });
+
+  app.post('/api/git-projects/:containerName/mark-deployed', async (request, reply) => {
+    const { containerName } = request.params as { containerName: string };
+    const result = await gitProjectsService.markDeployedFromLocal(containerName);
+    if (!result.success) {
+      reply.status(400);
+    }
+    return result;
   });
 
   app.post('/api/git-projects/:containerName/pull', async (request, reply) => {

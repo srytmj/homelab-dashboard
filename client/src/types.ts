@@ -183,6 +183,8 @@ export interface GitProjectStatus {
   branch: string;
   localPath?: string;
   rebuildCommand?: RebuildCommand;
+  autoDeploy: boolean;
+  autoDeployBlocked: boolean;
   latestSha?: string;
   latestCommitMessage?: string;
   latestCommitDate?: string;

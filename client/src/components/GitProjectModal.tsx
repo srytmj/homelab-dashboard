@@ -34,6 +34,7 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
   const [branch, setBranch] = useState(editingProject?.branch ?? 'main');
   const [localPath, setLocalPath] = useState(editingProject?.localPath ?? '');
   const [rebuildCommand, setRebuildCommand] = useState<RebuildCommand | ''>(editingProject?.rebuildCommand ?? '');
+  const [autoDeploy, setAutoDeploy] = useState(editingProject?.autoDeploy ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +81,7 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
           branch: branch.trim() || 'main',
           localPath: localPath.trim() || undefined,
           rebuildCommand: rebuildCommand || undefined,
+          autoDeploy: rebuildCommand ? autoDeploy : false,
         }),
       });
       onSaved();
@@ -260,6 +262,25 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
                 ))}
               </select>
             </div>
+          )}
+
+          {localPath.trim() && rebuildCommand && (
+            <label className="flex items-start gap-2.5 rounded-lg border border-cockpit-border bg-cockpit-bg p-3">
+              <input
+                type="checkbox"
+                checked={autoDeploy}
+                onChange={(e) => setAutoDeploy(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-0.5"
+              />
+              <span className="text-[12px] text-cockpit-text">
+                <span className="font-semibold">Auto-deploy new commits</span>
+                <span className="block text-cockpit-muted">
+                  Pulls and rebuilds on its own as soon as a new commit appears — but only when nothing in the diff
+                  looks like a database migration. A migration-risk file always waits for you to pull manually.
+                </span>
+              </span>
+            </label>
           )}
 
           {error && <p className="text-[12px] text-state-bad">{error}</p>}
