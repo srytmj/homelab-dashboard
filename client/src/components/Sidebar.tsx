@@ -8,6 +8,7 @@ import {
   Cpu,
   TerminalSquare,
   Bot,
+  Sparkles,
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ export const NAV_ROUTES = [
   { path: '/processes', label: 'Processes', icon: Cpu },
   { path: '/terminal', label: 'Terminal', icon: TerminalSquare },
   { path: '/sentinel', label: 'Sentinel', icon: Bot },
+  { path: '/ai-agents', label: 'AI Agents', icon: Sparkles },
 ];
 
 const STORAGE_KEY = 'cockpit-sidebar-collapsed';

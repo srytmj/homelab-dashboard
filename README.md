@@ -86,6 +86,8 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 
 **Terminal.** A real interactive shell, in the browser, to Proxmox or any configured Docker host over SSH — for the one-off `tail -f` you don't want to leave the dashboard for. This is deliberately the one feature with no command whitelist: it's full shell access, by design, to hosts named in `SSH_TARGETS` and nowhere else. See Terminal below before enabling it.
 
+**AI Agents monitor.** Real-time telemetry, 5-hour rolling windows, cooldown counters, and weekly activity charts across AI coding agents (Claude Pro, Gemini / Antigravity) running locally or authenticated via T3 Code. Reads local T3 runtime caches and state SQLite without external API key requirements.
+
 **Sentinel companion (optional).** A Telegram bot embedded in the same daemon. Tier 1 is read-only telemetry, tier 2 answers questions through Gemini without acting, tier 3 restarts containers or prunes disk behind a whitelist and a 60-second confirmation. Unknown Telegram user IDs are ignored silently.
 
 ## Quick start
@@ -144,6 +146,9 @@ SSH_TARGETS=proxmox=root@192.168.18.224,docker-host=root@192.168.18.225:22
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF
 TELEGRAM_ALLOWED_USER_IDS=12345678
 GEMINI_API_KEY=AIzaSy
+
+# Optional, for the AI Agents monitoring page (defaults to ~/.t3)
+T3_DATA_DIR=~/.t3
 ```
 
 ### Setup checklist

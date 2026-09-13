@@ -184,3 +184,32 @@ Messages from any Telegram ID outside the allowlist are ignored without a reply.
 - Telemetry updates every two seconds. Sparklines cover recent history only and reset when the daemon restarts.
 - Privacy mode, filters, sort order and page size are per-browser session and reset on reload.
 - Animations respect the operating system's reduce-motion setting.
+
+## AI Agents Monitor
+
+Real-time telemetry and rate-limit tracking for AI coding agents (such as **Claude Code / Claude Pro** and **Gemini / Antigravity**) authenticated via **T3 Code**.
+
+### Features
+- **4-Agent Multi-Tenant Monitoring**: Displays distinct cards for Claude Pro (`suryatmaja.dev@gmail.com`) and Gemini instances (Default, Auth, Marmut), with real-time status (`Running turn` vs `Idle`).
+- **5-Hour Rolling Window Gauge**: Computes turn consumption across the 5-hour rolling limit window, calculates usage percentage, and displays a live second-by-second countdown for when the earliest turn slot clears.
+- **7-Day Activity Histogram**: Interactive mini bar chart showing daily interaction counts for each agent across the past week.
+- **Live Interaction Timeline**: Real-time table streaming recent turn duration, model slug, timestamp, and status.
+
+### How it Works (T3 Code Integration)
+Unlike traditional monitors that require metering pay-per-token API keys, this feature extracts telemetric sessions directly from your local **T3 Code** runtime environment:
+- Reads agent instance caches from `~/.t3/caches/*.json` (e.g. `claudeAgent.json`, `antigravity.json`).
+- Reads interaction turns from the local SQLite database at `~/.t3/userdata/state.sqlite` using read-only mode (`node:sqlite`).
+
+### Requirements for Third-Party / New Homelab Setups
+If another user wants to run this dashboard and monitor their AI agents:
+1. **T3 Code Installed on Host**: The host machine should have T3 Code running (`~/.t3` directory created).
+2. **Custom Path Configuration**: If T3 data is located elsewhere, configure the environment variable:
+   ```env
+   T3_DATA_DIR=/path/to/.t3
+   ```
+3. **Docker Deployment**: When running the dashboard inside a Docker container, mount the host's `.t3` directory as read-only:
+   ```yaml
+   volumes:
+     - ~/.t3:/root/.t3:ro
+   ```
+4. **Graceful Fallback**: If T3 Code is not detected on the machine, the dashboard gracefully marks the integration as offline without crashing other system monitoring pages.

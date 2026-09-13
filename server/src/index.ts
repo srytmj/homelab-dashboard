@@ -22,6 +22,7 @@ import { TerminalService } from './services/terminal.service.js';
 import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
 import { AppUpdateService } from './services/app-update.service.js';
+import { AiAgentsService } from './services/ai-agents.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,6 +56,7 @@ async function bootstrap() {
   const backupService = new BackupService();
   const terminalService = new TerminalService();
   const appUpdateService = new AppUpdateService(notificationsService);
+  const aiAgentsService = new AiAgentsService();
 
   let sentinelService: SentinelService | null = null;
 

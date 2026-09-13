@@ -13,6 +13,8 @@ import {
   ChevronDown,
   Pin,
   Server,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
@@ -212,6 +214,20 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
+    try {
+      return (localStorage.getItem('cockpit-fleet-view') as 'table' | 'cards') || 'table';
+    } catch {
+      return 'table';
+    }
+  });
+
+  const handleSetViewMode = (mode: 'table' | 'cards') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('cockpit-fleet-view', mode);
+    } catch {}
+  };
 
   const hostNames = useMemo(
     () => Array.from(new Set(containers.map((c) => c.dockerHost))).sort(),
@@ -238,9 +254,11 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
         if (sortBy === 'cpu') diff = a.cpuPercent - b.cpuPercent;
         else if (sortBy === 'ram') diff = a.memoryBytes - b.memoryBytes;
         else if (sortBy === 'name') diff = a.name.localeCompare(b.name);
-        else diff =
-          a.networkRxRateBytesPerSec + a.networkTxRateBytesPerSec -
-          (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
+        else
+          diff =
+            a.networkRxRateBytesPerSec +
+            a.networkTxRateBytesPerSec -
+            (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
         return sortOrder === 'desc' ? -diff : diff;
       });
   }, [containers, search, statusFilter, hostFilter, sortBy, sortOrder]);
@@ -285,7 +303,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
   return (
     <section className="panel overflow-hidden animate-fade-in-up">
-      <div className="panel-head">
+      <div className="panel-head flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="panel-title">Container fleet</h2>
           <p className="panel-sub">
@@ -293,15 +311,15 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="relative flex-1 sm:flex-initial min-w-[160px]">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
             <input
               type="text"
               placeholder="Filter name, image, port"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="field w-52 pl-8"
+              className="field w-full sm:w-44 lg:w-56 pl-8 text-[12.5px]"
             />
           </div>
 
@@ -322,153 +340,300 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
           </div>
 
           {hostNames.length > 1 && <HostFilter hosts={hostNames} value={hostFilter} onChange={setHostFilter} />}
+
+          {/* View Mode Toggle */}
+          <div className="seg hidden sm:inline-flex" title="Switch layout view">
+            <button
+              onClick={() => handleSetViewMode('table')}
+              className={`seg-btn px-2 ${viewMode === 'table' ? 'seg-btn-on' : ''}`}
+              title="Table view"
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => handleSetViewMode('cards')}
+              className={`seg-btn px-2 ${viewMode === 'cards' ? 'seg-btn-on' : ''}`}
+              title="Grid cards view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left text-[13px]">
-          <thead>
-            <tr className="border-b border-cockpit-border font-mono text-[10px] uppercase tracking-[0.09em] text-cockpit-muted">
-              <SortHeader column="name">Service</SortHeader>
-              <th className="px-4 py-2.5 font-medium">Health</th>
-              <th className="px-4 py-2.5 font-medium">Web UI</th>
-              <SortHeader column="cpu">CPU</SortHeader>
-              <SortHeader column="ram">Memory</SortHeader>
-              <SortHeader column="network">Throughput</SortHeader>
-              <th className="px-4 py-2.5 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody key={`${currentPage}-${pageSize}`} className="animate-fadeIn">
+      {viewMode === 'cards' ? (
+        /* Card / Grid View */
+        <div className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 animate-fadeIn">
             {visibleContainers.map((container) => {
               const isRunning = container.state === 'running';
               const cpuTone = getStatusColor(container.cpuPercent);
               const probe = container.httpHealth;
 
               return (
-                <tr
+                <div
                   key={container.id}
-                  className="group border-b border-cockpit-border transition-colors last:border-b-0 hover:bg-cockpit-panelHover"
+                  className="flex flex-col justify-between rounded-xl border border-cockpit-border bg-cockpit-bg/60 p-4 transition-all hover:border-cockpit-accent/40 hover:bg-cockpit-panel/80 hover:shadow-panel"
                 >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${isRunning ? 'bg-state-good' : 'bg-cockpit-muted'}`}
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          {container.isPinned && (
-                            <Pin className="h-3 w-3 shrink-0 fill-cockpit-accent text-cockpit-accent" />
-                          )}
-                          <span className="font-semibold text-cockpit-text">{container.name}</span>
-                          <span className="font-mono text-[10.5px] text-cockpit-muted">#{container.shortId}</span>
-                        </div>
-                        <div className="truncate font-mono text-[11px] text-cockpit-muted" title={container.image}>
-                          {container.image}
-                        </div>
-                        {hostNames.length > 1 && (
-                          <div className="mt-0.5 truncate font-mono text-[10px] text-cockpit-muted">
-                            {container.dockerHost}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`pill ${isRunning ? 'pill-good' : 'pill-neutral'}`}>
-                        {isRunning ? 'Running' : 'Stopped'}
-                      </span>
-                      {isRunning && probe?.status === 'healthy' && (
-                        <span className="pill pill-neutral normal-case tabular-nums">
-                          {probe.statusCode || 200} · {probe.latencyMs}ms
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${isRunning ? 'bg-state-good' : 'bg-cockpit-muted'}`}
+                        />
+                        <span className="font-bold text-cockpit-text truncate text-[14px]" title={container.name}>
+                          {container.name}
                         </span>
-                      )}
-                      {isRunning && probe?.status === 'critical' && <span className="pill pill-bad">502 error</span>}
-                    </div>
-                    <div className="mt-1 font-mono text-[10.5px] text-cockpit-muted">{container.uptime}</div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <WebUiMenu container={container} isPrivacyMode={isPrivacyMode} />
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`metric w-12 text-[12.5px] ${isRunning ? cpuTone.text : 'text-cockpit-muted'}`}>
-                        {isRunning ? container.cpuPercent.toFixed(1) : '0.0'}%
-                      </span>
-                      <Sparkline
-                        data={container.sparklineCpu}
-                        tone={container.cpuPercent > 75 ? 'warn' : 'accent'}
-                        width={52}
-                        height={18}
-                      />
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="metric w-16 text-[12.5px]">
-                        {isRunning ? formatBytes(container.memoryBytes) : '0 B'}
-                      </span>
-                      <Sparkline data={container.sparklineMemory} tone="muted" width={52} height={18} />
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5 font-mono text-[12px] tabular-nums">
-                      <span className="inline-flex items-center gap-0.5 text-cockpit-text">
-                        <ArrowDown className="h-3 w-3 text-cockpit-accent" />
-                        {formatNetworkRate(container.networkRxRateBytesPerSec)}
-                      </span>
-                      <span className="inline-flex items-center gap-0.5 text-cockpit-muted">
-                        <ArrowUp className="h-3 w-3" />
-                        {formatNetworkRate(container.networkTxRateBytesPerSec)}
-                      </span>
-                    </div>
-                    <div className="mt-1 font-mono text-[10.5px] tabular-nums text-cockpit-muted">
-                      total {formatBytes(container.networkRxBytes)} / {formatBytes(container.networkTxBytes)}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
+                        <span className="font-mono text-[10.5px] text-cockpit-muted shrink-0">
+                          #{container.shortId}
+                        </span>
+                      </div>
                       <button
                         onClick={() => onPinContainer(container)}
                         title={container.isPinned ? 'Edit pin' : 'Pin to command palette'}
-                        className={`icon-btn hover:border-cockpit-accent/40 hover:text-cockpit-accent ${
+                        className={`icon-btn p-1.5 shrink-0 hover:border-cockpit-accent/40 hover:text-cockpit-accent ${
                           container.isPinned ? 'border-cockpit-accent/30 text-cockpit-accent' : ''
                         }`}
                       >
-                        <Pin className={`h-3.5 w-3.5 ${container.isPinned ? 'fill-current' : ''}`} />
+                        <Pin className={`h-3 w-3 ${container.isPinned ? 'fill-current' : ''}`} />
                       </button>
-                      <button onClick={() => onViewLogs(container)} title="View logs" className="icon-btn">
+                    </div>
+
+                    <div className="mt-1 truncate font-mono text-[11px] text-cockpit-muted" title={container.image}>
+                      {container.image}
+                    </div>
+
+                    {hostNames.length > 1 && (
+                      <div className="mt-1.5 inline-flex items-center gap-1 font-mono text-[10px] text-cockpit-muted bg-cockpit-border/40 px-1.5 py-0.5 rounded">
+                        <Server className="h-2.5 w-2.5" />
+                        {container.dockerHost}
+                      </div>
+                    )}
+
+                    {/* Health & Uptime */}
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-cockpit-border/60 pt-2.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`pill ${isRunning ? 'pill-good' : 'pill-neutral'}`}>
+                          {isRunning ? 'Running' : 'Stopped'}
+                        </span>
+                        {isRunning && probe?.status === 'healthy' && (
+                          <span className="pill pill-neutral normal-case tabular-nums">
+                            {probe.statusCode || 200} · {probe.latencyMs}ms
+                          </span>
+                        )}
+                        {isRunning && probe?.status === 'critical' && <span className="pill pill-bad">502 error</span>}
+                      </div>
+                      <span className="font-mono text-[10.5px] text-cockpit-muted whitespace-nowrap">
+                        {container.uptime}
+                      </span>
+                    </div>
+
+                    {/* Metrics Grid */}
+                    <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-cockpit-border/50 bg-cockpit-panel/40 p-2 text-center">
+                      <div>
+                        <p className="label text-[9.5px]">CPU</p>
+                        <p className={`metric mt-0.5 text-[12.5px] ${isRunning ? cpuTone.text : 'text-cockpit-muted'}`}>
+                          {isRunning ? container.cpuPercent.toFixed(1) : '0.0'}%
+                        </p>
+                      </div>
+                      <div className="border-x border-cockpit-border/40">
+                        <p className="label text-[9.5px]">RAM</p>
+                        <p className="metric mt-0.5 text-[12.5px]">
+                          {isRunning ? formatBytes(container.memoryBytes) : '0 B'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="label text-[9.5px]">NET</p>
+                        <div className="mt-0.5 font-mono text-[10.5px] tabular-nums text-cockpit-text">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <ArrowDown className="h-2.5 w-2.5 text-cockpit-accent" />
+                            {formatNetworkRate(container.networkRxRateBytesPerSec)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions footer */}
+                  <div className="mt-3.5 flex items-center justify-between border-t border-cockpit-border/60 pt-3">
+                    <WebUiMenu container={container} isPrivacyMode={isPrivacyMode} />
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => onViewLogs(container)} title="View logs" className="icon-btn p-1.5">
                         <Terminal className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => onRestartContainer(container)}
                         title="Restart container"
-                        className="icon-btn hover:border-state-warn/40 hover:text-state-warn"
+                        className="icon-btn p-1.5 hover:border-state-warn/40 hover:text-state-warn"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
+          </div>
 
-        {filteredContainers.length === 0 && (
-          <p className="animate-fadeIn px-5 py-10 text-center text-[13px] text-cockpit-muted">
-            No containers match this filter.
-          </p>
-        )}
-      </div>
+          {filteredContainers.length === 0 && (
+            <p className="animate-fadeIn px-5 py-10 text-center text-[13px] text-cockpit-muted">
+              No containers match this filter.
+            </p>
+          )}
+        </div>
+      ) : (
+        /* Responsive Table View */
+        <div className="overflow-x-auto scrollbar-thin">
+          <table className="w-full text-left text-[13px] min-w-[680px]">
+            <thead>
+              <tr className="border-b border-cockpit-border font-mono text-[10px] uppercase tracking-[0.09em] text-cockpit-muted">
+                <SortHeader column="name" className="w-auto">Service</SortHeader>
+                <th className="px-4 py-2.5 font-medium w-32 whitespace-nowrap">Health</th>
+                <th className="px-4 py-2.5 font-medium w-24 whitespace-nowrap">Web UI</th>
+                <SortHeader column="cpu" className="w-24 whitespace-nowrap">CPU</SortHeader>
+                <SortHeader column="ram" className="w-28 whitespace-nowrap">Memory</SortHeader>
+                <SortHeader column="network" className="w-36 whitespace-nowrap">Throughput</SortHeader>
+                <th className="px-4 py-2.5 text-right font-medium w-24 whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody key={`${currentPage}-${pageSize}`} className="animate-fadeIn">
+              {visibleContainers.map((container) => {
+                const isRunning = container.state === 'running';
+                const cpuTone = getStatusColor(container.cpuPercent);
+                const probe = container.httpHealth;
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-cockpit-border px-5 py-3">
+                return (
+                  <tr
+                    key={container.id}
+                    className="group border-b border-cockpit-border transition-colors last:border-b-0 hover:bg-cockpit-panelHover"
+                  >
+                    <td className="px-4 py-3 min-w-[160px] max-w-[280px]">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${isRunning ? 'bg-state-good' : 'bg-cockpit-muted'}`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 truncate">
+                            {container.isPinned && (
+                              <Pin className="h-3 w-3 shrink-0 fill-cockpit-accent text-cockpit-accent" />
+                            )}
+                            <span className="font-semibold text-cockpit-text truncate">{container.name}</span>
+                            <span className="font-mono text-[10.5px] text-cockpit-muted shrink-0">#{container.shortId}</span>
+                          </div>
+                          <div className="truncate font-mono text-[11px] text-cockpit-muted" title={container.image}>
+                            {container.image}
+                          </div>
+                          {hostNames.length > 1 && (
+                            <div className="mt-0.5 truncate font-mono text-[10px] text-cockpit-muted">
+                              {container.dockerHost}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`pill ${isRunning ? 'pill-good' : 'pill-neutral'}`}>
+                          {isRunning ? 'Running' : 'Stopped'}
+                        </span>
+                        {isRunning && probe?.status === 'healthy' && (
+                          <span className="pill pill-neutral normal-case tabular-nums">
+                            {probe.statusCode || 200} · {probe.latencyMs}ms
+                          </span>
+                        )}
+                        {isRunning && probe?.status === 'critical' && <span className="pill pill-bad">502 error</span>}
+                      </div>
+                      <div className="mt-1 font-mono text-[10.5px] text-cockpit-muted">{container.uptime}</div>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <WebUiMenu container={container} isPrivacyMode={isPrivacyMode} />
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className={`metric text-[12.5px] tabular-nums shrink-0 ${isRunning ? cpuTone.text : 'text-cockpit-muted'}`}>
+                          {isRunning ? container.cpuPercent.toFixed(1) : '0.0'}%
+                        </span>
+                        <div className="hidden xl:block shrink-0">
+                          <Sparkline
+                            data={container.sparklineCpu}
+                            tone={container.cpuPercent > 75 ? 'warn' : 'accent'}
+                            width={48}
+                            height={18}
+                          />
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="metric text-[12.5px] tabular-nums shrink-0">
+                          {isRunning ? formatBytes(container.memoryBytes) : '0 B'}
+                        </span>
+                        <div className="hidden xl:block shrink-0">
+                          <Sparkline data={container.sparklineMemory} tone="muted" width={48} height={18} />
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-[12px] tabular-nums">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-0.5 text-cockpit-text">
+                            <ArrowDown className="h-3 w-3 text-cockpit-accent shrink-0" />
+                            {formatNetworkRate(container.networkRxRateBytesPerSec)}
+                          </span>
+                          <span className="inline-flex items-center gap-0.5 text-cockpit-muted">
+                            <ArrowUp className="h-3 w-3 shrink-0" />
+                            {formatNetworkRate(container.networkTxRateBytesPerSec)}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-cockpit-muted truncate">
+                          {formatBytes(container.networkRxBytes)} / {formatBytes(container.networkTxBytes)}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => onPinContainer(container)}
+                          title={container.isPinned ? 'Edit pin' : 'Pin to command palette'}
+                          className={`icon-btn hover:border-cockpit-accent/40 hover:text-cockpit-accent ${
+                            container.isPinned ? 'border-cockpit-accent/30 text-cockpit-accent' : ''
+                          }`}
+                        >
+                          <Pin className={`h-3.5 w-3.5 ${container.isPinned ? 'fill-current' : ''}`} />
+                        </button>
+                        <button onClick={() => onViewLogs(container)} title="View logs" className="icon-btn">
+                          <Terminal className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onRestartContainer(container)}
+                          title="Restart container"
+                          className="icon-btn hover:border-state-warn/40 hover:text-state-warn"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {filteredContainers.length === 0 && (
+            <p className="animate-fadeIn px-5 py-10 text-center text-[13px] text-cockpit-muted">
+              No containers match this filter.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-cockpit-border px-4 sm:px-5 py-3">
         <div className="flex items-center gap-2">
           <span className="label">Rows</span>
           <div className="seg">

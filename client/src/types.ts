@@ -302,3 +302,53 @@ export interface CockpitSnapshot {
   isDemoMode: boolean;
   appVersion?: AppVersionInfo;
 }
+
+export interface AgentInstanceTelemetry {
+  id: string;
+  instanceId: string;
+  displayName: string;
+  provider: string;
+  account: string;
+  plan: string;
+  status: 'idle' | 'running' | 'cooldown';
+  currentModel: string;
+  lastActiveAt?: string;
+  lastError?: string;
+  rolling5h: {
+    turnsCount: number;
+    estimatedLimit: number;
+    usagePercent: number;
+    resetAt?: string;
+    cooldownSecondsRemaining: number;
+  };
+  weekly: {
+    turnsCount: number;
+    estimatedLimit: number;
+    usagePercent: number;
+    dailyCounts: { date: string; dayName: string; count: number }[];
+  };
+}
+
+export interface AiTelemetryResponse {
+  isT3Detected: boolean;
+  t3Path: string;
+  checkedAt: string;
+  summary: {
+    totalAgents: number;
+    activeAgentsNow: number;
+    totalTurnsToday: number;
+    totalTurnsAllTime: number;
+  };
+  agents: AgentInstanceTelemetry[];
+  recentTurns: {
+    turnId: string;
+    threadId: string;
+    agentId: string;
+    agentName: string;
+    model: string;
+    state: string;
+    requestedAt: string;
+    completedAt?: string;
+    durationSeconds?: number;
+  }[];
+}

@@ -32,7 +32,12 @@ export const ProcessesPage: React.FC = () => {
     let cancelled = false;
     setIsLoading(true);
 
-    const endpoint = source === 'host' ? '/api/processes' : source === 'docker' ? '/api/processes/docker' : `/api/processes/remote/${encodeURIComponent(source.slice(4))}`;
+    const endpoint =
+      source === 'host'
+        ? '/api/processes'
+        : source === 'docker'
+        ? '/api/processes/docker'
+        : `/api/processes/remote/${encodeURIComponent(source.slice(4))}`;
     const pollMs = POLL_MS[source] ?? REMOTE_POLL_MS;
 
     const load = () => {
@@ -83,7 +88,8 @@ export const ProcessesPage: React.FC = () => {
         else if (sortBy === 'name') diff = a.name.localeCompare(b.name);
         else
           diff =
-            (a.diskReadBytesPerSec ?? 0) + (a.diskWriteBytesPerSec ?? 0) -
+            (a.diskReadBytesPerSec ?? 0) +
+            (a.diskWriteBytesPerSec ?? 0) -
             ((b.diskReadBytesPerSec ?? 0) + (b.diskWriteBytesPerSec ?? 0));
         return sortOrder === 'desc' ? -diff : diff;
       });
@@ -111,8 +117,8 @@ export const ProcessesPage: React.FC = () => {
   );
 
   return (
-    <section className="panel overflow-hidden">
-      <div className="panel-head">
+    <section className="panel overflow-hidden animate-fade-in-up">
+      <div className="panel-head flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="panel-title">Processes</h2>
           <p className="panel-sub">
@@ -120,19 +126,19 @@ export const ProcessesPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
           <input
             type="text"
-            placeholder="Filter name, user, PID"
+            placeholder="Filter name, user, PID…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="field w-56 pl-8"
+            className="field w-full sm:w-56 pl-8 text-[12.5px]"
           />
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 border-b border-cockpit-border px-5 py-3">
+      <div className="flex flex-wrap gap-2 border-b border-cockpit-border px-4 sm:px-5 py-3">
         <div className="seg flex-wrap">
           <button onClick={() => setSource('host')} className={`seg-btn ${source === 'host' ? 'seg-btn-on' : ''}`}>
             This host
@@ -155,16 +161,18 @@ export const ProcessesPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-left text-[13px]">
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full min-w-0 text-left text-[13px]">
           <thead>
             <tr className="border-b border-cockpit-border font-mono text-[10px] uppercase tracking-[0.09em] text-cockpit-muted">
-              <SortHeader column="name">Process</SortHeader>
-              <th className="px-4 py-2.5 font-medium">PID</th>
-              <th className="px-4 py-2.5 font-medium">User</th>
-              <SortHeader column="cpu">CPU</SortHeader>
-              <SortHeader column="mem">Memory</SortHeader>
-              {source === 'host' && <SortHeader column="disk">Disk I/O</SortHeader>}
+              <SortHeader column="name" className="w-auto">Process</SortHeader>
+              <th className="hidden sm:table-cell px-4 py-2.5 font-medium w-24">PID</th>
+              <th className="hidden md:table-cell px-4 py-2.5 font-medium w-28">User</th>
+              <SortHeader column="cpu" className="w-24 whitespace-nowrap">CPU</SortHeader>
+              <SortHeader column="mem" className="w-28 whitespace-nowrap">Memory</SortHeader>
+              {source === 'host' && (
+                <SortHeader column="disk" className="hidden lg:table-cell w-36 whitespace-nowrap">Disk I/O</SortHeader>
+              )}
             </tr>
           </thead>
           <tbody className="animate-fadeIn">
@@ -175,31 +183,41 @@ export const ProcessesPage: React.FC = () => {
                   key={`${p.source ?? ''}-${p.pid}-${p.name}`}
                   className="border-b border-cockpit-border transition-colors last:border-b-0 hover:bg-cockpit-panelHover"
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 min-w-[140px]">
                     <div className="min-w-0">
-                      <span className="block font-semibold text-cockpit-text">{p.name}</span>
+                      <span className="block font-semibold text-cockpit-text truncate">{p.name}</span>
                       <span className="block truncate font-mono text-[10.5px] text-cockpit-muted" title={p.command}>
                         {p.command}
                       </span>
+                      {/* Mobile metadata subline */}
+                      <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] text-cockpit-muted sm:hidden">
+                        <span>PID {p.pid}</span>
+                        <span>·</span>
+                        <span>{p.user}</span>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-cockpit-muted">{p.pid}</td>
-                  <td className="px-4 py-3 font-mono text-[12px] text-cockpit-muted">{p.user}</td>
-                  <td className="px-4 py-3">
-                    <span className={`metric text-[12.5px] ${cpuTone.text}`}>{p.cpuPercent.toFixed(1)}%</span>
+                  <td className="hidden sm:table-cell px-4 py-3 font-mono text-[12px] tabular-nums text-cockpit-muted whitespace-nowrap">
+                    {p.pid}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="metric text-[12.5px]">
+                  <td className="hidden md:table-cell px-4 py-3 font-mono text-[12px] text-cockpit-muted whitespace-nowrap">
+                    {p.user}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`metric text-[12.5px] tabular-nums ${cpuTone.text}`}>{p.cpuPercent.toFixed(1)}%</span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="metric text-[12.5px] tabular-nums">
                       {hasMemBytes ? formatBytes(p.memBytes) : `${p.memPercent.toFixed(1)}%`}
                     </span>
                     {hasMemBytes && (
-                      <span className="ml-1.5 font-mono text-[10.5px] text-cockpit-muted">
+                      <span className="ml-1.5 font-mono text-[10.5px] text-cockpit-muted tabular-nums">
                         {p.memPercent.toFixed(1)}%
                       </span>
                     )}
                   </td>
                   {source === 'host' && (
-                    <td className="px-4 py-3 font-mono text-[11.5px] tabular-nums text-cockpit-muted">
+                    <td className="hidden lg:table-cell px-4 py-3 font-mono text-[11.5px] tabular-nums text-cockpit-muted whitespace-nowrap">
                       {p.diskReadBytesPerSec === undefined
                         ? '—'
                         : `${formatNetworkRate(p.diskReadBytesPerSec)} / ${formatNetworkRate(p.diskWriteBytesPerSec ?? 0)}`}
