@@ -1,5 +1,19 @@
 [
   {
+    "id": "2026-09-13-ai-monitoring-glassmorphism",
+    "version": "1.1.2",
+    "title": "AI Agents Monitor, Glassmorphism UI & Fleet Cards View",
+    "date": "2026-09-13",
+    "description": "Menghadirkan fitur pemantauan penggunaan AI Agent multi-tenant (Claude Pro & Gemini) langsung dari telemetri T3 Code, tampilan antarmuka Glassmorphism modern dengan transisi halus, mode tampilan kartu (Cards vs Table) pada armada kontainer, dan perbaikan kestabilan updater.",
+    "highlights": [
+      "AI Agents Monitor: Pantau penggunaan 4 AI agent (Claude Pro, Gemini Default, Auth, Marmut) dengan limit sliding 5 jam dan hitung mundur cooldown detik-demi-detik",
+      "Riwayat Mingguan & Stream Interaksi: Grafik batang 7 hari per agent dan log eksekusi model secara real-time",
+      "Desain Visual Glassmorphism: Desain panel transparan modern dengan backdrop blur, border glow, dan animasi fade-in-up",
+      "Fleet Cards vs Table View: Tombol toggle tata letak kartu grid atau tabel responsif pada Container Fleet",
+      "Stabilitas Self-Updater: Otomasi monorepo npm workspaces dan perbaikan eksekusi build di container produksi"
+    ]
+  },
+  {
     "id": "2026-09-13-update-system",
     "version": "1.1.0",
     "title": "Fitur Update Otomatis, Drag & Drop Shortcuts & Header Cleanup",

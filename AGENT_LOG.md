@@ -5,12 +5,22 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-13 16:38 UTC]
+**Agent:** Gemini (Fix Updater Build & Announcements v1.1.2)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Configured Monorepo Workspaces in root `package.json`:** Added `"workspaces": ["client", "server"]` so that running `npm install` automatically installs dependencies across both sub-projects and links binary executables (`tsc`, `vite`).
+- **Hardened Subprocess Environment in `app-update.service.ts`:** Injected local and workspace `node_modules/.bin` paths into `PATH` and set `NODE_ENV=development` with `--include=dev` during `npm install` so TypeScript compiler (`tsc`) is guaranteed to be available during self-update builds.
+- **Published v1.1.2 Announcements in `announcements.json`:** Added rich update announcement covering AI Agents Monitor, Glassmorphism UI, Fleet Cards view, and self-updater stability improvements.
+- **Bumped Version:** Updated `version.json` and `package.json` to version `1.1.2`.
+
+---
+
 ### [2026-09-13 16:30 UTC]
 **Agent:** Gemini (Hotfix Husky / Self-Updater)
 **Status:** `[COMPLETED]`
 **Activities Completed:**
 - **Fixed Husky Lifecycle Script in package.json:** Changed `"prepare": "husky"` to `"prepare": "command -v husky >/dev/null 2>&1 && husky || true"` so that running `npm install` inside production / container environments where devDependencies are omitted will no longer fail with `sh: husky: not found (exit code 127)`.
-- **Bumped Version to 1.1.1:** Updated `package.json` and `version.json` so self-updater triggers clean upgrade and verifies build.
 
 ---
 

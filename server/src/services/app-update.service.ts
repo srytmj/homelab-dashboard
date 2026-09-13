@@ -414,8 +414,8 @@ export class AppUpdateService {
       appendLog(`Checked out HEAD at ${newSha.slice(0, 7)}.`);
 
       appendLog('[2/4] Memeriksa & menginstall dependensi npm...');
-      appendLog('$ npm install');
-      await this.spawnCapture('npm', ['install'], this.repoRoot, appendLog);
+      appendLog('$ npm install --include=dev');
+      await this.spawnCapture('npm', ['install', '--include=dev'], this.repoRoot, appendLog);
 
       appendLog('[3/4] Membangun frontend dan backend (npm run build)...');
       appendLog('$ npm run build');
@@ -447,7 +447,19 @@ export class AppUpdateService {
 
   private spawnCapture(cmd: string, args: string[], cwd: string, onLine: (line: string) => void): Promise<void> {
     return new Promise((resolve, reject) => {
-      const child = spawn(cmd, args, { cwd, timeout: EXEC_OPTS.timeout });
+      const extraPaths = [
+        path.join(this.repoRoot, 'node_modules', '.bin'),
+        path.join(this.repoRoot, 'client', 'node_modules', '.bin'),
+        path.join(this.repoRoot, 'server', 'node_modules', '.bin'),
+      ].join(':');
+
+      const env = {
+        ...process.env,
+        NODE_ENV: 'development',
+        PATH: `${extraPaths}:${process.env.PATH || ''}`,
+      };
+
+      const child = spawn(cmd, args, { cwd, env, timeout: EXEC_OPTS.timeout });
       const pipe = (stream: NodeJS.ReadableStream) => {
         let buffer = '';
         stream.on('data', (chunk: Buffer) => {
