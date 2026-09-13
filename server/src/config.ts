@@ -60,6 +60,14 @@ export const config = {
   // Fixed inside the container regardless of where GIT_PROJECTS_ROOT points
   // on the host — docker-compose.yml always bind-mounts it to /projects.
   gitProjectsRoot: '/projects',
+  backup: {
+    rcloneRemote: process.env.BACKUP_RCLONE_REMOTE || '',
+    sourcePaths: (process.env.BACKUP_SOURCE_PATHS || '/app/data,/projects')
+      .split(',')
+      .map(p => p.trim())
+      .filter(Boolean),
+    intervalHours: parseInt(process.env.BACKUP_INTERVAL_HOURS || '0', 10),
+  },
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || '2000', 10),
   demoMode: process.env.DEMO_MODE === 'true',
   sentinel: {

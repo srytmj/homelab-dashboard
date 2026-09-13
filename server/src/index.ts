@@ -15,6 +15,7 @@ import { TailscaleService } from './services/tailscale.service.js';
 import { SslService } from './services/ssl.service.js';
 import { PinsService } from './services/pins.service.js';
 import { GitProjectsService, RebuildCommand } from './services/git-projects.service.js';
+import { BackupService } from './services/backup.service.js';
 import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
 
@@ -45,6 +46,7 @@ async function bootstrap() {
   const sslService = new SslService();
   const pinsService = new PinsService();
   const gitProjectsService = new GitProjectsService();
+  const backupService = new BackupService();
 
   let sentinelService: SentinelService | null = null;
 
@@ -69,6 +71,7 @@ async function bootstrap() {
 
   collectorService.start();
   sentinelService.start();
+  backupService.start();
 
   // Helper to extract bearer token
   const extractToken = (req: any): string => {
@@ -270,6 +273,44 @@ async function bootstrap() {
     return result;
   });
 
+  app.get('/api/backup/status', async () => {
+    return backupService.getStatus();
+  });
+
+  app.post('/api/backup/run', async (request, reply) => {
+    const result = await backupService.runBackup();
+    if (result.lastResult !== 'success') {
+      reply.status(400);
+    }
+    return result;
+  });
+
+  app.post('/api/backup/restore', async (request, reply) => {
+    const body = request.body as { confirm?: boolean };
+    if (!body?.confirm) {
+      reply.status(400);
+      return { lastRunAt: new Date().toISOString(), lastResult: 'failed', lastError: 'Confirmation required', lastDurationMs: 0 };
+    }
+    const result = await backupService.runRestore();
+    if (result.lastResult !== 'success') {
+      reply.status(400);
+    }
+    return result;
+  });
+
+  app.post('/api/backup/import-config', async (request, reply) => {
+    const body = request.body as { url?: string };
+    if (!body?.url) {
+      reply.status(400);
+      return { success: false, message: 'url is required', imported: [] };
+    }
+    const result = await backupService.importConfig(body.url);
+    if (!result.success) {
+      reply.status(400);
+    }
+    return result;
+  });
+
   // Serve Client SPA in Production
   const clientDist = path.resolve(__dirname, '../../client/dist');
   if (fs.existsSync(clientDist)) {
@@ -292,6 +333,7 @@ async function bootstrap() {
   const shutdown = async () => {
     console.log('[Server] Shutting down gracefully...');
     sentinelService?.stop();
+    backupService.stop();
     collectorService.stop();
     await app.close();
     process.exit(0);

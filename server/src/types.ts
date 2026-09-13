@@ -171,6 +171,20 @@ export interface GitProjectStatus {
   hasUpdate: boolean;
 }
 
+export interface BackupRunResult {
+  lastRunAt: string;
+  lastResult: 'success' | 'failed';
+  lastError?: string;
+  lastDurationMs: number;
+}
+
+export interface BackupStatus {
+  configured: boolean;
+  sourcePaths: string[];
+  backup?: BackupRunResult;
+  restore?: BackupRunResult;
+}
+
 export interface SentinelStatus {
   enabled: boolean;
   botUsername?: string;
