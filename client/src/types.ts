@@ -155,6 +155,18 @@ export interface DockerHostSummary {
   containerCount: number;
 }
 
+export interface GitProjectStatus {
+  containerName: string;
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+  latestSha?: string;
+  latestCommitMessage?: string;
+  latestCommitDate?: string;
+  lastKnownSha?: string;
+  hasUpdate: boolean;
+}
+
 export interface SentinelStatus {
   enabled: boolean;
   botUsername?: string;
@@ -175,6 +187,7 @@ export interface CockpitSnapshot {
   dockerHosts: DockerHostSummary[];
   sslCertificates: SslCertificate[];
   dockerHygiene: DockerDiskHygiene;
+  gitProjects: GitProjectStatus[];
   sentinel?: SentinelStatus;
   isDemoMode: boolean;
 }

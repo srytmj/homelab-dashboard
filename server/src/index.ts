@@ -14,6 +14,7 @@ import { SystemService } from './services/system.service.js';
 import { TailscaleService } from './services/tailscale.service.js';
 import { SslService } from './services/ssl.service.js';
 import { PinsService } from './services/pins.service.js';
+import { GitProjectsService } from './services/git-projects.service.js';
 import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
 
@@ -43,6 +44,7 @@ async function bootstrap() {
   const tailscaleService = new TailscaleService();
   const sslService = new SslService();
   const pinsService = new PinsService();
+  const gitProjectsService = new GitProjectsService();
 
   let sentinelService: SentinelService | null = null;
 
@@ -53,6 +55,7 @@ async function bootstrap() {
     tailscaleService,
     sslService,
     pinsService,
+    gitProjectsService,
     () => sentinelService?.getStatus()
   );
 
@@ -220,6 +223,23 @@ async function bootstrap() {
   app.delete('/api/pins/:name', async (request) => {
     const { name } = request.params as { name: string };
     pinsService.unpin(name);
+    return { success: true };
+  });
+
+  app.post('/api/git-projects/:containerName', async (request, reply) => {
+    const { containerName } = request.params as { containerName: string };
+    const body = request.body as { repoOwner?: string; repoName?: string; branch?: string };
+    if (!body?.repoOwner || !body?.repoName) {
+      reply.status(400);
+      return { success: false, message: 'repoOwner and repoName are required' };
+    }
+    const record = gitProjectsService.register(containerName, body.repoOwner, body.repoName, body.branch || 'main');
+    return { success: true, project: record };
+  });
+
+  app.delete('/api/git-projects/:containerName', async (request) => {
+    const { containerName } = request.params as { containerName: string };
+    gitProjectsService.unregister(containerName);
     return { success: true };
   });
 

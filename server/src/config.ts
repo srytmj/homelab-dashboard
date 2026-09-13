@@ -52,6 +52,11 @@ export const config = {
   storageLabels: (process.env.STORAGE_LABELS || '')
     .split(',')
     .map(label => label.trim()),
+  githubToken: process.env.GITHUB_TOKEN || '',
+  // How often to actually call the GitHub API per registered project, not
+  // the dashboard's own poll rate — checking every 2s would exhaust GitHub's
+  // rate limit (60/hr unauthenticated) within seconds.
+  githubCheckIntervalMs: parseInt(process.env.GITHUB_CHECK_INTERVAL_MS || '300000', 10),
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || '2000', 10),
   demoMode: process.env.DEMO_MODE === 'true',
   sentinel: {

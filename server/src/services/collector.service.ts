@@ -5,6 +5,7 @@ import { SystemService } from './system.service.js';
 import { TailscaleService } from './tailscale.service.js';
 import { SslService } from './ssl.service.js';
 import { PinsService } from './pins.service.js';
+import { GitProjectsService } from './git-projects.service.js';
 import { CockpitSnapshot, SentinelStatus, DockerHostSummary } from '../types.js';
 import { config } from '../config.js';
 
@@ -15,6 +16,7 @@ export class CollectorService {
   private tailscaleService: TailscaleService;
   private sslService: SslService;
   private pinsService: PinsService;
+  private gitProjectsService: GitProjectsService;
   private getSentinelStatus?: () => SentinelStatus | undefined;
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
@@ -27,6 +29,7 @@ export class CollectorService {
     tailscaleService: TailscaleService,
     sslService: SslService,
     pinsService: PinsService,
+    gitProjectsService: GitProjectsService,
     getSentinelStatus?: () => SentinelStatus | undefined
   ) {
     this.dockerServices = dockerServices;
@@ -35,6 +38,7 @@ export class CollectorService {
     this.tailscaleService = tailscaleService;
     this.sslService = sslService;
     this.pinsService = pinsService;
+    this.gitProjectsService = gitProjectsService;
     this.getSentinelStatus = getSentinelStatus;
   }
 
@@ -116,6 +120,7 @@ export class CollectorService {
         : container;
     });
 
+    const gitProjects = this.gitProjectsService.getSnapshot();
     const sentinel = this.getSentinelStatus ? this.getSentinelStatus() : undefined;
 
     const snapshot: CockpitSnapshot = {
@@ -130,6 +135,7 @@ export class CollectorService {
       dockerHosts,
       sslCertificates: sslCerts,
       dockerHygiene: diskHygiene,
+      gitProjects,
       sentinel,
       isDemoMode: !anyLive || config.demoMode,
     };
