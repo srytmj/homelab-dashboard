@@ -10,25 +10,29 @@ The first time the dashboard is opened it asks you to create the owner account. 
 
 ## Layout
 
-Six pages, reachable from the header nav or by typing the address directly — each has its own URL and survives a reload or a bookmark:
+Seven pages, reachable from the sidebar on the left or by typing the address directly — each has its own URL and survives a reload or a bookmark:
 
 | Page | What it holds |
 | --- | --- |
-| Overview (`/`) | Device identity, spec, the four headline tiles, and shortcuts into Fleet and Infra |
+| Overview (`/`) | Device identity, spec, the four headline tiles, shortcuts into Fleet and Infra, and your personal shortcuts |
 | Fleet (`/fleet`) | The container table |
 | Infra (`/infra`) | Overview and Performance sub-views: storage/Tailscale/SSL/backup inventory, or live host and disk performance |
 | Git projects (`/git-projects`) | Containers built from your own repos, and whether they have new commits upstream |
-| Processes (`/processes`) | Every process on the host, sorted by CPU, memory or disk I/O |
+| Processes (`/processes`) | Every process, tabbed by source: this host, Docker containers, or an SSH target |
 | Terminal (`/terminal`) | A real shell to Proxmox or a configured Docker host, over SSH |
 | Sentinel (`/sentinel`) | Telegram companion status and command reference |
 
-The nav underlines whichever page you're on.
+## Sidebar
+
+The floating rail on the left is the page nav — click the arrow at its bottom to collapse it to icons only when you want more room; it remembers that choice in this browser. On a narrow screen the sidebar hides and a nav strip appears in the header instead.
 
 ## Header
 
 The dot on the logo is green when the WebSocket is connected and Proxmox is reachable, amber otherwise.
 
-The strip below the logo is the standing summary: Proxmox address, LXC address, Tailnet peers online, containers running, and the machine spec. The two dots next to the addresses mirror node reachability.
+The clock next to it is always on; click **Weather** beside it to grant this browser's location once and see the temperature and conditions for wherever you're viewing from. That request goes straight from your browser to Open-Meteo — never through this dashboard's own server — and only fires when you click, not automatically on page load.
+
+The strip below is the standing summary: Proxmox address, LXC address, Tailnet peers online, containers running, and the machine spec. The two dots next to the addresses mirror node reachability.
 
 Controls on the right, left to right:
 
@@ -58,6 +62,8 @@ The top card names the machine and its spec. Below it, four tiles carry the numb
 - **Package temp**, labelled COOL under 60 degrees, WARM under 75, HOT above.
 
 Two cards underneath link to Fleet (running/total containers, and how many are pinned) and Infra (volumes tracked). The Proxmox node, LXC runner and backup detail panels that used to sit here have moved to the Infra page — Overview stays a glance, not a scroll.
+
+**Shortcuts.** A grid of your own links — YouTube, Gmail, anything you open every day — so this page doubles as a browser startpage, not just a homelab dashboard. **Add** asks for a name and URL; hovering a tile shows an edit icon. Shortcuts are stored on the daemon like pins, so they follow you between devices, and each tile's icon is fetched from Google's public favicon service based on the shortcut's domain.
 
 ## Fleet
 
@@ -142,9 +148,13 @@ Clicking it first checks what would change, without touching anything:
 
 ## Processes
 
-Every process the daemon can see, sorted by CPU by default — click a column header to sort by memory or disk I/O instead, or reverse the current sort. The search box filters by process name, command, user or PID.
+A tab strip picks the source, task-manager style:
 
-Disk I/O per process reads `/proc/[pid]/io` and only works on Linux, for processes the daemon has permission to inspect; where that's not available, the column shows a dash instead of a wrong number. The list refreshes every three seconds on its own — it doesn't ride the same two-second feed as the rest of the dashboard, since gathering the full process list is heavier than everything else on that feed combined.
+- **This host** — every process the daemon itself can see, sorted by CPU by default. Disk I/O reads `/proc/[pid]/io` and only works on Linux, for processes the daemon has permission to inspect; where that's not available, the column shows a dash instead of a wrong number. Refreshes every three seconds on its own — it doesn't ride the same two-second feed as the rest of the dashboard, since gathering a full process list is heavier than everything else on that feed combined.
+- **Docker containers** — processes running inside every container across every configured Docker host, via the same mechanism as `docker top`. A container whose base image ships a minimal `ps` (some distroless images) just doesn't appear here; that's a limitation of the image, not a dashboard error. Refreshes every five seconds.
+- **One tab per SSH target** — appears only if `SSH_TARGETS` is configured (see [Terminal](#terminal) below). Runs a single read-only `ps` over SSH, so this is how you see what Proxmox itself is doing, not just the LXC the daemon runs in. Refreshes every eight seconds, and only while that tab is the one you're looking at.
+
+Click a column header to sort by memory or disk I/O instead of CPU, or reverse the current sort. The search box filters by process name, command, user or PID within whichever tab is open.
 
 ## Terminal
 

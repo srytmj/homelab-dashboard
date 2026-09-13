@@ -58,7 +58,9 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 
 **Disk performance.** On Infra's Performance tab: pick any volume, internal or external, and see its live read/write throughput and how much of the time it's actually busy, graphed over recent history — the same shape as Task Manager's own Performance tab for a disk. Reads `/proc/diskstats` directly, so it needs no extra mount or config, but only has data on a Linux host.
 
-**Processes.** A dedicated page listing every process the daemon can see — CPU, memory and (on Linux) disk I/O, sortable, searchable, refreshed every three seconds on its own poll rather than the main two-second feed.
+**Processes.** A dedicated page with three tabs — this host, Docker containers (via `docker top`, across every configured host), and one tab per configured SSH target (a read-only `ps` over SSH) — so Proxmox's own process list shows up next to the LXC's and every container's. Sortable, searchable, each tab polling independently rather than riding the main two-second feed.
+
+**Shortcuts.** The Overview page doubles as a browser startpage: a grid of personal links (YouTube, Gmail, anything) alongside the homelab summary, plus a clock and an opt-in weather readout based on the browser's own location (sent straight to Open-Meteo, never through this daemon).
 
 **Tailscale mesh.** Peer list with online state, `100.x` addresses, MagicDNS names, exit node and subnet router flags. Container links switch between LAN and Tailscale addresses, automatically or manually.
 

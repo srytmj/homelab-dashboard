@@ -24,15 +24,16 @@ The daemon runs without any configuration: with no Docker socket and no Proxmox 
 
 ```
 server/src/index.ts              routes, auth guard, WebSocket broadcast
-server/src/services/             one file per data source, including auth, pins, git projects, backup and terminal
+server/src/services/             one file per data source, including auth, pins, bookmarks, git projects, backup and terminal
 server/src/types.ts              server-side shape of the snapshot
 client/src/context/AuthContext   session state, login, register, logout
 client/src/utils/api.ts          authFetch, the only way to call /api
-client/src/App.tsx               router, persistent shell (header, palette, modals)
+client/src/App.tsx               router, persistent shell (sidebar, header, palette, modals)
 client/src/pages/                one file per route, thin — real content lives in components/
 client/src/hooks/useCockpitData  WebSocket with HTTP polling fallback
 client/src/hooks/useTheme.ts     light/dark state, localStorage, system fallback
 client/src/components/           one file per section or modal
+client/src/components/Sidebar.tsx  page nav (floating, collapsible) — NAV_ROUTES lives here now, not Header.tsx
 client/src/components/CommandPalette.tsx  Ctrl+K palette: pages + pinned containers only
 client/src/utils/formatters.ts   byte, rate, uptime, redaction, thresholds
 client/src/types.ts              client-side shape of the snapshot
@@ -92,13 +93,21 @@ client/src/index.css             token values per theme, shared component classe
 
 **Processes is a real page with its own poll loop, not part of the 2-second snapshot.** `GET /api/processes` (`SystemService.getProcesses()`, using `systeminformation`'s `si.processes()`) is deliberately not merged into `CollectorService`'s broadcast snapshot — a full process list is heavier to gather than everything else in the poll and only `ProcessesPage.tsx` ever needs it, so that page polls the endpoint on its own 3-second interval instead of riding the WebSocket. Per-process disk I/O comes from reading `/proc/[pid]/io` directly (same delta-over-time shape as the diskstats and docker sparkline code, keyed by PID in `SystemService`'s own history map, evicted once a PID stops appearing in the list) — Linux-only and best-effort, since a process can disappear between two polls or belong to another user the daemon can't read `/proc/<pid>/io` for.
 
+**Processes has three sources, picked with a `.seg` tab, each with its own endpoint and poll rate — never merge them into one list or one poll loop.** "This host" is `SystemService.getProcesses()` above. "Docker containers" (`GET /api/processes/docker`, `DockerService.getContainerProcesses()`) uses dockerode's `container.top()` per running container per configured host — no SSH, no new mount, just the Docker API this service already talks to; a container whose `ps` doesn't support the default args (common on distroless/minimal images) is skipped, not treated as an error for the whole list. One tab per SSH target (`GET /api/processes/remote/:target`, `TerminalService.getRemoteProcesses()`) runs a single hardcoded `ps -eo pid,%cpu,%mem,rss,user,comm ... | head -50` over a short-lived SSH connection — this is the one narrow, deliberate exception to `TerminalService` never running a fixed command: every target here already grants the owner's key full interactive shell access, so one read-only `ps` is strictly narrower than what the target already trusts this daemon with, not an escalation. It's cached for `REMOTE_PROCESS_CACHE_TTL_MS` (4s) since opening a fresh SSH connection on every poll would be wasteful, and the client only polls the tab that's actually selected — not all three sources in the background.
+
+**Bookmarks are the one server-owned feature that stores something with zero relationship to the daemon's own infrastructure.** `BookmarksService` (`data/bookmarks.json`) is a plain personal link list — YouTube, Gmail, whatever the owner reaches for — following the exact shape of `PinsService` (server-owned, normalizes a schemeless URL the same way, client never persists it itself). Don't try to validate or fetch the target URL server-side; unlike a container's `publicUrl`, a bookmark can point anywhere on the internet on purpose.
+
+**The clock/weather widget is the one thing in this client that talks to a third party directly, not through `/api`.** `ClockWeatherWidget.tsx` calls the browser's own `navigator.geolocation` and then Open-Meteo's public API (no key, no server involvement) straight from the client — coordinates never pass through this daemon. It's opt-in: the widget shows a "Weather" button rather than prompting for location on page load, since a location permission popup nobody asked for is the kind of surprise this dashboard doesn't do anywhere else. Don't route this through `authFetch` or proxy it via a new server route — there's nothing for the daemon to add here, and doing so would mean the owner's location touches server logs for no reason.
+
+**The sidebar is the page nav; the header's desktop `<nav>` is gone.** `Sidebar.tsx` renders `NAV_ROUTES` as a floating, collapsible left rail (collapsed state in `localStorage`, per-viewer, not server state) and is `hidden md:flex` — small screens still get the nav strip in `Header.tsx`, which imports `NAV_ROUTES` from `Sidebar.tsx` rather than owning a second copy of the list. When the page count grows, this is the nav to extend, not a new header row.
+
 ## Common tasks
 
 **Adding a metric to an existing section.** Add the field to both `types.ts` files, populate it in the relevant service, render it as a `.data-row` or a tile. Keep the label short and lowercase-with-capital, not a sentence.
 
 **Adding a section.** Build a `.panel` with a `.panel-head`, put the items in rows rather than a grid of cards, give each row exactly one status signal, and mount it inside the page it belongs on (`client/src/pages/`). If it belongs on Infra, it must survive a one-third-width column on desktop and full width on mobile.
 
-**Adding a page.** Add the file to `client/src/pages/`, a `<Route>` in `App.tsx`, a `NavLink` entry in `Header.tsx`, and a page entry in `CommandPalette.tsx`'s `PAGES` array so `Ctrl+K` can reach it. All three lists must agree, on purpose — there's no single source of truth for "what pages exist" to derive them from.
+**Adding a page.** Add the file to `client/src/pages/`, a `<Route>` in `App.tsx`, a nav entry in `Sidebar.tsx`'s `NAV_ROUTES` array (this is the desktop nav now — `Header.tsx` only imports `NAV_ROUTES` for its small-screen strip, it doesn't own the list), and a page entry in `CommandPalette.tsx`'s `PAGES` array so `Ctrl+K` can reach it. All three lists must agree, on purpose — there's no single source of truth for "what pages exist" to derive them from.
 
 **Adding a route.** Register it in `server/src/index.ts` next to the others and keep the response shape flat. Anything that changes state is a POST and needs a confirmation path in the client.
 
