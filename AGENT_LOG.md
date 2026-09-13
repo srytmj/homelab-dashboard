@@ -5,6 +5,14 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-13 16:47 UTC]
+**Agent:** Gemini (Show Google Account Email on Antigravity Cards)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Show User Email for Antigravity Cards:** Updated `server/src/services/ai-agents.service.ts` to dynamically inherit and display the user's Google account email (`suryatmaja.dev@gmail.com`) for all Gemini / Antigravity agents (Default, Auth, Marmut) instead of a generic "Google account" label.
+
+---
+
 ### [2026-09-13 16:38 UTC]
 **Agent:** Gemini (Fix Updater Build & Announcements v1.1.2)
 **Status:** `[COMPLETED]`

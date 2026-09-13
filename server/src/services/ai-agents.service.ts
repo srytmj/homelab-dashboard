@@ -264,7 +264,15 @@ export class AiAgentsService {
       else if (key === 'antigravity_marmut') displayName = 'Gemini (Marmut)';
 
       const provider = cache.driver || (key.includes('claude') ? 'claude' : 'antigravity');
-      const account = cache.auth?.email || cache.auth?.label || 'Local Account';
+      const fallbackEmail = registeredAgents.get('claudeAgent')?.auth?.email || 'suryatmaja.dev@gmail.com';
+      let account = cache.auth?.email;
+      if (!account) {
+        if (key.startsWith('antigravity') || cache.auth?.label === 'Google account') {
+          account = fallbackEmail;
+        } else {
+          account = cache.auth?.label || 'Local Account';
+        }
+      }
       const plan = cache.auth?.type || (key === 'claudeAgent' ? 'Claude Pro' : 'Google Personal OAuth');
 
       // Models
