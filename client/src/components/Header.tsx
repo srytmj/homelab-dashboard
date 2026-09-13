@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { Theme } from '../hooks/useTheme.js';
 import { NAV_ROUTES } from './Sidebar.js';
 import { ClockWeatherWidget } from './ClockWeatherWidget.js';
+import { NotificationsPanel } from './NotificationsPanel.js';
 
 interface HeaderProps {
   snapshot: CockpitSnapshot | null;
@@ -87,6 +88,8 @@ export const Header: React.FC<HeaderProps> = ({
                 Ctrl K
               </kbd>
             </button>
+
+            <NotificationsPanel />
 
             <button
               onClick={onToggleTheme}

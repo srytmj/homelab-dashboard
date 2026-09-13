@@ -15,6 +15,7 @@ import { TailscaleService } from './services/tailscale.service.js';
 import { SslService } from './services/ssl.service.js';
 import { PinsService } from './services/pins.service.js';
 import { BookmarksService } from './services/bookmarks.service.js';
+import { NotificationsService } from './services/notifications.service.js';
 import { GitProjectsService, RebuildCommand } from './services/git-projects.service.js';
 import { BackupService } from './services/backup.service.js';
 import { TerminalService } from './services/terminal.service.js';
@@ -48,7 +49,8 @@ async function bootstrap() {
   const sslService = new SslService();
   const pinsService = new PinsService();
   const bookmarksService = new BookmarksService();
-  const gitProjectsService = new GitProjectsService();
+  const notificationsService = new NotificationsService();
+  const gitProjectsService = new GitProjectsService(notificationsService);
   const backupService = new BackupService();
   const terminalService = new TerminalService();
 
@@ -261,12 +263,23 @@ async function bootstrap() {
     const { name } = request.params as { name: string };
     const body = request.body as { publicUrl?: string };
     const record = pinsService.pin(name, body?.publicUrl);
+    notificationsService.add('pin', `Pinned ${name}`);
     return { success: true, pin: record };
   });
 
   app.delete('/api/pins/:name', async (request) => {
     const { name } = request.params as { name: string };
     pinsService.unpin(name);
+    notificationsService.add('unpin', `Unpinned ${name}`);
+    return { success: true };
+  });
+
+  app.get('/api/notifications', async () => {
+    return notificationsService.getAll();
+  });
+
+  app.post('/api/notifications/clear', async () => {
+    notificationsService.clear();
     return { success: true };
   });
 
@@ -358,11 +371,16 @@ async function bootstrap() {
 
   app.post('/api/git-projects/:containerName/pull', async (request, reply) => {
     const { containerName } = request.params as { containerName: string };
-    const result = await gitProjectsService.pullAndRebuild(containerName);
-    if (!result.success) {
+    const result = gitProjectsService.startPull(containerName);
+    if (!result.started) {
       reply.status(400);
     }
     return result;
+  });
+
+  app.get('/api/git-projects/:containerName/pull-status', async (request) => {
+    const { containerName } = request.params as { containerName: string };
+    return gitProjectsService.getPullState(containerName);
   });
 
   app.get('/api/ssh-targets', async () => {

@@ -176,6 +176,29 @@ export interface DockerHostSummary {
 
 export type RebuildCommand = 'compose-up-build' | 'compose-up-build-force-recreate';
 
+export interface GitPullState {
+  status: 'idle' | 'pulling' | 'rebuilding' | 'success' | 'failed';
+  log: string[];
+  startedAt?: number;
+  finishedAt?: number;
+  message?: string;
+}
+
+export interface NotificationEntry {
+  id: string;
+  type:
+    | 'pin'
+    | 'unpin'
+    | 'git-track'
+    | 'git-untrack'
+    | 'git-pull-start'
+    | 'git-pull-success'
+    | 'git-pull-failed'
+    | 'git-auto-deploy';
+  message: string;
+  createdAt: number;
+}
+
 export interface GitProjectStatus {
   containerName: string;
   repoOwner: string;
