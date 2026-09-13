@@ -3,6 +3,7 @@ import { Download, GitBranch, Plus, RefreshCw } from 'lucide-react';
 import { CockpitSnapshot, GitProjectStatus } from '../types.js';
 import { GitProjectModal } from '../components/GitProjectModal.js';
 import { GitPullModal } from '../components/GitPullModal.js';
+import { authFetch } from '../utils/api.js';
 
 interface GitProjectsPageProps {
   snapshot: CockpitSnapshot | null;
@@ -13,6 +14,7 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
   const [editingProject, setEditingProject] = useState<GitProjectStatus | null>(null);
   const [pullingProject, setPullingProject] = useState<GitProjectStatus | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const projects = snapshot?.gitProjects ?? [];
   const containers = snapshot?.containers ?? [];
@@ -21,6 +23,16 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
   const closeEditModal = () => {
     setIsAdding(false);
     setEditingProject(null);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await authFetch('/api/git-projects/refresh', { method: 'POST' });
+      onRefetch();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -33,10 +45,21 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
             every few minutes
           </p>
         </div>
-        <button onClick={() => setIsAdding(true)} className="btn-primary">
-          <Plus className="h-3.5 w-3.5" />
-          Track a project
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing || projects.length === 0}
+            title="Check GitHub now instead of waiting for the next scheduled check"
+            className="btn-ghost disabled:opacity-40"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button onClick={() => setIsAdding(true)} className="btn-primary">
+            <Plus className="h-3.5 w-3.5" />
+            Track a project
+          </button>
+        </div>
       </div>
 
       {projects.length === 0 ? (

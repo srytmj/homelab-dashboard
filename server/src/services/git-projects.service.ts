@@ -168,6 +168,17 @@ export class GitProjectsService {
     });
   }
 
+  /**
+   * Forces an immediate GitHub check for every registered project, ignoring
+   * githubCheckIntervalMs — used by the manual refresh button, so it's the
+   * one place in this service that does await the network on request.
+   */
+  public async refreshAll(): Promise<void> {
+    await Promise.all(
+      Object.entries(this.db.projects).map(([containerName, record]) => this.refresh(containerName, record))
+    );
+  }
+
   private async refresh(containerName: string, record: GitProjectRecord): Promise<void> {
     // Mark checked immediately so concurrent ticks don't fire duplicate requests.
     record.lastCheckedAt = Date.now();

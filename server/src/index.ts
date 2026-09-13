@@ -288,6 +288,11 @@ async function bootstrap() {
     return { success: true };
   });
 
+  app.post('/api/git-projects/refresh', async () => {
+    await gitProjectsService.refreshAll();
+    return { success: true };
+  });
+
   app.post('/api/git-projects/:containerName/check-pull', async (request) => {
     const { containerName } = request.params as { containerName: string };
     return gitProjectsService.checkPull(containerName);
