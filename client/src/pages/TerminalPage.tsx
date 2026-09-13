@@ -1,0 +1,53 @@
+import React, { useEffect, useState } from 'react';
+import { Terminal as TerminalIcon } from 'lucide-react';
+import { authFetch } from '../utils/api.js';
+import { TerminalView } from '../components/TerminalView.js';
+
+export const TerminalPage: React.FC = () => {
+  const [targets, setTargets] = useState<string[]>([]);
+  const [connectedTarget, setConnectedTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    authFetch('/api/ssh-targets')
+      .then((res) => res.json())
+      .then((data) => setTargets(data.targets ?? []))
+      .catch(() => {});
+  }, []);
+
+  if (connectedTarget) {
+    return <TerminalView target={connectedTarget} onDisconnect={() => setConnectedTarget(null)} />;
+  }
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2 className="panel-title">Terminal</h2>
+          <p className="panel-sub">Direct shell access — no command whitelist, real infrastructure</p>
+        </div>
+      </div>
+
+      <div className="px-5 py-4">
+        {targets.length === 0 ? (
+          <p className="text-[13px] text-cockpit-muted">
+            No SSH targets configured. Set <code className="font-mono text-cockpit-text">SSH_TARGETS</code> and{' '}
+            <code className="font-mono text-cockpit-text">SSH_PRIVATE_KEY_PATH</code> to enable this.
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {targets.map((name) => (
+              <button
+                key={name}
+                onClick={() => setConnectedTarget(name)}
+                className="flex items-center gap-2.5 rounded-lg border border-cockpit-border bg-cockpit-bg px-4 py-3 text-left transition-colors hover:border-cockpit-accent/40 hover:bg-cockpit-panelHover"
+              >
+                <TerminalIcon className="h-4 w-4 text-cockpit-accent" />
+                <span className="font-semibold text-cockpit-text">{name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AuthScreen } from './components/AuthScreen.js';
@@ -16,6 +16,8 @@ import { FleetPage } from './pages/FleetPage.js';
 import { InfraPage } from './pages/InfraPage.js';
 import { SentinelPage } from './pages/SentinelPage.js';
 import { GitProjectsPage } from './pages/GitProjectsPage.js';
+// Lazy-loaded: xterm.js is heavy and only needed by owners who use SSH.
+const TerminalPage = lazy(() => import('./pages/TerminalPage.js').then((m) => ({ default: m.TerminalPage })));
 import { ContainerMetric } from './types.js';
 
 function CockpitDashboard() {
@@ -122,6 +124,14 @@ function CockpitDashboard() {
           />
           <Route path="/sentinel" element={<SentinelPage sentinel={snapshot?.sentinel} />} />
           <Route path="/git-projects" element={<GitProjectsPage snapshot={snapshot} onRefetch={refetch} />} />
+          <Route
+            path="/terminal"
+            element={
+              <Suspense fallback={<p className="label">Loading terminal…</p>}>
+                <TerminalPage />
+              </Suspense>
+            }
+          />
         </Routes>
       </main>
 

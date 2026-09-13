@@ -27,6 +27,7 @@ const PAGES = [
   { path: '/fleet', label: 'Fleet' },
   { path: '/infra', label: 'Infra' },
   { path: '/git-projects', label: 'Git projects' },
+  { path: '/terminal', label: 'Terminal' },
   { path: '/sentinel', label: 'Sentinel' },
 ];
 
