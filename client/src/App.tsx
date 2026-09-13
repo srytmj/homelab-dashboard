@@ -91,10 +91,10 @@ function CockpitDashboard() {
         onRefresh={refetch}
       />
 
-      <div className="flex flex-1 items-start gap-4">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 items-start gap-4">
         <Sidebar />
 
-        <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-6 px-5 py-7 lg:px-8">
+        <main className="w-full min-w-0 flex-1 space-y-6 px-5 py-7 lg:px-8">
           <DasWatchdogAlert storage={snapshot?.storage} />
 
         {snapshot?.host.pve && !snapshot.host.pve.connected && (
