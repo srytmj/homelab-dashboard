@@ -24,6 +24,7 @@ const NAV_ROUTES = [
   { path: '/', label: 'Overview' },
   { path: '/fleet', label: 'Fleet' },
   { path: '/infra', label: 'Infra' },
+  { path: '/git-projects', label: 'Git projects' },
   { path: '/sentinel', label: 'Sentinel' },
 ];
 

@@ -15,6 +15,7 @@ import { HomePage } from './pages/HomePage.js';
 import { FleetPage } from './pages/FleetPage.js';
 import { InfraPage } from './pages/InfraPage.js';
 import { SentinelPage } from './pages/SentinelPage.js';
+import { GitProjectsPage } from './pages/GitProjectsPage.js';
 import { ContainerMetric } from './types.js';
 
 function CockpitDashboard() {
@@ -120,6 +121,7 @@ function CockpitDashboard() {
             }
           />
           <Route path="/sentinel" element={<SentinelPage sentinel={snapshot?.sentinel} />} />
+          <Route path="/git-projects" element={<GitProjectsPage snapshot={snapshot} onRefetch={refetch} />} />
         </Routes>
       </main>
 

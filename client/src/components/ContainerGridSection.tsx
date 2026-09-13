@@ -210,7 +210,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [hostFilter, setHostFilter] = useState('all');
   const [sortBy, setSortBy] = useState<SortKey>('cpu');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
   const hostNames = useMemo(
