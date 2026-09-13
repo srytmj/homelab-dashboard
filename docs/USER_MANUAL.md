@@ -144,7 +144,13 @@ Clicking it first checks what would change, without touching anything:
 
 - If the changed files include something that looks like a database migration (a `migrations/` folder, `prisma/schema.prisma`, `alembic/`, or a `.sql` file), you get a warning listing exactly which files matched before you can continue. This is a pattern match, not a guarantee — it can miss a real migration named unusually, or flag a file that isn't one. Read the list.
 - Confirming runs `git pull` followed by the configured rebuild command in that project's directory. This can take a while for a slow build; the dialog stays open until it finishes.
-- The record of "what's deployed" only updates through this button. Deploying the same project some other way (SSH, a separate CI job) leaves the dashboard showing the old commit as deployed until you pull through here again.
+- The record of "what's deployed" only updates through this button, **Mark as deployed** (below), or auto-deploy. Deploying the same project some other way (SSH, a separate CI job) leaves the dashboard showing the old commit as deployed until one of those three runs.
+
+A project you just started tracking shows **Not deployed yet** even if it's clearly running — the dashboard has no baseline commit until you give it one. A green checkmark button appears next to the status pill whenever that's the case and a local path is set: click it to record whatever commit is actually checked out on disk right now as deployed, without pulling or rebuilding anything. After that, the pill correctly flips between "Up to date" and "Update available" as new commits land.
+
+### Auto-deploy
+
+The edit dialog has an **Auto-deploy new commits** checkbox, available once a local path and rebuild command are set. Turn it on and this one project pulls and rebuilds itself as soon as a new commit appears — no click needed. It only ever does this when the same migration-risk check as manual Pull & rebuild comes back clean; if a changed file looks like it might touch the database, the project shows an amber **Auto-deploy paused** note next to its name instead of deploying, and waits for you to review and pull manually. This is opt-in per project — leave it off for anything you'd rather review by hand first.
 
 ## Processes
 
