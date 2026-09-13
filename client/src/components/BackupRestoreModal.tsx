@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, Check, RotateCcw, X } from 'lucide-react';
 import { authFetch } from '../utils/api.js';
 import { BackupRunResult } from '../types.js';
@@ -32,31 +33,39 @@ export const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({ sourcePa
     }
   };
 
-  return (
-    <div className="overlay">
-      <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
-        <div className="panel-head">
+  return createPortal(
+    <div className="overlay fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md overflow-y-auto">
+      <div className="panel modal-panel w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl shadow-black/60 my-auto animate-scale-up">
+        <div className="panel-head shrink-0">
           <div>
             <h3 className="panel-title">Restore from backup</h3>
-            <p className="panel-sub">Overwrites live paths with your last backup</p>
+            <p className="panel-sub">Pulls the latest snapshot from your rclone remote</p>
           </div>
           <button onClick={onClose} className="icon-btn" title="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
-          <div className="flex items-start gap-2.5 rounded-lg border border-state-bad/40 bg-state-bad/[0.07] px-3.5 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-state-bad" />
-            <div className="text-[12.5px] leading-relaxed text-cockpit-text">
-              <p className="font-semibold text-state-bad">This replaces what's currently here</p>
-              <p className="mt-1 text-cockpit-muted">
-                Every path below is overwritten with whatever's in your configured rclone remote. Anything
-                changed locally since the last backup is lost.
+        <div className="space-y-4 p-5 overflow-y-auto flex-1 scrollbar-thin">
+          <div className="flex items-start gap-3 rounded-xl border border-state-bad/30 bg-state-bad/10 p-3.5 text-[12.5px] text-state-bad">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">This will overwrite local data</p>
+              <p className="mt-0.5 text-cockpit-muted">
+                Files in the configured paths will be overwritten with the snapshot in the remote. Stop any services
+                writing to them before restoring.
               </p>
-              <ul className="mt-1.5 space-y-0.5 font-mono text-[11px] text-cockpit-text">
+            </div>
+          </div>
+
+          <div>
+            <p className="label mb-2">Paths to restore</p>
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-cockpit-border bg-cockpit-panel p-2">
+              <ul className="space-y-1 font-mono text-[11.5px] text-cockpit-muted">
                 {sourcePaths.map((p) => (
-                  <li key={p}>{p}</li>
+                  <li key={p} className="truncate">
+                    {p}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -84,6 +93,7 @@ export const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({ sourcePa
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

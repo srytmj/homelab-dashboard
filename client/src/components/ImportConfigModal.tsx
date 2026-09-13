@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, Check, Upload, X } from 'lucide-react';
 import { authFetch } from '../utils/api.js';
 
@@ -38,20 +39,20 @@ export const ImportConfigModal: React.FC<ImportConfigModalProps> = ({ onClose, o
     }
   };
 
-  return (
-    <div className="overlay">
-      <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
-        <div className="panel-head">
+  return createPortal(
+    <div className="overlay fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md overflow-y-auto">
+      <div className="panel modal-panel w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl shadow-black/60 my-auto animate-scale-up">
+        <div className="panel-head shrink-0">
           <div>
-            <h3 className="panel-title">Import config from a link</h3>
-            <p className="panel-sub">Replaces pinned containers and tracked git projects</p>
+            <h3 className="panel-title">Import config from link</h3>
+            <p className="panel-sub">Restore pins and git project tracking from a shared zip</p>
           </div>
           <button onClick={onClose} className="icon-btn" title="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
+        <div className="space-y-4 p-5 overflow-y-auto flex-1 scrollbar-thin">
           <p className="text-[12.5px] leading-relaxed text-cockpit-muted">
             Paste a link to a small zip containing <code className="font-mono text-cockpit-text">pins.json</code>{' '}
             and/or <code className="font-mono text-cockpit-text">git-projects.json</code> — a "Anyone with the
@@ -95,6 +96,7 @@ export const ImportConfigModal: React.FC<ImportConfigModalProps> = ({ onClose, o
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

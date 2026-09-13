@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { GitBranch, Search, Trash2, X } from 'lucide-react';
 import { ContainerMetric, GitProjectStatus, RebuildCommand } from '../types.js';
 import { authFetch } from '../utils/api.js';
@@ -105,10 +106,10 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
     }
   };
 
-  return (
-    <div className="overlay">
-      <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
-        <div className="panel-head">
+  return createPortal(
+    <div className="overlay fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md overflow-y-auto">
+      <div className="panel modal-panel w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl shadow-black/60 my-auto animate-scale-up">
+        <div className="panel-head shrink-0">
           <div>
             <h3 className="panel-title">{isEditing ? 'Edit git project' : 'Track a git project'}</h3>
             <p className="panel-sub">Checks GitHub for new commits on this repo's branch</p>
@@ -118,7 +119,7 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
+        <div className="space-y-4 p-5 overflow-y-auto flex-1 scrollbar-thin">
           {hostNames.length > 1 && (
             <div className="space-y-1.5">
               <label className="label block">Docker host</label>
@@ -163,7 +164,7 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
                   setIsContainerListOpen(true);
                 }}
                 onFocus={() => setIsContainerListOpen(true)}
-                onBlur={() => setTimeout(() => setIsContainerListOpen(false), 120)}
+                onBlur={() => setTimeout(() => setIsContainerListOpen(false), 150)}
                 disabled={isSubmitting || isEditing}
                 className="field w-full pl-8"
                 autoComplete="off"
@@ -171,7 +172,7 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
             </div>
 
             {isContainerListOpen && !isEditing && (
-              <div className="absolute z-10 max-h-48 w-full overflow-y-auto rounded-lg border border-cockpit-border bg-cockpit-panel shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-cockpit-border bg-cockpit-panel shadow-2xl shadow-black/80">
                 {filteredContainers.length === 0 ? (
                   <p className="px-3 py-2.5 text-[12px] text-cockpit-muted">No matching containers</p>
                 ) : (
@@ -179,10 +180,13 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => selectContainer(c.name)}
-                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] text-cockpit-text hover:bg-cockpit-panelHover"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        selectContainer(c.name);
+                      }}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] text-cockpit-text hover:bg-cockpit-panelHover transition-colors"
                     >
-                      <span className="truncate">{c.name}</span>
+                      <span className="truncate font-medium">{c.name}</span>
                       {hostNames.length > 1 && (
                         <span className="shrink-0 font-mono text-[10px] text-cockpit-muted">{c.dockerHost}</span>
                       )}
@@ -306,6 +310,7 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
