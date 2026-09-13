@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { GitBranch, Trash2, X } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { GitBranch, Search, Trash2, X } from 'lucide-react';
 import { ContainerMetric, GitProjectStatus, RebuildCommand } from '../types.js';
 import { authFetch } from '../utils/api.js';
 
@@ -24,6 +24,10 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
   onSaved,
 }) => {
   const [containerName, setContainerName] = useState(editingProject?.containerName ?? '');
+  const [hostFilter, setHostFilter] = useState('all');
+  const [containerQuery, setContainerQuery] = useState(editingProject?.containerName ?? '');
+  const [isContainerListOpen, setIsContainerListOpen] = useState(false);
+  const containerFieldRef = useRef<HTMLDivElement>(null);
   const [repoSlug, setRepoSlug] = useState(
     editingProject ? `${editingProject.repoOwner}/${editingProject.repoName}` : ''
   );
@@ -34,9 +38,28 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = Boolean(editingProject);
-  const availableContainers = containers.filter(
+  const trackableContainers = containers.filter(
     (c) => c.name === editingProject?.containerName || !existingNames.includes(c.name)
   );
+
+  const hostNames = useMemo(
+    () => Array.from(new Set(trackableContainers.map((c) => c.dockerHost))).sort(),
+    [trackableContainers]
+  );
+
+  const availableContainers = trackableContainers.filter(
+    (c) => hostFilter === 'all' || c.dockerHost === hostFilter
+  );
+
+  const filteredContainers = availableContainers.filter((c) =>
+    c.name.toLowerCase().includes(containerQuery.toLowerCase())
+  );
+
+  const selectContainer = (name: string) => {
+    setContainerName(name);
+    setContainerQuery(name);
+    setIsContainerListOpen(false);
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -94,26 +117,78 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
         </div>
 
         <div className="space-y-4 p-5">
-          <div className="space-y-1.5">
+          {hostNames.length > 1 && (
+            <div className="space-y-1.5">
+              <label className="label block">Docker host</label>
+              <div className="seg flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setHostFilter('all')}
+                  disabled={isSubmitting || isEditing}
+                  className={`seg-btn ${hostFilter === 'all' ? 'seg-btn-on' : ''}`}
+                >
+                  All hosts
+                </button>
+                {hostNames.map((host) => (
+                  <button
+                    key={host}
+                    type="button"
+                    onClick={() => setHostFilter(host)}
+                    disabled={isSubmitting || isEditing}
+                    className={`seg-btn ${hostFilter === host ? 'seg-btn-on' : ''}`}
+                  >
+                    {host}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="relative space-y-1.5" ref={containerFieldRef}>
             <label htmlFor="git-container" className="label block">
               Container
             </label>
-            <select
-              id="git-container"
-              value={containerName}
-              onChange={(e) => setContainerName(e.target.value)}
-              disabled={isSubmitting || isEditing}
-              className="field w-full"
-            >
-              <option value="" disabled>
-                Select a container…
-              </option>
-              {availableContainers.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
+              <input
+                id="git-container"
+                type="text"
+                placeholder="Search containers…"
+                value={containerQuery}
+                onChange={(e) => {
+                  setContainerQuery(e.target.value);
+                  setContainerName('');
+                  setIsContainerListOpen(true);
+                }}
+                onFocus={() => setIsContainerListOpen(true)}
+                onBlur={() => setTimeout(() => setIsContainerListOpen(false), 120)}
+                disabled={isSubmitting || isEditing}
+                className="field w-full pl-8"
+                autoComplete="off"
+              />
+            </div>
+
+            {isContainerListOpen && !isEditing && (
+              <div className="absolute z-10 max-h-48 w-full overflow-y-auto rounded-lg border border-cockpit-border bg-cockpit-panel shadow-lg">
+                {filteredContainers.length === 0 ? (
+                  <p className="px-3 py-2.5 text-[12px] text-cockpit-muted">No matching containers</p>
+                ) : (
+                  filteredContainers.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => selectContainer(c.name)}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] text-cockpit-text hover:bg-cockpit-panelHover"
+                    >
+                      <span className="truncate">{c.name}</span>
+                      {hostNames.length > 1 && (
+                        <span className="shrink-0 font-mono text-[10px] text-cockpit-muted">{c.dockerHost}</span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
