@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Download, GitBranch, Plus, RefreshCw } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Download, GitBranch, Plus, RefreshCw } from 'lucide-react';
 import { CockpitSnapshot, GitProjectStatus } from '../types.js';
 import { GitProjectModal } from '../components/GitProjectModal.js';
-import { GitPullModal } from '../components/GitPullModal.js';
+import { GitPullInline } from '../components/GitPullInline.js';
 import { authFetch } from '../utils/api.js';
 
 interface GitProjectsPageProps {
@@ -12,7 +12,7 @@ interface GitProjectsPageProps {
 
 export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRefetch }) => {
   const [editingProject, setEditingProject] = useState<GitProjectStatus | null>(null);
-  const [pullingProject, setPullingProject] = useState<GitProjectStatus | null>(null);
+  const [expandedContainer, setExpandedContainer] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [markingDeployed, setMarkingDeployed] = useState<string | null>(null);
@@ -89,8 +89,11 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
             // being any actual commit left to pull through the button below.
             const canMarkDeployed = Boolean(project.localPath);
 
+            const isExpanded = expandedContainer === project.containerName;
+
             return (
-              <div key={project.containerName} className="data-row flex-wrap gap-3">
+              <div key={project.containerName} className="border-b border-cockpit-border last:border-b-0">
+                <div className="data-row flex-wrap gap-3 border-b-0">
                 <button
                   onClick={() => setEditingProject(project)}
                   className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
@@ -149,14 +152,19 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
                     </button>
                   )}
                   <button
-                    onClick={() => setPullingProject(project)}
+                    onClick={() => setExpandedContainer(isExpanded ? null : project.containerName)}
                     disabled={!canPull}
                     title={canPull ? 'Pull & rebuild' : 'Set a local path and rebuild command to enable this'}
-                    className="icon-btn hover:border-cockpit-accent/40 hover:text-cockpit-accent disabled:opacity-30"
+                    className={`icon-btn hover:border-cockpit-accent/40 hover:text-cockpit-accent disabled:opacity-30 ${
+                      isExpanded ? 'border-cockpit-accent/40 text-cockpit-accent' : ''
+                    }`}
                   >
-                    <Download className="h-3.5 w-3.5" />
+                    {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
                   </button>
                 </div>
+                </div>
+
+                {isExpanded && <GitPullInline project={project} onDone={onRefetch} />}
               </div>
             );
           })}
@@ -171,10 +179,6 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
           onClose={closeEditModal}
           onSaved={onRefetch}
         />
-      )}
-
-      {pullingProject && (
-        <GitPullModal project={pullingProject} onClose={() => setPullingProject(null)} onSuccess={onRefetch} />
       )}
     </section>
   );
