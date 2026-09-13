@@ -1,6 +1,6 @@
 {
   "name": "homelab-cockpit",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Homelab Cockpit / Owner POV Real-Time Dashboard",
   "scripts": {
@@ -10,7 +10,7 @@
     "build:server": "cd server && npm run build",
     "build": "npm run build:client && npm run build:server",
     "start": "cd server && npm start",
-    "prepare": "husky"
+    "prepare": "command -v husky >/dev/null 2>&1 && husky || true"
   },
   "keywords": [
     "homelab",
