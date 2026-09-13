@@ -335,6 +335,20 @@ export class GitProjectsService {
       );
       const changedFiles = stdout.split('\n').map((l) => l.trim()).filter(Boolean);
       const riskyFiles = changedFiles.filter((f) => MIGRATION_RISK_PATTERNS.some((p) => p.test(f)));
+
+      // Local HEAD already matches origin — if the stored baseline still
+      // disagrees (stale from a manual pull outside the dashboard, or from
+      // before this project had a local path), self-heal it here rather
+      // than leaving "Update available" showing with nothing left to pull.
+      if (changedFiles.length === 0) {
+        const { stdout: headOut } = await execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], EXEC_OPTS);
+        const head = headOut.trim();
+        if (record.lastKnownSha !== head) {
+          record.lastKnownSha = head;
+          this.saveDb();
+        }
+      }
+
       return { ok: true, riskyFiles, changedFiles };
     } catch (err: any) {
       return { ok: false, message: err.message, riskyFiles: [], changedFiles: [] };

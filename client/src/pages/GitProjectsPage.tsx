@@ -82,7 +82,12 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
         <div className="px-5 py-1.5">
           {projects.map((project) => {
             const canPull = Boolean(project.localPath && project.rebuildCommand);
-            const canMarkDeployed = Boolean(project.localPath && !project.lastKnownSha);
+            // Always available when a local path is set, not just before the
+            // first deploy — the baseline can go stale any time the project
+            // changes outside this dashboard (a manual pull, a separate CI
+            // job), and this is the only way to resync it without there
+            // being any actual commit left to pull through the button below.
+            const canMarkDeployed = Boolean(project.localPath);
 
             return (
               <div key={project.containerName} className="data-row flex-wrap gap-3">
@@ -135,7 +140,7 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
                     <button
                       onClick={() => handleMarkDeployed(project.containerName)}
                       disabled={markingDeployed === project.containerName}
-                      title="Already running this project? Record whatever commit is checked out right now as deployed."
+                      title="Sync the deployed marker with whatever commit is actually checked out right now — use this if the status looks wrong (e.g. still says Update available with nothing left to pull)"
                       className="icon-btn hover:border-state-good/40 hover:text-state-good disabled:opacity-30"
                     >
                       <CheckCircle2
