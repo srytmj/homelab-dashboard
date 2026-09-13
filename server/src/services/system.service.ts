@@ -181,6 +181,7 @@ export class SystemService {
           memBytes: (p.memRss || 0) * 1024,
           memPercent: Number((p.mem || 0).toFixed(1)),
           state: p.state || 'unknown',
+          source: 'host',
           ...io,
         };
       });

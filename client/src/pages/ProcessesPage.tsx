@@ -6,9 +6,15 @@ import { formatBytes, formatNetworkRate, getStatusColor } from '../utils/formatt
 
 type SortKey = 'cpu' | 'mem' | 'name' | 'disk';
 
-const POLL_MS = 3000;
+// Docker top() and the remote SSH `ps` are both heavier than the local host
+// list, so they poll slower — and only the active tab's endpoint is hit at
+// all, not all three sources at once.
+const POLL_MS: Record<string, number> = { host: 3000, docker: 5000 };
+const REMOTE_POLL_MS = 8000;
 
 export const ProcessesPage: React.FC = () => {
+  const [sshTargets, setSshTargets] = useState<string[]>([]);
+  const [source, setSource] = useState('host');
   const [processes, setProcesses] = useState<ProcessMetric[]>([]);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('cpu');
@@ -16,10 +22,21 @@ export const ProcessesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    authFetch('/api/ssh-targets')
+      .then((res) => res.json())
+      .then((data: { targets: string[] }) => setSshTargets(data.targets ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
+
+    const endpoint = source === 'host' ? '/api/processes' : source === 'docker' ? '/api/processes/docker' : `/api/processes/remote/${encodeURIComponent(source.slice(4))}`;
+    const pollMs = POLL_MS[source] ?? REMOTE_POLL_MS;
 
     const load = () => {
-      authFetch('/api/processes')
+      authFetch(endpoint)
         .then((res) => res.json())
         .then((data: ProcessMetric[]) => {
           if (!cancelled) {
@@ -33,12 +50,12 @@ export const ProcessesPage: React.FC = () => {
     };
 
     load();
-    const interval = setInterval(load, POLL_MS);
+    const interval = setInterval(load, pollMs);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [source]);
 
   const toggleSort = (column: SortKey) => {
     if (sortBy === column) {
@@ -62,7 +79,7 @@ export const ProcessesPage: React.FC = () => {
       .sort((a, b) => {
         let diff = 0;
         if (sortBy === 'cpu') diff = a.cpuPercent - b.cpuPercent;
-        else if (sortBy === 'mem') diff = a.memBytes - b.memBytes;
+        else if (sortBy === 'mem') diff = a.memBytes - b.memBytes || a.memPercent - b.memPercent;
         else if (sortBy === 'name') diff = a.name.localeCompare(b.name);
         else
           diff =
@@ -73,6 +90,7 @@ export const ProcessesPage: React.FC = () => {
   }, [processes, search, sortBy, sortOrder]);
 
   const hasDiskData = processes.some((p) => p.diskReadBytesPerSec !== undefined);
+  const hasMemBytes = processes.some((p) => p.memBytes > 0);
 
   const SortHeader: React.FC<{ column: SortKey; children: React.ReactNode; className?: string }> = ({
     column,
@@ -98,8 +116,7 @@ export const ProcessesPage: React.FC = () => {
         <div>
           <h2 className="panel-title">Processes</h2>
           <p className="panel-sub">
-            {isLoading ? 'Loading…' : `${processes.length} processes`} · top {processes.length} by CPU, refreshed
-            every {POLL_MS / 1000}s
+            {isLoading ? 'Loading…' : `${processes.length} processes`} · sorted by CPU by default
           </p>
         </div>
 
@@ -115,6 +132,29 @@ export const ProcessesPage: React.FC = () => {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-3 border-b border-cockpit-border px-5 py-3">
+        <div className="seg flex-wrap">
+          <button onClick={() => setSource('host')} className={`seg-btn ${source === 'host' ? 'seg-btn-on' : ''}`}>
+            This host
+          </button>
+          <button
+            onClick={() => setSource('docker')}
+            className={`seg-btn ${source === 'docker' ? 'seg-btn-on' : ''}`}
+          >
+            Docker containers
+          </button>
+          {sshTargets.map((target) => (
+            <button
+              key={target}
+              onClick={() => setSource(`ssh:${target}`)}
+              className={`seg-btn ${source === `ssh:${target}` ? 'seg-btn-on' : ''}`}
+            >
+              {target}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] text-left text-[13px]">
           <thead>
@@ -124,7 +164,7 @@ export const ProcessesPage: React.FC = () => {
               <th className="px-4 py-2.5 font-medium">User</th>
               <SortHeader column="cpu">CPU</SortHeader>
               <SortHeader column="mem">Memory</SortHeader>
-              <SortHeader column="disk">Disk I/O</SortHeader>
+              {source === 'host' && <SortHeader column="disk">Disk I/O</SortHeader>}
             </tr>
           </thead>
           <tbody className="animate-fadeIn">
@@ -132,7 +172,7 @@ export const ProcessesPage: React.FC = () => {
               const cpuTone = getStatusColor(p.cpuPercent);
               return (
                 <tr
-                  key={p.pid}
+                  key={`${p.source ?? ''}-${p.pid}-${p.name}`}
                   className="border-b border-cockpit-border transition-colors last:border-b-0 hover:bg-cockpit-panelHover"
                 >
                   <td className="px-4 py-3">
@@ -149,16 +189,22 @@ export const ProcessesPage: React.FC = () => {
                     <span className={`metric text-[12.5px] ${cpuTone.text}`}>{p.cpuPercent.toFixed(1)}%</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="metric text-[12.5px]">{formatBytes(p.memBytes)}</span>
-                    <span className="ml-1.5 font-mono text-[10.5px] text-cockpit-muted">
-                      {p.memPercent.toFixed(1)}%
+                    <span className="metric text-[12.5px]">
+                      {hasMemBytes ? formatBytes(p.memBytes) : `${p.memPercent.toFixed(1)}%`}
                     </span>
+                    {hasMemBytes && (
+                      <span className="ml-1.5 font-mono text-[10.5px] text-cockpit-muted">
+                        {p.memPercent.toFixed(1)}%
+                      </span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-[11.5px] tabular-nums text-cockpit-muted">
-                    {p.diskReadBytesPerSec === undefined
-                      ? '—'
-                      : `${formatNetworkRate(p.diskReadBytesPerSec)} / ${formatNetworkRate(p.diskWriteBytesPerSec ?? 0)}`}
-                  </td>
+                  {source === 'host' && (
+                    <td className="px-4 py-3 font-mono text-[11.5px] tabular-nums text-cockpit-muted">
+                      {p.diskReadBytesPerSec === undefined
+                        ? '—'
+                        : `${formatNetworkRate(p.diskReadBytesPerSec)} / ${formatNetworkRate(p.diskWriteBytesPerSec ?? 0)}`}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -166,11 +212,15 @@ export const ProcessesPage: React.FC = () => {
         </table>
 
         {!isLoading && filtered.length === 0 && (
-          <p className="px-5 py-10 text-center text-[13px] text-cockpit-muted">No processes match this filter.</p>
+          <p className="px-5 py-10 text-center text-[13px] text-cockpit-muted">
+            {source === 'docker'
+              ? 'No running containers reported a process list — some base images ship a ps that this cannot parse.'
+              : 'No processes match this filter.'}
+          </p>
         )}
       </div>
 
-      {!hasDiskData && !isLoading && processes.length > 0 && (
+      {source === 'host' && !hasDiskData && !isLoading && processes.length > 0 && (
         <p className="border-t border-cockpit-border px-5 py-3 text-[11.5px] text-cockpit-muted">
           Per-process disk I/O reads /proc/[pid]/io and is only available on Linux, for processes the daemon has
           permission to inspect.

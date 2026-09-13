@@ -1,6 +1,6 @@
 import Docker from 'dockerode';
 import fs from 'node:fs';
-import { ContainerMetric, DockerDiskHygiene, HttpHealthProbe } from '../types.js';
+import { ContainerMetric, DockerDiskHygiene, HttpHealthProbe, ProcessMetric } from '../types.js';
 import { config, DockerHostConfig } from '../config.js';
 
 interface SparklineHistory {
@@ -469,5 +469,54 @@ export class DockerService {
     ].join('\n');
 
     return { logs: mockLogs };
+  }
+
+  /**
+   * Lists processes inside every running container on this host via
+   * `docker top` (dockerode's container.top()) — no SSH, no extra mount,
+   * just the Docker API this service already talks to. Each container's own
+   * `ps` decides which columns exist, so this only trusts PID and CMD, which
+   * every base image's ps reports; a container without a usable `ps` at all
+   * (some distroless images) is skipped rather than failing the whole list.
+   */
+  public async getContainerProcesses(): Promise<ProcessMetric[]> {
+    if (!this.docker || !this.isDockerAvailable || config.demoMode) return [];
+
+    const containers = await this.docker.listContainers({ filters: { status: ['running'] } });
+    const results: ProcessMetric[] = [];
+
+    for (const info of containers) {
+      const name = (info.Names[0] || '').replace(/^\//, '');
+      try {
+        const container = this.docker.getContainer(info.Id);
+        const top = await container.top();
+        const titles: string[] = top.Titles.map((t: string) => t.toUpperCase());
+        const pidIdx = titles.indexOf('PID');
+        const cmdIdx = titles.length - 1; // CMD/COMMAND is always the last, free-text column
+        const cpuIdx = titles.findIndex((t) => t === '%CPU' || t === 'CPU');
+        const memIdx = titles.findIndex((t) => t === '%MEM' || t === 'MEM');
+        const userIdx = titles.indexOf('USER');
+        if (pidIdx === -1) continue;
+
+        for (const row of top.Processes) {
+          results.push({
+            pid: Number(row[pidIdx]) || 0,
+            name,
+            command: `${name}: ${row[cmdIdx] || ''}`.trim(),
+            user: userIdx !== -1 ? row[userIdx] : name,
+            cpuPercent: cpuIdx !== -1 ? Number(row[cpuIdx]) || 0 : 0,
+            memPercent: memIdx !== -1 ? Number(row[memIdx]) || 0 : 0,
+            memBytes: 0,
+            state: 'running',
+            source: `docker:${this.name}`,
+          });
+        }
+      } catch {
+        // This container's ps doesn't support the default args, or it exited
+        // between listContainers() and top() — skip it, not the whole host.
+      }
+    }
+
+    return results;
   }
 }

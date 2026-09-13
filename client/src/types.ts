@@ -82,6 +82,7 @@ export interface ProcessMetric {
   state: string;
   diskReadBytesPerSec?: number;
   diskWriteBytesPerSec?: number;
+  source?: string;
 }
 
 export interface SslCertificate {
