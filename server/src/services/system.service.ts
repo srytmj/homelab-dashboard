@@ -4,8 +4,24 @@ import fs from 'node:fs';
 import { DockerHostMetrics, StorageItem, ThermalThrottleVitals } from '../types.js';
 import { config } from '../config.js';
 
+interface DiskPerfHistory {
+  lastSectorsRead: number;
+  lastSectorsWritten: number;
+  lastTimeReadingMs: number;
+  lastTimeWritingMs: number;
+  lastReadsCompleted: number;
+  lastWritesCompleted: number;
+  lastTimeIoMs: number;
+  lastTimestamp: number;
+  activeTimeSamples: number[];
+}
+
+const DISKSTATS_SECTOR_BYTES = 512;
+const ACTIVE_TIME_SAMPLE_COUNT = 40;
+
 export class SystemService {
   private lastThrottleCount = 0;
+  private diskPerfHistory: Map<string, DiskPerfHistory> = new Map();
 
   public async getDockerHostMetrics(): Promise<DockerHostMetrics> {
     try {
@@ -81,6 +97,7 @@ export class SystemService {
   public async getStorageMatrix(): Promise<StorageItem[]> {
     const results: StorageItem[] = [];
     const rootFsStats = this.safeStatfs('/');
+    const diskStats = this.readDiskStats();
 
     for (let i = 0; i < config.storageMounts.length; i++) {
       const mountPath = config.storageMounts[i];
@@ -108,6 +125,8 @@ export class SystemService {
         if (usedPercent > 90 || isDisconnected) status = 'critical';
         else if (usedPercent > 80) status = 'warning';
 
+        const perf = this.getDiskPerformance(mountPath, diskStats);
+
         results.push({
           id: `storage_${mountPath.replace(/[^a-zA-Z0-9]/g, '_')}`,
           mount: mountPath,
@@ -122,6 +141,7 @@ export class SystemService {
           smartStatus,
           canaryPresent,
           isDisconnected,
+          ...perf,
         });
       } else {
         results.push(this.getMockStorageItem(mountPath, label, isExternal, i));
@@ -129,6 +149,94 @@ export class SystemService {
     }
 
     return results;
+  }
+
+  /** Decodes a mount path's device number into "major:minor" for /proc/diskstats lookup. Returns null off-Linux or if the path can't be stat'd. */
+  private getDeviceKey(mountPath: string): string | null {
+    try {
+      const st = fs.statSync(mountPath, { bigint: true });
+      const dev = st.dev;
+      const major = ((dev >> 8n) & 0xfffn) | ((dev >> 32n) & ~0xfffn);
+      const minor = (dev & 0xffn) | ((dev >> 12n) & ~0xffn);
+      return `${major}:${minor}`;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Parses /proc/diskstats into a "major:minor" -> [reads, sectorsRead, timeReading, writes, sectorsWritten, timeWriting, timeDoingIo] map. */
+  private readDiskStats(): Map<string, number[]> {
+    const result = new Map<string, number[]>();
+    try {
+      if (!fs.existsSync('/proc/diskstats')) return result;
+      const lines = fs.readFileSync('/proc/diskstats', 'utf8').trim().split('\n');
+      for (const line of lines) {
+        const fields = line.trim().split(/\s+/);
+        if (fields.length < 14) continue;
+        const key = `${fields[0]}:${fields[1]}`;
+        result.set(key, [
+          Number(fields[3]), // reads completed
+          Number(fields[5]), // sectors read
+          Number(fields[6]), // time reading (ms)
+          Number(fields[7]), // writes completed
+          Number(fields[9]), // sectors written
+          Number(fields[10]), // time writing (ms)
+          Number(fields[12]), // time doing I/Os (ms)
+        ]);
+      }
+    } catch {
+      // no data available
+    }
+    return result;
+  }
+
+  private getDiskPerformance(mountPath: string, diskStats: Map<string, number[]>): Partial<StorageItem> {
+    const deviceKey = this.getDeviceKey(mountPath);
+    if (!deviceKey) return {};
+
+    const row = diskStats.get(deviceKey);
+    if (!row) return {};
+
+    const [readsCompleted, sectorsRead, timeReadingMs, writesCompleted, sectorsWritten, timeWritingMs, timeIoMs] = row;
+    const now = Date.now();
+    const prev = this.diskPerfHistory.get(mountPath);
+
+    this.diskPerfHistory.set(mountPath, {
+      lastSectorsRead: sectorsRead,
+      lastSectorsWritten: sectorsWritten,
+      lastTimeReadingMs: timeReadingMs,
+      lastTimeWritingMs: timeWritingMs,
+      lastReadsCompleted: readsCompleted,
+      lastWritesCompleted: writesCompleted,
+      lastTimeIoMs: timeIoMs,
+      lastTimestamp: now,
+      activeTimeSamples: prev?.activeTimeSamples ?? [],
+    });
+
+    if (!prev) return {};
+
+    const elapsedSec = (now - prev.lastTimestamp) / 1000;
+    if (elapsedSec <= 0) return {};
+
+    const readRateBytesPerSec = Math.max(0, ((sectorsRead - prev.lastSectorsRead) * DISKSTATS_SECTOR_BYTES) / elapsedSec);
+    const writeRateBytesPerSec = Math.max(0, ((sectorsWritten - prev.lastSectorsWritten) * DISKSTATS_SECTOR_BYTES) / elapsedSec);
+    const activeTimePercent = Math.min(100, Math.max(0, ((timeIoMs - prev.lastTimeIoMs) / (elapsedSec * 1000)) * 100));
+
+    const deltaOps = (readsCompleted - prev.lastReadsCompleted) + (writesCompleted - prev.lastWritesCompleted);
+    const deltaTimeMs = (timeReadingMs - prev.lastTimeReadingMs) + (timeWritingMs - prev.lastTimeWritingMs);
+    const avgResponseMs = deltaOps > 0 ? Number((deltaTimeMs / deltaOps).toFixed(2)) : 0;
+
+    const activeTimeSamples = [...prev.activeTimeSamples, Number(activeTimePercent.toFixed(1))].slice(-ACTIVE_TIME_SAMPLE_COUNT);
+    const history = this.diskPerfHistory.get(mountPath);
+    if (history) history.activeTimeSamples = activeTimeSamples;
+
+    return {
+      readRateBytesPerSec: Math.round(readRateBytesPerSec),
+      writeRateBytesPerSec: Math.round(writeRateBytesPerSec),
+      activeTimePercent: Number(activeTimePercent.toFixed(1)),
+      avgResponseMs,
+      sparklineActiveTime: activeTimeSamples,
+    };
   }
 
   /** Turns a mount path into a readable name when no STORAGE_LABELS entry is set for it. */

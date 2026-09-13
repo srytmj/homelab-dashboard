@@ -3,6 +3,7 @@ import { Database, Download, Upload } from 'lucide-react';
 import { CockpitSnapshot, BackupStatus } from '../types.js';
 import { HostDetailPanels } from '../components/HostDetailPanels.js';
 import { StorageMatrixSection } from '../components/StorageMatrixSection.js';
+import { DiskPerformancePanel } from '../components/DiskPerformancePanel.js';
 import { TailscaleMatrixSection } from '../components/TailscaleMatrixSection.js';
 import { SslTrackerSection } from '../components/SslTrackerSection.js';
 import { BackupRestoreModal } from '../components/BackupRestoreModal.js';
@@ -157,6 +158,8 @@ export const InfraPage: React.FC<InfraPageProps> = ({ snapshot, isPrivacyMode, o
       <TailscaleMatrixSection tailscale={snapshot?.tailscale} isPrivacyMode={isPrivacyMode} />
       <SslTrackerSection certificates={snapshot?.sslCertificates} isPrivacyMode={isPrivacyMode} />
     </div>
+
+    <DiskPerformancePanel storage={snapshot?.storage} />
 
     <BackupPanel />
   </div>

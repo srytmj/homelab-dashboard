@@ -64,6 +64,11 @@ export interface StorageItem {
   smartStatus?: 'PASSED' | 'WARNING' | 'FAILED' | 'UNKNOWN';
   canaryPresent?: boolean;
   isDisconnected?: boolean;
+  readRateBytesPerSec?: number;
+  writeRateBytesPerSec?: number;
+  activeTimePercent?: number;
+  avgResponseMs?: number;
+  sparklineActiveTime?: number[];
 }
 
 export interface SslCertificate {
