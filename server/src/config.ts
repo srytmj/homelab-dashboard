@@ -20,6 +20,31 @@ function parseDockerHosts(raw: string | undefined): DockerHostConfig[] {
     .filter((host) => host.name && host.url);
 }
 
+export interface SshTargetConfig {
+  name: string;
+  user: string;
+  host: string;
+  port: number;
+}
+
+// "name=user@host:port" (port optional, defaults to 22), comma-separated —
+// same shape as DOCKER_HOSTS. Never registerable through the running app;
+// this is deliberate, see CLAUDE.md.
+function parseSshTargets(raw: string | undefined): SshTargetConfig[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [name, rest] = entry.split('=').map((s) => s.trim());
+      const [userHost, portStr] = (rest || '').split(':');
+      const [user, host] = userHost.split('@');
+      return { name, user, host, port: portStr ? parseInt(portStr, 10) : 22 };
+    })
+    .filter((t) => t.name && t.user && t.host);
+}
+
 const primaryDockerHost: DockerHostConfig = {
   name: process.env.DOCKER_HOST_NAME || 'docker-host',
   socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
@@ -60,6 +85,12 @@ export const config = {
   // Fixed inside the container regardless of where GIT_PROJECTS_ROOT points
   // on the host — docker-compose.yml always bind-mounts it to /projects.
   gitProjectsRoot: '/projects',
+  sshTargets: parseSshTargets(process.env.SSH_TARGETS),
+  // Fixed in-container path, like gitProjectsRoot — docker-compose.yml
+  // bind-mounts SSH_PRIVATE_KEY_PATH from the host to here, read-only. One
+  // shared key for every target; each target's authorized_keys gets the
+  // matching public key.
+  sshPrivateKeyPath: '/root/.ssh/cockpit_id_rsa',
   backup: {
     rcloneRemote: process.env.BACKUP_RCLONE_REMOTE || '',
     sourcePaths: (process.env.BACKUP_SOURCE_PATHS || '/app/data,/projects')

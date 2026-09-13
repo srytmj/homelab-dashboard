@@ -34,6 +34,7 @@ services:
       - BACKUP_RCLONE_REMOTE=${BACKUP_RCLONE_REMOTE:-}
       - BACKUP_SOURCE_PATHS=${BACKUP_SOURCE_PATHS:-/app/data,/projects}
       - BACKUP_INTERVAL_HOURS=${BACKUP_INTERVAL_HOURS:-0}
+      - SSH_TARGETS=${SSH_TARGETS:-}
     volumes:
       # Persistent Owner Auth & Sessions
       - ./data:/app/data
@@ -54,5 +55,10 @@ services:
       # host with `rclone config` — Cockpit never handles Drive/Nextcloud
       # OAuth itself, only runs `rclone sync` against whatever you configure.
       - ${RCLONE_CONFIG_PATH:-~/.config/rclone/rclone.conf}:/root/.config/rclone/rclone.conf:ro
+      # In-browser terminal: one shared private key for every SSH_TARGETS
+      # entry. Generate this pair yourself and put the public half in
+      # authorized_keys on each target — Cockpit never generates or accepts
+      # a key through the UI.
+      - ${SSH_PRIVATE_KEY_PATH:-~/.ssh/id_rsa}:/root/.ssh/cockpit_id_rsa:ro
     labels:
       - "com.centurylinklabs.watchtower.enable=true"

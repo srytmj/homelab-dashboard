@@ -16,6 +16,7 @@ import { SslService } from './services/ssl.service.js';
 import { PinsService } from './services/pins.service.js';
 import { GitProjectsService, RebuildCommand } from './services/git-projects.service.js';
 import { BackupService } from './services/backup.service.js';
+import { TerminalService } from './services/terminal.service.js';
 import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
 
@@ -47,6 +48,7 @@ async function bootstrap() {
   const pinsService = new PinsService();
   const gitProjectsService = new GitProjectsService();
   const backupService = new BackupService();
+  const terminalService = new TerminalService();
 
   let sentinelService: SentinelService | null = null;
 
@@ -126,6 +128,29 @@ async function bootstrap() {
     }
 
     collectorService.addClient(socket);
+  });
+
+  // Terminal WebSocket — same auth as /ws. See terminal.service.ts: this is
+  // the one feature with no command whitelist, by design.
+  app.get('/ws/terminal', { websocket: true }, (socket, req) => {
+    if (!authService.isRegistered()) {
+      socket.close();
+      return;
+    }
+
+    const token = extractToken(req);
+    if (!authService.validateToken(token)) {
+      socket.close();
+      return;
+    }
+
+    const { target } = req.query as { target?: string };
+    if (!target) {
+      socket.close();
+      return;
+    }
+
+    terminalService.openSession(target, socket);
   });
 
   // REST API: Public Auth Routes
@@ -271,6 +296,10 @@ async function bootstrap() {
       reply.status(400);
     }
     return result;
+  });
+
+  app.get('/api/ssh-targets', async () => {
+    return { targets: terminalService.getTargetNames() };
   });
 
   app.get('/api/backup/status', async () => {
