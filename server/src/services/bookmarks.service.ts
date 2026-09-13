@@ -1,0 +1,98 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export interface BookmarkRecord {
+  id: string;
+  name: string;
+  url: string;
+  addedAt: number;
+}
+
+interface BookmarksDb {
+  bookmarks: BookmarkRecord[];
+}
+
+/**
+ * Personal web shortcuts (YouTube, Gmail, whatever the owner reaches for) —
+ * a plain link list, not tied to a container. Same server-owned JSON shape
+ * as PinsService: the client never persists these itself.
+ */
+export class BookmarksService {
+  private dbPath: string;
+  private db: BookmarksDb;
+
+  constructor() {
+    const dataDir = path.resolve(__dirname, '../../../data');
+    if (!fs.existsSync(dataDir)) {
+      try {
+        fs.mkdirSync(dataDir, { recursive: true });
+      } catch {
+        // fallback
+      }
+    }
+    this.dbPath = path.join(dataDir, 'bookmarks.json');
+    this.db = this.loadDb();
+  }
+
+  private loadDb(): BookmarksDb {
+    try {
+      if (fs.existsSync(this.dbPath)) {
+        const raw = fs.readFileSync(this.dbPath, 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch (err) {
+      console.error('[BookmarksService] Error reading bookmarks database:', err);
+    }
+    return { bookmarks: [] };
+  }
+
+  private saveDb() {
+    try {
+      fs.writeFileSync(this.dbPath, JSON.stringify(this.db, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('[BookmarksService] Error writing bookmarks database:', err);
+    }
+  }
+
+  public getAll(): BookmarkRecord[] {
+    return this.db.bookmarks;
+  }
+
+  public add(name: string, url: string): BookmarkRecord {
+    const record: BookmarkRecord = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      url: this.normalizeUrl(url),
+      addedAt: Date.now(),
+    };
+    this.db.bookmarks.push(record);
+    this.saveDb();
+    return record;
+  }
+
+  public update(id: string, name: string, url: string): BookmarkRecord | null {
+    const record = this.db.bookmarks.find((b) => b.id === id);
+    if (!record) return null;
+    record.name = name.trim();
+    record.url = this.normalizeUrl(url);
+    this.saveDb();
+    return record;
+  }
+
+  public remove(id: string) {
+    this.db.bookmarks = this.db.bookmarks.filter((b) => b.id !== id);
+    this.saveDb();
+  }
+
+  // Same reasoning as PinsService.normalizeUrl: a bare domain resolves as a
+  // relative path against the dashboard's own origin when opened client-side.
+  private normalizeUrl(raw: string): string {
+    const trimmed = raw.trim();
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }
+}

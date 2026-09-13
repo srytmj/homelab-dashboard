@@ -14,6 +14,7 @@ import { SystemService } from './services/system.service.js';
 import { TailscaleService } from './services/tailscale.service.js';
 import { SslService } from './services/ssl.service.js';
 import { PinsService } from './services/pins.service.js';
+import { BookmarksService } from './services/bookmarks.service.js';
 import { GitProjectsService, RebuildCommand } from './services/git-projects.service.js';
 import { BackupService } from './services/backup.service.js';
 import { TerminalService } from './services/terminal.service.js';
@@ -46,6 +47,7 @@ async function bootstrap() {
   const tailscaleService = new TailscaleService();
   const sslService = new SslService();
   const pinsService = new PinsService();
+  const bookmarksService = new BookmarksService();
   const gitProjectsService = new GitProjectsService();
   const backupService = new BackupService();
   const terminalService = new TerminalService();
@@ -221,6 +223,16 @@ async function bootstrap() {
     return systemService.getProcesses();
   });
 
+  app.get('/api/processes/docker', async () => {
+    const perHost = await Promise.all(dockerServices.map((svc) => svc.getContainerProcesses()));
+    return perHost.flat();
+  });
+
+  app.get('/api/processes/remote/:target', async (request) => {
+    const { target } = request.params as { target: string };
+    return terminalService.getRemoteProcesses(target);
+  });
+
   app.post('/api/docker/prune', async () => {
     const result = await primaryDockerService.pruneSystem();
     return result;
@@ -255,6 +267,41 @@ async function bootstrap() {
   app.delete('/api/pins/:name', async (request) => {
     const { name } = request.params as { name: string };
     pinsService.unpin(name);
+    return { success: true };
+  });
+
+  app.get('/api/bookmarks', async () => {
+    return bookmarksService.getAll();
+  });
+
+  app.post('/api/bookmarks', async (request, reply) => {
+    const body = request.body as { name?: string; url?: string };
+    if (!body?.name?.trim() || !body?.url?.trim()) {
+      reply.status(400);
+      return { success: false, message: 'name and url are required' };
+    }
+    const record = bookmarksService.add(body.name, body.url);
+    return { success: true, bookmark: record };
+  });
+
+  app.put('/api/bookmarks/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as { name?: string; url?: string };
+    if (!body?.name?.trim() || !body?.url?.trim()) {
+      reply.status(400);
+      return { success: false, message: 'name and url are required' };
+    }
+    const record = bookmarksService.update(id, body.name, body.url);
+    if (!record) {
+      reply.status(404);
+      return { success: false, message: 'Bookmark not found' };
+    }
+    return { success: true, bookmark: record };
+  });
+
+  app.delete('/api/bookmarks/:id', async (request) => {
+    const { id } = request.params as { id: string };
+    bookmarksService.remove(id);
     return { success: true };
   });
 

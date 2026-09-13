@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 import { redactText, formatBytes } from '../utils/formatters.js';
 import { HostSummaryTiles } from '../components/HostSummaryTiles.js';
+import { BookmarksSection } from '../components/BookmarksSection.js';
 
 interface HomePageProps {
   snapshot: CockpitSnapshot | null;
@@ -61,6 +62,8 @@ export const HomePage: React.FC<HomePageProps> = ({ snapshot, throughput, isPriv
           <ArrowRight className="h-4 w-4 text-cockpit-muted" />
         </Link>
       </div>
+
+      <BookmarksSection />
     </div>
   );
 };
