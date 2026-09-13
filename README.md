@@ -62,6 +62,8 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 
 **Shortcuts.** The Overview page doubles as a browser startpage: a grid of personal links (YouTube, Gmail, anything) alongside the homelab summary, plus a clock and an opt-in weather readout based on the browser's own location (sent straight to Open-Meteo, never through this daemon).
 
+**Notifications.** A bell icon in the header logs pins, project tracking, and every pull & rebuild — started, finished, failed, or auto-deployed — so you don't have to be staring at the page it happened on. Desktop notifications are opt-in per browser. Pull & rebuild itself runs inline under the project row rather than in a blocking dialog, with a live log, and keeps running server-side if you navigate away.
+
 **Tailscale mesh.** Peer list with online state, `100.x` addresses, MagicDNS names, exit node and subnet router flags. Container links switch between LAN and Tailscale addresses, automatically or manually.
 
 **SSL tracker.** Countdown for every Let's Encrypt certificate issued through Nginx Proxy Manager, with warning under 30 days and critical under 14.

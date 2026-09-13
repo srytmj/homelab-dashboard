@@ -37,6 +37,7 @@ The strip below is the standing summary: Proxmox address, LXC address, Tailnet p
 Controls on the right, left to right:
 
 - **Command Deck** opens the command palette (see below). Also opens with `Ctrl+K` / `Cmd+K` from anywhere in the app.
+- **Bell icon** opens the notification feed — every pin/unpin, every project tracked or untracked, and every pull & rebuild (started, succeeded, failed, or auto-deployed). A filled bell means something you haven't seen yet; opening the panel clears it. **Desktop** inside the panel asks your browser for permission and, once granted, pops a native notification for anything new even while you're on a different tab or page — off by default, and the choice lives in this browser only.
 - **Sun/moon icon** switches between light and dark theme. Your choice is remembered; before you've picked one, it follows your OS setting.
 - **Eye icon** toggles privacy mode. IPs become `192.168.•••.•••` and domains become `••••••.com`, so a screenshot is safe to post. The button turns amber while active. Nothing is sent anywhere; this is display-only.
 - **Arrows icon** toggles browser fullscreen for a wall display or tablet.
@@ -138,13 +139,13 @@ Click a tracked row to edit its repo/branch, set a local path and rebuild comman
 
 ### Pull and rebuild
 
-The download icon on a row pulls and rebuilds that project — it's disabled until the project has both a **local path** (the folder name under your `GIT_PROJECTS_ROOT`, where the project's working tree actually lives on the host) and a **rebuild command** set in the edit dialog.
+The download icon on a row expands a panel underneath it, in place — there's no dialog blocking the rest of the page. It's disabled until the project has both a **local path** (the folder name under your `GIT_PROJECTS_ROOT`, where the project's working tree actually lives on the host) and a **rebuild command** set in the edit dialog.
 
-Clicking it first checks what would change, without touching anything:
+Expanding it first checks what would change, without touching anything:
 
 - If the changed files include something that looks like a database migration (a `migrations/` folder, `prisma/schema.prisma`, `alembic/`, or a `.sql` file), you get a warning listing exactly which files matched before you can continue. This is a pattern match, not a guarantee — it can miss a real migration named unusually, or flag a file that isn't one. Read the list.
-- Confirming runs `git pull` followed by the configured rebuild command in that project's directory. This can take a while for a slow build; the dialog stays open until it finishes.
-- The record of "what's deployed" only updates through this button, **Mark as deployed** (below), or auto-deploy. Deploying the same project some other way (SSH, a separate CI job) leaves the dashboard showing the old commit as deployed until one of those three runs.
+- If there's nothing new to pull, the button instead reads **Rebuild anyway** — click it if the running container doesn't seem to match what's supposedly deployed (a stale image cache, a rebuild that silently failed last time). It runs the same `git pull` and rebuild either way; `git pull` is just a no-op when there's genuinely nothing new.
+- Once running, the panel shows live output as it happens — `git pull`, then the rebuild command — and you can navigate to any other page while it runs; it keeps going on the daemon regardless. Come back to the same row later, or check the notification bell, to see how it went. The record of "what's deployed" updates through this, **Mark as deployed** (below), or auto-deploy. Deploying the same project some other way (SSH, a separate CI job) leaves the dashboard showing the old commit as deployed until one of those three runs.
 
 If a **local path** is set when you first track a project (or add one later by editing it), the dashboard reads whatever commit is already checked out there and uses it as the baseline right away — so a project that's already running doesn't sit at "Not deployed yet" for no reason. That only works if the path exists and is a real git working tree at that moment; if it's tracked before the path is ready, or without a local path at all, it still shows **Not deployed yet**. A green checkmark button appears next to the status pill whenever that's the case and a local path is set: click it to record whatever commit is on disk as deployed, without pulling or rebuilding anything. After that, the pill correctly flips between "Up to date" and "Update available" as new commits land.
 
