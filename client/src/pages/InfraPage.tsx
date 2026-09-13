@@ -1,9 +1,13 @@
-import React from 'react';
-import { CockpitSnapshot } from '../types.js';
+import React, { useEffect, useState } from 'react';
+import { Database, Download, Upload } from 'lucide-react';
+import { CockpitSnapshot, BackupStatus } from '../types.js';
 import { HostDetailPanels } from '../components/HostDetailPanels.js';
 import { StorageMatrixSection } from '../components/StorageMatrixSection.js';
 import { TailscaleMatrixSection } from '../components/TailscaleMatrixSection.js';
 import { SslTrackerSection } from '../components/SslTrackerSection.js';
+import { BackupRestoreModal } from '../components/BackupRestoreModal.js';
+import { ImportConfigModal } from '../components/ImportConfigModal.js';
+import { authFetch } from '../utils/api.js';
 
 interface InfraPageProps {
   snapshot: CockpitSnapshot | null;
@@ -43,6 +47,101 @@ const DockerHostsPanel: React.FC<{ snapshot: CockpitSnapshot | null }> = ({ snap
   );
 };
 
+const BackupPanel: React.FC = () => {
+  const [status, setStatus] = useState<BackupStatus | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  const loadStatus = () => {
+    authFetch('/api/backup/status')
+      .then((res) => res.json())
+      .then(setStatus)
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  const handleRunBackup = async () => {
+    setIsRunning(true);
+    try {
+      await authFetch('/api/backup/run', { method: 'POST' });
+      loadStatus();
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const lastBackup = status?.backup;
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h3 className="panel-title">Backup</h3>
+          <p className="panel-sub">
+            {status?.configured ? 'rclone remote configured' : 'No rclone remote configured'}
+          </p>
+        </div>
+        <span className={`pill ${lastBackup?.lastResult === 'success' ? 'pill-good' : 'pill-neutral'}`}>
+          {lastBackup ? (lastBackup.lastResult === 'success' ? 'Last run OK' : 'Last run failed') : 'Never run'}
+        </span>
+      </div>
+
+      <div className="space-y-3 px-5 py-4">
+        {lastBackup && (
+          <p className="font-mono text-[11px] text-cockpit-muted">
+            {new Date(lastBackup.lastRunAt).toLocaleString()} · {(lastBackup.lastDurationMs / 1000).toFixed(1)}s
+            {lastBackup.lastError && <span className="text-state-bad"> · {lastBackup.lastError}</span>}
+          </p>
+        )}
+
+        {!status?.configured && (
+          <p className="text-[12px] text-cockpit-muted">
+            Set <code className="font-mono text-cockpit-text">BACKUP_RCLONE_REMOTE</code> to enable backup and
+            restore. Config import works either way.
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleRunBackup}
+            disabled={!status?.configured || isRunning}
+            className="btn-ghost disabled:opacity-40"
+          >
+            <Database className={`h-3.5 w-3.5 ${isRunning ? 'animate-pulse' : ''}`} />
+            {isRunning ? 'Running…' : 'Run backup now'}
+          </button>
+          <button
+            onClick={() => setIsRestoreOpen(true)}
+            disabled={!status?.configured}
+            className="btn-ghost hover:border-state-bad/40 hover:text-state-bad disabled:opacity-40"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Restore from backup
+          </button>
+          <button onClick={() => setIsImportOpen(true)} className="btn-ghost">
+            <Upload className="h-3.5 w-3.5" />
+            Import config from link
+          </button>
+        </div>
+      </div>
+
+      {isRestoreOpen && (
+        <BackupRestoreModal
+          sourcePaths={status?.sourcePaths ?? []}
+          onClose={() => setIsRestoreOpen(false)}
+          onSuccess={loadStatus}
+        />
+      )}
+
+      {isImportOpen && <ImportConfigModal onClose={() => setIsImportOpen(false)} onSuccess={loadStatus} />}
+    </section>
+  );
+};
+
 export const InfraPage: React.FC<InfraPageProps> = ({ snapshot, isPrivacyMode, onOpenPruneModal }) => (
   <div className="space-y-4">
     <HostDetailPanels host={snapshot?.host} isPrivacyMode={isPrivacyMode} />
@@ -58,5 +157,7 @@ export const InfraPage: React.FC<InfraPageProps> = ({ snapshot, isPrivacyMode, o
       <TailscaleMatrixSection tailscale={snapshot?.tailscale} isPrivacyMode={isPrivacyMode} />
       <SslTrackerSection certificates={snapshot?.sslCertificates} isPrivacyMode={isPrivacyMode} />
     </div>
+
+    <BackupPanel />
   </div>
 );
