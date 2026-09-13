@@ -217,6 +217,10 @@ async function bootstrap() {
     return sentinelService?.getStatus() || { enabled: false, polling: false };
   });
 
+  app.get('/api/processes', async () => {
+    return systemService.getProcesses();
+  });
+
   app.post('/api/docker/prune', async () => {
     const result = await primaryDockerService.pruneSystem();
     return result;

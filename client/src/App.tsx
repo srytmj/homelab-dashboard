@@ -16,6 +16,7 @@ import { FleetPage } from './pages/FleetPage.js';
 import { InfraPage } from './pages/InfraPage.js';
 import { SentinelPage } from './pages/SentinelPage.js';
 import { GitProjectsPage } from './pages/GitProjectsPage.js';
+import { ProcessesPage } from './pages/ProcessesPage.js';
 // Lazy-loaded: xterm.js is heavy and only needed by owners who use SSH.
 const TerminalPage = lazy(() => import('./pages/TerminalPage.js').then((m) => ({ default: m.TerminalPage })));
 import { ContainerMetric } from './types.js';
@@ -122,6 +123,7 @@ function CockpitDashboard() {
               <InfraPage snapshot={snapshot} isPrivacyMode={isPrivacyMode} onOpenPruneModal={() => setIsPruneModalOpen(true)} />
             }
           />
+          <Route path="/processes" element={<ProcessesPage />} />
           <Route path="/sentinel" element={<SentinelPage sentinel={snapshot?.sentinel} />} />
           <Route path="/git-projects" element={<GitProjectsPage snapshot={snapshot} onRefetch={refetch} />} />
           <Route

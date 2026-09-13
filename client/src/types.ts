@@ -71,6 +71,19 @@ export interface StorageItem {
   sparklineActiveTime?: number[];
 }
 
+export interface ProcessMetric {
+  pid: number;
+  name: string;
+  user: string;
+  command: string;
+  cpuPercent: number;
+  memBytes: number;
+  memPercent: number;
+  state: string;
+  diskReadBytesPerSec?: number;
+  diskWriteBytesPerSec?: number;
+}
+
 export interface SslCertificate {
   id: string;
   domain: string;

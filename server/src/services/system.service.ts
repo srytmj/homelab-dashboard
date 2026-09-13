@@ -1,7 +1,7 @@
 import si from 'systeminformation';
 import os from 'node:os';
 import fs from 'node:fs';
-import { DockerHostMetrics, StorageItem, ThermalThrottleVitals } from '../types.js';
+import { DockerHostMetrics, StorageItem, ThermalThrottleVitals, ProcessMetric } from '../types.js';
 import { config } from '../config.js';
 
 interface DiskPerfHistory {
@@ -18,10 +18,18 @@ interface DiskPerfHistory {
 
 const DISKSTATS_SECTOR_BYTES = 512;
 const ACTIVE_TIME_SAMPLE_COUNT = 40;
+const PROCESS_LIST_LIMIT = 100;
+
+interface ProcessIoHistory {
+  lastReadBytes: number;
+  lastWriteBytes: number;
+  lastTimestamp: number;
+}
 
 export class SystemService {
   private lastThrottleCount = 0;
   private diskPerfHistory: Map<string, DiskPerfHistory> = new Map();
+  private processIoHistory: Map<number, ProcessIoHistory> = new Map();
 
   public async getDockerHostMetrics(): Promise<DockerHostMetrics> {
     try {
@@ -149,6 +157,73 @@ export class SystemService {
     }
 
     return results;
+  }
+
+  public async getProcesses(): Promise<ProcessMetric[]> {
+    try {
+      const data = await si.processes();
+      const list = data.list
+        .slice()
+        .sort((a, b) => b.cpu - a.cpu)
+        .slice(0, PROCESS_LIST_LIMIT);
+
+      const seenPids = new Set<number>();
+
+      const results = list.map((p) => {
+        seenPids.add(p.pid);
+        const io = this.getProcessIoRates(p.pid);
+        return {
+          pid: p.pid,
+          name: p.name,
+          user: p.user || 'unknown',
+          command: p.command || p.name,
+          cpuPercent: Number((p.cpu || 0).toFixed(1)),
+          memBytes: (p.memRss || 0) * 1024,
+          memPercent: Number((p.mem || 0).toFixed(1)),
+          state: p.state || 'unknown',
+          ...io,
+        };
+      });
+
+      // Evict history for processes that no longer appear in this snapshot.
+      for (const pid of this.processIoHistory.keys()) {
+        if (!seenPids.has(pid)) this.processIoHistory.delete(pid);
+      }
+
+      return results;
+    } catch {
+      return [];
+    }
+  }
+
+  private getProcessIoRates(pid: number): { diskReadBytesPerSec?: number; diskWriteBytesPerSec?: number } {
+    try {
+      const ioPath = `/proc/${pid}/io`;
+      if (!fs.existsSync(ioPath)) return {};
+
+      const content = fs.readFileSync(ioPath, 'utf8');
+      const readMatch = content.match(/read_bytes:\s*(\d+)/);
+      const writeMatch = content.match(/write_bytes:\s*(\d+)/);
+      if (!readMatch || !writeMatch) return {};
+
+      const readBytes = Number(readMatch[1]);
+      const writeBytes = Number(writeMatch[1]);
+      const now = Date.now();
+      const prev = this.processIoHistory.get(pid);
+
+      this.processIoHistory.set(pid, { lastReadBytes: readBytes, lastWriteBytes: writeBytes, lastTimestamp: now });
+
+      if (!prev) return {};
+      const elapsedSec = (now - prev.lastTimestamp) / 1000;
+      if (elapsedSec <= 0) return {};
+
+      return {
+        diskReadBytesPerSec: Math.max(0, Math.round((readBytes - prev.lastReadBytes) / elapsedSec)),
+        diskWriteBytesPerSec: Math.max(0, Math.round((writeBytes - prev.lastWriteBytes) / elapsedSec)),
+      };
+    } catch {
+      return {};
+    }
   }
 
   /** Decodes a mount path's device number into "major:minor" for /proc/diskstats lookup. Returns null off-Linux or if the path can't be stat'd. */
