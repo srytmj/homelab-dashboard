@@ -76,23 +76,23 @@ function CockpitDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-cockpit-bg text-cockpit-text">
-      <Sidebar />
+    <div className="flex min-h-screen flex-col bg-cockpit-bg text-cockpit-text">
+      <Header
+        snapshot={snapshot}
+        isConnected={isConnected}
+        lastUpdated={lastUpdated}
+        isPrivacyMode={isPrivacyMode}
+        isFullscreen={isFullscreen}
+        theme={theme}
+        onTogglePrivacy={() => setIsPrivacyMode(!isPrivacyMode)}
+        onToggleFullscreen={toggleFullscreen}
+        onToggleTheme={toggleTheme}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onRefresh={refetch}
+      />
 
-      <div className="flex min-h-screen flex-1 flex-col">
-        <Header
-          snapshot={snapshot}
-          isConnected={isConnected}
-          lastUpdated={lastUpdated}
-          isPrivacyMode={isPrivacyMode}
-          isFullscreen={isFullscreen}
-          theme={theme}
-          onTogglePrivacy={() => setIsPrivacyMode(!isPrivacyMode)}
-          onToggleFullscreen={toggleFullscreen}
-          onToggleTheme={toggleTheme}
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          onRefresh={refetch}
-        />
+      <div className="flex flex-1 items-start gap-4">
+        <Sidebar />
 
         <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-6 px-5 py-7 lg:px-8">
           <DasWatchdogAlert storage={snapshot?.storage} />
