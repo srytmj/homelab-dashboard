@@ -24,7 +24,7 @@ The daemon runs without any configuration: with no Docker socket and no Proxmox 
 
 ```
 server/src/index.ts              routes, auth guard, WebSocket broadcast
-server/src/services/             one file per data source, including auth and pins
+server/src/services/             one file per data source, including auth, pins and git projects
 server/src/types.ts              server-side shape of the snapshot
 client/src/context/AuthContext   session state, login, register, logout
 client/src/utils/api.ts          authFetch, the only way to call /api
@@ -71,6 +71,10 @@ client/src/index.css             token values per theme, shared component classe
 **Pinning replaced the native console launcher; don't bring the launcher back.** The command palette used to also list a hardcoded set of native consoles (Proxmox, Portainer, NPM, Netdata, Uptime Kuma, AdGuard, the web IDE, Jellyfin) alongside pinned containers — that list is gone, along with `NativeConsoleItem` and `snapshot.consoles`. Pinning a container is now the only way anything ends up in the palette besides the four pages. If the owner wants quick access to something, the answer is "pin it," not "add another hardcoded entry."
 
 **A container's reachable address always resolves `publicUrl → tailscaleUrl → lanUrl`, in that order, everywhere.** Don't reintroduce a "pick LAN or Tailscale based on how the dashboard itself was loaded" branch for this — that was the previous (wrong) logic in the command palette, and it meant the same pinned container opened a different address depending on which network you were on when you clicked it. `PinsService.pin()` also normalizes a bare domain into an absolute URL (adds `https://` if the owner typed one without a scheme) before it's ever stored — `window.open()` on a schemeless string resolves it as a path relative to the dashboard's own origin, not as the container's address, so this has to happen server-side, once, not repeated ad hoc on the client.
+
+**External API calls never run on the 2-second poll tick.** `GitProjectsService.getSnapshot()` (`server/src/services/git-projects.service.ts`) is called from `CollectorService.collect()` every `pollIntervalMs`, but it never awaits the network itself — it returns cached values instantly and fires a background refresh only when the cache is older than `config.githubCheckIntervalMs` (5 minutes by default). Calling an external API (GitHub, or anything else added later) synchronously inside `collect()` would hit that service's rate limit within seconds at a 2s poll interval. Any future integration with a real-world rate limit needs this same cache-and-throttle shape, not a direct await in the hot path.
+
+**The Git Projects page is read-only.** It tracks upstream commits against a manually-recorded `lastKnownSha` — there is no pull, rebuild, or shell execution yet, and no code in this repo runs a command on the host filesystem outside of Dockerode calls against `docker.sock`. Adding pull/rebuild is a real capability jump (the container needs `git`/`docker` CLI added to the `Dockerfile` and a bind-mounted project directory in `docker-compose.yml` — it can't touch the host otherwise) and must use `child_process.execFile` with a fixed argv resolved server-side per registered project, never a shell string built from request input. A request should only ever select *which* registered project to act on, not *what command* runs.
 
 ## Common tasks
 

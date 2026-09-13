@@ -33,10 +33,11 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
                     - Dockerode per configured Docker host, Proxmox REST, Tailscale socket
                     - L7 HTTP probes, SSL expiry, disk hygiene (primary host only)
                     - pinned-container registry (data/pins.json)
+                    - GitHub commit tracking for tracked projects
                     - optional Telegram bot with Gemini Q&A
                                  |
                     React client (Vite + Tailwind + React Router)
-                    - Overview / Fleet / Infra / Sentinel pages
+                    - Overview / Fleet / Infra / Git projects / Sentinel pages
                     - Ctrl+K command palette
                     - light and dark theme
 ```
@@ -58,6 +59,8 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 **SSL tracker.** Countdown for every Let's Encrypt certificate issued through Nginx Proxy Manager, with warning under 30 days and critical under 14.
 
 **Disk hygiene.** Reclaimable space across dangling layers and build cache, with a confirmation modal that runs a safe prune. Running containers and named volumes are never touched.
+
+**Git projects.** Track a container that's built from your own repo — separate from off-the-shelf services like Jellyfin — and see its latest upstream commit against what you last deployed, checked against GitHub every few minutes (not on every poll tick, to stay well under GitHub's rate limit). Read-only for now: pulling and rebuilding from the dashboard is a planned follow-up, not built yet.
 
 **Pinned containers and public domains.** Pin any container from the fleet table, optionally with the public domain it answers on if it's exposed through a Cloudflare tunnel. Pins persist server-side in `data/pins.json`, so they follow you between browsers and devices.
 
@@ -104,6 +107,10 @@ TAILSCALE_SOCKET=/var/run/tailscale/tailscaled.sock
 TAILSCALE_TAILNET=your-tailnet.ts.net
 
 STORAGE_MOUNTS=/,/mnt/hdd-media,/mnt/hdd-cloud,/mnt/hdd-music
+
+# Optional, for the Git projects page (raises the GitHub API rate limit and
+# allows tracking private repos)
+GITHUB_TOKEN=
 
 # Optional Telegram companion
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF
@@ -155,6 +162,8 @@ Everything except `/api/health` and `/api/auth/*` requires `Authorization: Beare
 | POST | `/api/docker/prune` | Safe prune of layers and build cache |
 | POST | `/api/pins/:name` | Pin a container, optionally with `{ publicUrl }` |
 | DELETE | `/api/pins/:name` | Unpin a container |
+| POST | `/api/git-projects/:containerName` | Track a container's repo — `{ repoOwner, repoName, branch }` |
+| DELETE | `/api/git-projects/:containerName` | Stop tracking |
 | WS | `/ws` | Snapshot broadcast every 2 seconds |
 
 ## Documentation

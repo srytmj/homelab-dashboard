@@ -10,13 +10,14 @@ The first time the dashboard is opened it asks you to create the owner account. 
 
 ## Layout
 
-Four pages, reachable from the header nav or by typing the address directly — each has its own URL and survives a reload or a bookmark:
+Five pages, reachable from the header nav or by typing the address directly — each has its own URL and survives a reload or a bookmark:
 
 | Page | What it holds |
 | --- | --- |
 | Overview (`/`) | Device identity, spec, the four headline tiles, and shortcuts into Fleet and Infra |
 | Fleet (`/fleet`) | The container table |
 | Infra (`/infra`) | Proxmox node, LXC runner and backup panels, plus storage, Tailscale mesh and SSL certificates |
+| Git projects (`/git-projects`) | Containers built from your own repos, and whether they have new commits upstream |
 | Sentinel (`/sentinel`) | Telegram companion status and command reference |
 
 The nav underlines whichever page you're on.
@@ -102,6 +103,12 @@ The footer button shows reclaimable Docker space and opens the prune dialog. Pru
 **Tailscale mesh.** Peers with online state, address and last-seen time. `THIS HOST` marks the machine serving the dashboard, `EXIT` marks an exit node, and a peer advertising routes shows them in place of its MagicDNS name. Hover a row to copy its address.
 
 **SSL certificates.** Days remaining per domain, amber under 30 days, red under 14. The header pill shows the soonest expiry across all of them.
+
+## Git projects
+
+For containers that are your own projects — not off-the-shelf services like Jellyfin or Kavita. **Track a project** links a container to a GitHub repo and branch; the daemon checks that repo's latest commit every few minutes and shows an **Update available** pill when it differs from what you last deployed. **Not deployed yet** means the project is tracked but no deployed commit has been recorded — that only happens once pull/rebuild from the dashboard ships; for now this page is read-only.
+
+Click a tracked row to edit its repo/branch or stop tracking it.
 
 ## Sentinel
 
