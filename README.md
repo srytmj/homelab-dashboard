@@ -34,6 +34,7 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
                     - L7 HTTP probes, SSL expiry, disk hygiene (primary host only)
                     - pinned-container registry (data/pins.json)
                     - GitHub commit tracking for tracked projects
+                    - rclone backup / restore, plus small-config import
                     - optional Telegram bot with Gemini Q&A
                                  |
                     React client (Vite + Tailwind + React Router)
@@ -59,6 +60,8 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 **SSL tracker.** Countdown for every Let's Encrypt certificate issued through Nginx Proxy Manager, with warning under 30 days and critical under 14.
 
 **Disk hygiene.** Reclaimable space across dangling layers and build cache, with a confirmation modal that runs a safe prune. Running containers and named volumes are never touched.
+
+**Backup, restore and config import.** Scheduled or on-demand `rclone sync` to a remote you've already set up yourself (Nextcloud, Drive, anything rclone supports) — this is real disaster recovery, meant to answer "the SSD died, get my fleet back," not just Cockpit's own settings. Restore is the same sync reversed and needs an explicit confirmation, since it overwrites whatever's currently there. Separately, **Import config from a link** restores just `pins.json`/`git-projects.json` from a small zip at a public link (a "Anyone with the link" Google Drive share works) — never the fleet, and never your login. See Backup and restore below.
 
 **Git projects.** Track a container that's built from your own repo — separate from off-the-shelf services like Jellyfin — and see its latest upstream commit against what you last deployed, checked against GitHub every few minutes (not on every poll tick, to stay well under GitHub's rate limit). Set a local path and a rebuild command and the dashboard can pull and rebuild it directly, with a heuristic warning first if the changed files look like they touch a database migration. This is the one feature that runs a command against the host — see Git project pull/rebuild below before enabling it.
 
@@ -116,6 +119,12 @@ GITHUB_TOKEN=
 # "Git project pull/rebuild" below before setting this
 GIT_PROJECTS_ROOT=/opt/homelab-projects
 
+# Only needed for scheduled/on-demand backup and restore — see "Backup and
+# restore" below. Config import works without any of this.
+BACKUP_RCLONE_REMOTE=nextcloud:homelab-backup
+BACKUP_SOURCE_PATHS=/app/data,/projects
+BACKUP_INTERVAL_HOURS=0
+
 # Optional Telegram companion
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF
 TELEGRAM_ALLOWED_USER_IDS=12345678
@@ -141,6 +150,15 @@ The container image now includes `git` and the `docker` CLI, talking to the same
 When you register a project's **local path** as `myapp` and pick a **rebuild command**, pulling runs, in order: `git -C /projects/myapp fetch`, a read-only diff to check for migration risk, then (once you confirm) `git -C /projects/myapp pull` and the chosen `docker compose up -d --build[...]` with `cwd` set to that same directory. The rebuild command is a fixed choice from a short list, resolved server-side — the dashboard's UI never lets you type an arbitrary shell command, and the API never accepts one either.
 
 Skip `GIT_PROJECTS_ROOT` entirely if you only want commit tracking (Track a project still works without it) — pull/rebuild for a project without a local path and rebuild command configured stays disabled on that row.
+
+### Backup and restore
+
+`BACKUP_RCLONE_REMOTE` points at a destination you've already configured yourself with `rclone config` on the host — Nextcloud/WebDAV, Google Drive via rclone's own OAuth, or anything else rclone supports. Cockpit never runs that setup for you and never sees your Drive/Nextcloud credentials directly; it only ever calls `rclone sync` against whatever remote you've named, in either direction:
+
+- **Backup** copies each path in `BACKUP_SOURCE_PATHS` up to `<remote>/<path-basename>`. Runs on `BACKUP_INTERVAL_HOURS` if set above 0, and on demand from the Infra page.
+- **Restore** copies the same paths back down, overwriting whatever's currently there — this is what you run after reinstalling the daemon on a replacement disk, once `BACKUP_RCLONE_REMOTE` points at the same remote as before. It's confirmed explicitly in the UI and the API rejects it without `{ confirm: true }`.
+
+Leave `BACKUP_RCLONE_REMOTE` empty to skip backup/restore entirely — **Import config from a link** on the Infra page works independently of it. That one is intentionally narrow: it downloads one small zip from a public link (a Google Drive "Anyone with the link" share is rewritten to a direct-download URL automatically; any other direct-download URL works as-is), extracts only `pins.json` and `git-projects.json` by name, and copies just those into `data/`. It never touches `data/auth.json`, so an import can't lock you out of your own dashboard, and it's capped at 20MB — this is for Cockpit's own small config, not a way to move fleet data around.
 
 If you're an AI agent setting this up or extending it: don't reintroduce hardware-specific strings into `client/src/` — host name, CPU model, IPs and per-drive labels must come from `snapshot.host`/`snapshot.storage` (or the config above), never a literal like a specific CPU model name or IP address written into a component. That was a real bug here once already (see [CLAUDE.md](CLAUDE.md)).
 
@@ -180,6 +198,10 @@ Everything except `/api/health` and `/api/auth/*` requires `Authorization: Beare
 | DELETE | `/api/git-projects/:containerName` | Stop tracking |
 | POST | `/api/git-projects/:containerName/check-pull` | Read-only: lists files that would change, flags migration risk |
 | POST | `/api/git-projects/:containerName/pull` | Pull and run the configured rebuild command |
+| GET | `/api/backup/status` | Last backup/restore result and configured source paths |
+| POST | `/api/backup/run` | Run a backup now |
+| POST | `/api/backup/restore` | Restore from the remote — requires `{ confirm: true }` |
+| POST | `/api/backup/import-config` | Import `pins.json`/`git-projects.json` from a link — `{ url }` |
 | WS | `/ws` | Snapshot broadcast every 2 seconds |
 
 ## Documentation

@@ -104,6 +104,14 @@ The footer button shows reclaimable Docker space and opens the prune dialog. Pru
 
 **SSL certificates.** Days remaining per domain, amber under 30 days, red under 14. The header pill shows the soonest expiry across all of them.
 
+**Backup.** Shows when it's configured, when the last backup ran and whether it succeeded. Three actions:
+
+- **Run backup now** — syncs your configured source paths up to the rclone remote immediately, without waiting for the schedule.
+- **Restore from backup** — the reverse: pulls the remote back down over your local paths. This overwrites whatever's there now, so it lists exactly which paths before asking you to confirm. This is what you run after replacing a dead disk and pointing a fresh install at the same remote.
+- **Import config from link** — separate from the two above, and works even without a backup remote configured. Paste a link to a small zip (an "Anyone with the link" Google Drive share works) and it restores just your pinned containers and tracked git projects — never your login, never the fleet itself. Meant for a quick config restore, not disaster recovery; use Restore from backup for that.
+
+Both "Run backup now" and "Restore from backup" stay disabled until `BACKUP_RCLONE_REMOTE` is configured.
+
 ## Git projects
 
 For containers that are your own projects — not off-the-shelf services like Jellyfin or Kavita. **Track a project** links a container to a GitHub repo and branch; the daemon checks that repo's latest commit every few minutes and shows an **Update available** pill when it differs from what you last deployed.
