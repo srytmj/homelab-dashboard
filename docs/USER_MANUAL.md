@@ -16,8 +16,9 @@ Six pages, reachable from the header nav or by typing the address directly — e
 | --- | --- |
 | Overview (`/`) | Device identity, spec, the four headline tiles, and shortcuts into Fleet and Infra |
 | Fleet (`/fleet`) | The container table |
-| Infra (`/infra`) | Proxmox node, LXC runner and backup panels, plus storage, Tailscale mesh, SSL certificates, and the backup panel |
+| Infra (`/infra`) | Overview and Performance sub-views: storage/Tailscale/SSL/backup inventory, or live host and disk performance |
 | Git projects (`/git-projects`) | Containers built from your own repos, and whether they have new commits upstream |
+| Processes (`/processes`) | Every process on the host, sorted by CPU, memory or disk I/O |
 | Terminal (`/terminal`) | A real shell to Proxmox or a configured Docker host, over SSH |
 | Sentinel (`/sentinel`) | Telegram companion status and command reference |
 
@@ -93,15 +94,15 @@ Pins are stored on the daemon, not the browser, so they're the same whether you 
 
 ## Infra
 
-**Host detail.** The Proxmox node's address, core count, version and uptime; the LXC runner's live CPU and memory bars, load average and fan or throttle state; and last night's vzdump backup with size and duration. A `SIMULATED` badge on the Proxmox panel means the API token is not configured and the numbers are generated.
+Two sub-views, switched with the tab strip at the top of the page.
+
+### Overview
 
 **Docker hosts.** Only appears once a second Docker host is configured. One row per host, with a connected/simulated pill and how many containers it's currently reporting. CPU and memory aren't shown here — that's only ever readable for the machine the daemon itself runs on, so a second host contributes containers, not its own vitals.
 
 **Storage and DAS watchdog.** One row per volume, named from `STORAGE_LABELS` if the owner set one for that mount, otherwise auto-named from the mount's own folder. Each row has a usage bar. The line underneath carries the mount path, used and free space, and either the SMART result or the canary state for external bays. A `DETACHED` badge and a red banner at the top of the page mean an enclosure dropped: containers pointed at that path will silently write to the root NVMe until it fills, so stop them or remount before doing anything else.
 
 The footer button shows reclaimable Docker space and opens the prune dialog. Prune removes untagged image layers and builder cache only; running containers and named volumes are left alone.
-
-**Disk performance.** A tab per volume, and below it a graph of active time (how much of the last stretch that disk was busy) plus four readouts: active time, average response time, read speed and write speed — the same shape as Task Manager's own Performance tab for a disk. This reads `/proc/diskstats` directly, so it only has data on a Linux host; elsewhere it says so instead of showing empty tabs. A volume on top of LVM or device-mapper shows the mapper device's own numbers, not the physical disk underneath — the usual limitation for any tool built this way.
 
 **Tailscale mesh.** Peers with online state, address and last-seen time. `THIS HOST` marks the machine serving the dashboard, `EXIT` marks an exit node, and a peer advertising routes shows them in place of its MagicDNS name. Hover a row to copy its address.
 
@@ -115,9 +116,17 @@ The footer button shows reclaimable Docker space and opens the prune dialog. Pru
 
 Both "Run backup now" and "Restore from backup" stay disabled until `BACKUP_RCLONE_REMOTE` is configured.
 
+### Performance
+
+**Host detail.** The Proxmox node's address, core count, version and uptime; the LXC runner's live CPU and memory bars, load average and fan or throttle state; and last night's vzdump backup with size and duration. A `SIMULATED` badge on the Proxmox panel means the API token is not configured and the numbers are generated.
+
+**Disk performance.** A tab per volume, internal and external alike — the tab strip always shows every configured mount, even one with no data yet. Below it, a graph of active time (how much of the last stretch that disk was busy) plus four readouts: active time, average response time, read speed and write speed — the same shape as Task Manager's own Performance tab for a disk. This reads `/proc/diskstats` directly, so it only has real numbers on a Linux host; elsewhere, or for a volume behind LVM/device-mapper, the tab says so instead of showing stale or wrong numbers.
+
 ## Git projects
 
 For containers that are your own projects — not off-the-shelf services like Jellyfin or Kavita. **Track a project** links a container to a GitHub repo and branch; the daemon checks that repo's latest commit every few minutes and shows an **Update available** pill when it differs from what you last deployed.
+
+Picking the container to track: if more than one Docker host is configured, a tab strip lets you narrow the list to one host first. The container field itself is a search box, not a plain dropdown — type part of a name to filter, since a fleet with many containers across hosts would otherwise be a long scroll.
 
 Click a tracked row to edit its repo/branch, set a local path and rebuild command, or stop tracking it.
 
@@ -130,6 +139,12 @@ Clicking it first checks what would change, without touching anything:
 - If the changed files include something that looks like a database migration (a `migrations/` folder, `prisma/schema.prisma`, `alembic/`, or a `.sql` file), you get a warning listing exactly which files matched before you can continue. This is a pattern match, not a guarantee — it can miss a real migration named unusually, or flag a file that isn't one. Read the list.
 - Confirming runs `git pull` followed by the configured rebuild command in that project's directory. This can take a while for a slow build; the dialog stays open until it finishes.
 - The record of "what's deployed" only updates through this button. Deploying the same project some other way (SSH, a separate CI job) leaves the dashboard showing the old commit as deployed until you pull through here again.
+
+## Processes
+
+Every process the daemon can see, sorted by CPU by default — click a column header to sort by memory or disk I/O instead, or reverse the current sort. The search box filters by process name, command, user or PID.
+
+Disk I/O per process reads `/proc/[pid]/io` and only works on Linux, for processes the daemon has permission to inspect; where that's not available, the column shows a dash instead of a wrong number. The list refreshes every three seconds on its own — it doesn't ride the same two-second feed as the rest of the dashboard, since gathering the full process list is heavier than everything else on that feed combined.
 
 ## Terminal
 

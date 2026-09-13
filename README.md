@@ -56,7 +56,9 @@ Proxmox VE node (192.168.18.224)        Ubuntu LXC runner (192.168.18.225)      
 
 **Storage and DAS watchdog.** Usage per volume plus a canary file check (`.mounted`) on external enclosures. If a bay detaches, a banner appears immediately, because containers writing to a missing mount will fill the root NVMe instead.
 
-**Disk performance.** A Task Manager-style panel: pick a volume and see its live read/write throughput and how much of the time it's actually busy, graphed over the recent history. Reads `/proc/diskstats` directly, so it needs no extra mount or config — but it only has data on a Linux host.
+**Disk performance.** On Infra's Performance tab: pick any volume, internal or external, and see its live read/write throughput and how much of the time it's actually busy, graphed over recent history — the same shape as Task Manager's own Performance tab for a disk. Reads `/proc/diskstats` directly, so it needs no extra mount or config, but only has data on a Linux host.
+
+**Processes.** A dedicated page listing every process the daemon can see — CPU, memory and (on Linux) disk I/O, sortable, searchable, refreshed every three seconds on its own poll rather than the main two-second feed.
 
 **Tailscale mesh.** Peer list with online state, `100.x` addresses, MagicDNS names, exit node and subnet router flags. Container links switch between LAN and Tailscale addresses, automatically or manually.
 
