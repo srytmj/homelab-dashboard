@@ -143,24 +143,48 @@ const BackupPanel: React.FC = () => {
   );
 };
 
-export const InfraPage: React.FC<InfraPageProps> = ({ snapshot, isPrivacyMode, onOpenPruneModal }) => (
-  <div className="space-y-4">
-    <HostDetailPanels host={snapshot?.host} isPrivacyMode={isPrivacyMode} />
+export const InfraPage: React.FC<InfraPageProps> = ({ snapshot, isPrivacyMode, onOpenPruneModal }) => {
+  const [view, setView] = useState<'overview' | 'performance'>('overview');
 
-    <DockerHostsPanel snapshot={snapshot} />
+  return (
+    <div className="space-y-4">
+      <div className="seg">
+        <button
+          onClick={() => setView('overview')}
+          className={`seg-btn ${view === 'overview' ? 'seg-btn-on' : ''}`}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setView('performance')}
+          className={`seg-btn ${view === 'performance' ? 'seg-btn-on' : ''}`}
+        >
+          Performance
+        </button>
+      </div>
 
-    <div className="grid items-start gap-4 lg:grid-cols-3">
-      <StorageMatrixSection
-        storage={snapshot?.storage}
-        hygiene={snapshot?.dockerHygiene}
-        onOpenPruneModal={onOpenPruneModal}
-      />
-      <TailscaleMatrixSection tailscale={snapshot?.tailscale} isPrivacyMode={isPrivacyMode} />
-      <SslTrackerSection certificates={snapshot?.sslCertificates} isPrivacyMode={isPrivacyMode} />
+      {view === 'overview' ? (
+        <div className="space-y-4">
+          <DockerHostsPanel snapshot={snapshot} />
+
+          <div className="grid items-start gap-4 lg:grid-cols-3">
+            <StorageMatrixSection
+              storage={snapshot?.storage}
+              hygiene={snapshot?.dockerHygiene}
+              onOpenPruneModal={onOpenPruneModal}
+            />
+            <TailscaleMatrixSection tailscale={snapshot?.tailscale} isPrivacyMode={isPrivacyMode} />
+            <SslTrackerSection certificates={snapshot?.sslCertificates} isPrivacyMode={isPrivacyMode} />
+          </div>
+
+          <BackupPanel />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <HostDetailPanels host={snapshot?.host} isPrivacyMode={isPrivacyMode} />
+          <DiskPerformancePanel storage={snapshot?.storage} />
+        </div>
+      )}
     </div>
-
-    <DiskPerformancePanel storage={snapshot?.storage} />
-
-    <BackupPanel />
-  </div>
-);
+  );
+};

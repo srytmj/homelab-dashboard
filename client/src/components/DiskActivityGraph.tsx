@@ -22,8 +22,8 @@ export const DiskActivityGraph: React.FC<DiskActivityGraphProps> = ({
   if (!data || data.length < 2) {
     return (
       <div
-        style={{ width, height }}
-        className="flex items-center justify-center rounded border border-cockpit-border/50 text-sm text-cockpit-text-dim"
+        style={{ height }}
+        className="flex w-full items-center justify-center rounded border border-cockpit-border/50 text-[12px] text-cockpit-muted"
       >
         Not enough activity yet
       </div>
@@ -41,7 +41,15 @@ export const DiskActivityGraph: React.FC<DiskActivityGraphProps> = ({
   const current = data[data.length - 1];
 
   return (
-    <svg width={width} height={height} className="block" role="img" aria-label="Disk active time history">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width="100%"
+      height={height}
+      className="block"
+      role="img"
+      aria-label="Disk active time history"
+      preserveAspectRatio="none"
+    >
       {gridLines.map((pct) => {
         const y = paddingTop + plotHeight - (pct / 100) * plotHeight;
         return (
@@ -51,10 +59,10 @@ export const DiskActivityGraph: React.FC<DiskActivityGraphProps> = ({
               y1={y}
               x2={width}
               y2={y}
-              className="stroke-cockpit-border/40"
+              className="stroke-cockpit-border"
               strokeWidth="1"
             />
-            <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="fill-cockpit-text-dim text-[10px] tabular-nums">
+            <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="fill-cockpit-muted text-[10px] tabular-nums">
               {pct}%
             </text>
           </g>
@@ -68,7 +76,7 @@ export const DiskActivityGraph: React.FC<DiskActivityGraphProps> = ({
         r="2.6"
         className="fill-cockpit-accent"
       />
-      <text x={width - 4} y={paddingTop + 4} textAnchor="end" className="fill-cockpit-text text-xs font-medium tabular-nums">
+      <text x={width - 4} y={paddingTop + 4} textAnchor="end" className="fill-cockpit-text text-[12px] font-medium tabular-nums">
         {current.toFixed(0)}%
       </text>
     </svg>

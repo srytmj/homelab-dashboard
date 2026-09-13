@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { HardDrive } from 'lucide-react';
 import { StorageItem } from '../types.js';
 import { formatBytes, formatNetworkRate } from '../utils/formatters.js';
 import { DiskActivityGraph } from './DiskActivityGraph.js';
@@ -8,90 +9,106 @@ interface DiskPerformancePanelProps {
 }
 
 export const DiskPerformancePanel: React.FC<DiskPerformancePanelProps> = ({ storage = [] }) => {
-  const withPerf = storage.filter((s) => s.activeTimePercent !== undefined);
-  const [selectedId, setSelectedId] = useState<string | null>(withPerf[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(storage[0]?.id ?? null);
 
   useEffect(() => {
-    if (!selectedId && withPerf.length > 0) {
-      setSelectedId(withPerf[0].id);
+    if (!selectedId && storage.length > 0) {
+      setSelectedId(storage[0].id);
       return;
     }
-    if (selectedId && !withPerf.some((s) => s.id === selectedId) && withPerf.length > 0) {
-      setSelectedId(withPerf[0].id);
+    if (selectedId && !storage.some((s) => s.id === selectedId) && storage.length > 0) {
+      setSelectedId(storage[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [withPerf.length]);
+  }, [storage.length]);
+
+  if (storage.length === 0) {
+    return (
+      <section className="panel flex flex-col">
+        <div className="panel-head">
+          <div>
+            <h2 className="panel-title">Disk performance</h2>
+            <p className="panel-sub">Live throughput and active time per volume</p>
+          </div>
+        </div>
+        <p className="px-5 py-10 text-center text-[13px] text-cockpit-muted">No volumes configured.</p>
+      </section>
+    );
+  }
+
+  const selected = storage.find((s) => s.id === selectedId) ?? storage[0];
+  const hasData = selected.activeTimePercent !== undefined;
 
   return (
     <section className="panel flex flex-col">
       <div className="panel-head">
         <div>
           <h2 className="panel-title">Disk performance</h2>
-          <p className="panel-sub">Live throughput and active time per volume</p>
+          <p className="panel-sub">Live throughput and active time, internal and external</p>
+        </div>
+        <span className="pill pill-neutral">{storage.length} volumes</span>
+      </div>
+
+      <div className="flex flex-wrap gap-3 px-5 pt-4">
+        <div className="seg flex-wrap">
+          {storage.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setSelectedId(item.id)}
+              title={item.mount}
+              className={`seg-btn flex items-center gap-1.5 ${selectedId === item.id ? 'seg-btn-on' : ''}`}
+            >
+              <HardDrive className="h-3 w-3" />
+              {item.label}
+              {item.isExternal && <span className="text-[9px] uppercase text-cockpit-muted">ext</span>}
+            </button>
+          ))}
         </div>
       </div>
 
-      {withPerf.length === 0 ? (
-        <p className="text-sm text-cockpit-text-dim py-6">
-          Performance data is not available. This reads /proc/diskstats, which only exists on a Linux host.
-        </p>
-      ) : (
-        <>
-          <div className="flex flex-wrap gap-1 border-b border-cockpit-border/50 pb-2 mb-4">
-            {withPerf.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setSelectedId(item.id)}
-                className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                  selectedId === item.id
-                    ? 'bg-cockpit-accent/10 text-cockpit-accent'
-                    : 'text-cockpit-text-dim hover:text-cockpit-text'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          {(() => {
-            const selected = withPerf.find((s) => s.id === selectedId) ?? withPerf[0];
-            return (
-              <div className="flex flex-col gap-4">
-                <DiskActivityGraph data={selected.sparklineActiveTime ?? []} />
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-xs text-cockpit-text-dim">Active time</p>
-                    <p className="text-lg font-medium tabular-nums text-cockpit-text">
-                      {(selected.activeTimePercent ?? 0).toFixed(0)}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-cockpit-text-dim">Avg response time</p>
-                    <p className="text-lg font-medium tabular-nums text-cockpit-text">
-                      {(selected.avgResponseMs ?? 0).toFixed(1)} ms
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-cockpit-text-dim">Read speed</p>
-                    <p className="text-lg font-medium tabular-nums text-cockpit-text">
-                      {formatNetworkRate(selected.readRateBytesPerSec ?? 0)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-cockpit-text-dim">Write speed</p>
-                    <p className="text-lg font-medium tabular-nums text-cockpit-text">
-                      {formatNetworkRate(selected.writeRateBytesPerSec ?? 0)}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs text-cockpit-text-dim">
-                  {selected.mount} &middot; {formatBytes(selected.usedBytes)} used of {formatBytes(selected.totalBytes)}
+      <div className="p-5">
+        {!hasData ? (
+          <p className="rounded-lg border border-cockpit-border bg-cockpit-bg px-4 py-8 text-center text-[13px] text-cockpit-muted">
+            Performance data isn't available for {selected.label}. This reads /proc/diskstats directly, which
+            exists only on a Linux host, and can't resolve a device behind LVM or device-mapper.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div>
+                <p className="label">Active time</p>
+                <p className="metric-lg">
+                  {(selected.activeTimePercent ?? 0).toFixed(0)}
+                  <span className="metric-unit">%</span>
                 </p>
               </div>
-            );
-          })()}
-        </>
-      )}
+              <div>
+                <p className="label">Avg response</p>
+                <p className="metric-lg">
+                  {(selected.avgResponseMs ?? 0).toFixed(1)}
+                  <span className="metric-unit">ms</span>
+                </p>
+              </div>
+              <div>
+                <p className="label">Read speed</p>
+                <p className="metric-lg">{formatNetworkRate(selected.readRateBytesPerSec ?? 0)}</p>
+              </div>
+              <div>
+                <p className="label">Write speed</p>
+                <p className="metric-lg">{formatNetworkRate(selected.writeRateBytesPerSec ?? 0)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-cockpit-border bg-cockpit-bg p-3">
+              <DiskActivityGraph data={selected.sparklineActiveTime ?? []} width={800} height={220} />
+            </div>
+
+            <p className="font-mono text-[11px] text-cockpit-muted">
+              {selected.mount} &middot; {formatBytes(selected.usedBytes)} used of {formatBytes(selected.totalBytes)}
+            </p>
+          </div>
+        )}
+      </div>
     </section>
   );
 };
