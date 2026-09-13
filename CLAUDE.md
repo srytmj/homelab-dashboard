@@ -139,3 +139,4 @@ The hooks are installed by the `prepare` script, so they exist after `npm instal
 
 - **ALWAYS propose and review first:** When asked to audit, add a feature, or modify code, provide a detailed review or a step-by-step proposal of what you intend to do. 
 - **Wait for explicit permission to code:** Do NOT execute code changes (via `run_command`, `edit_file`, etc.) until the user has explicitly approved your proposal. This is mandatory to prevent merge conflicts with other agents concurrently working on the project.
+- **Maintain the Agent Log:** Every time an agent completes a significant activity, they MUST append a brief entry to `AGENT_LOG.md` detailing the timestamp, the agent's identity, and a summary of completed changes. Always read `AGENT_LOG.md` at the start of your session to sync with what has recently happened.
