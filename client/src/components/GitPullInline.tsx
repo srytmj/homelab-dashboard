@@ -177,16 +177,32 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
             </div>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {check.changedFiles.length > 0 ? (
-              <button onClick={startPull} className={check.riskyFiles.length > 0 ? 'btn-danger' : 'btn-primary'}>
-                <Download className="h-3.5 w-3.5" />
-                {check.riskyFiles.length > 0 ? 'Pull anyway' : 'Pull & rebuild'}
-              </button>
+              <>
+                <button onClick={startPull} className={check.riskyFiles.length > 0 ? 'btn-danger' : 'btn-primary'}>
+                  <Download className="h-3.5 w-3.5" />
+                  {check.riskyFiles.length > 0 ? 'Pull anyway' : 'Pull & rebuild'}
+                </button>
+                <button
+                  type="button"
+                  onClick={startPull}
+                  className="btn-ghost flex items-center gap-1.5 text-[12px]"
+                  title="Force pull remote branch and recreate container"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Force Pull & Redeploy
+                </button>
+              </>
             ) : (
-              <button onClick={startPull} className="btn-ghost" title="Runs pull & rebuild anyway, even with nothing new to pull — useful if the running container doesn't actually match what's checked out">
-                <RefreshCw className="h-3.5 w-3.5" />
-                Rebuild anyway
+              <button
+                type="button"
+                onClick={startPull}
+                className="btn-primary flex items-center gap-1.5 text-[12px]"
+                title="Runs force pull & rebuild — useful if previous deploy failed or container diverged"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Force Pull & Redeploy
               </button>
             )}
           </div>
@@ -194,7 +210,28 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
       )}
 
       {showLog && pullState && (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
+          {pullState.status === 'failed' && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-state-bad/40 bg-state-bad/10 p-3">
+              <div className="flex items-start gap-2.5 text-[12px] text-state-bad min-w-0">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-bold">Deploy Failed</p>
+                  <p className="text-[11.5px] text-cockpit-muted break-all">
+                    {pullState.message || 'Build or deployment command exited with an error. Check logs below.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={startPull}
+                className="btn-danger flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold shadow-sm shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Force Pull & Redeploy
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
             <div className="flex items-center gap-2 min-w-0">
               {isRunning && <RefreshCw className="h-3.5 w-3.5 animate-spin text-cockpit-accent shrink-0" />}

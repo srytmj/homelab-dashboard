@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, ChevronDown, Download, GitBranch, Plus, RefreshCw } from 'lucide-react';
+import { CheckCircle2, ChevronDown, GitBranch, Plus, RefreshCw, RotateCcw } from 'lucide-react';
 import { CockpitSnapshot, GitProjectStatus } from '../types.js';
 import { GitProjectModal } from '../components/GitProjectModal.js';
 import { GitPullInline } from '../components/GitPullInline.js';
@@ -132,9 +132,22 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
                         </span>
                       )}
                       {project.lastPullStatus === 'failed' ? (
-                        <span className="pill pill-bad" title={project.lastPullMessage || 'Deploy failed'}>
-                          Deploy failed
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="pill pill-bad" title={project.lastPullMessage || 'Deploy failed'}>
+                            Deploy failed
+                          </span>
+                          {canPull && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedContainer(project.containerName)}
+                              className="btn-danger flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold animate-pulse hover:animate-none"
+                              title="Open console to Force Pull & Redeploy"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              <span>Force Pull & Redeploy</span>
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span className={`pill ${project.hasUpdate ? 'pill-warn' : 'pill-neutral'}`}>
                           {project.hasUpdate ? 'Update available' : project.lastKnownSha ? 'Up to date' : 'Not deployed yet'}
@@ -155,12 +168,16 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
                       <button
                         onClick={() => setExpandedContainer(isExpanded ? null : project.containerName)}
                         disabled={!canPull}
-                        title={canPull ? 'Pull & rebuild' : 'Set a local path and rebuild command to enable this'}
-                        className={`icon-btn hover:border-cockpit-accent/40 hover:text-cockpit-accent disabled:opacity-30 ${
-                          isExpanded ? 'border-cockpit-accent/40 text-cockpit-accent' : ''
-                        }`}
+                        title={canPull ? 'Open pull & redeploy options' : 'Set a local path and rebuild command to enable this'}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-semibold transition-all ${
+                          isExpanded
+                            ? 'border-cockpit-accent bg-cockpit-accent/15 text-cockpit-accent'
+                            : 'border-cockpit-border bg-cockpit-panel text-cockpit-text hover:border-cockpit-accent/40 hover:text-cockpit-accent'
+                        } disabled:opacity-30`}
                       >
-                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+                        <RotateCcw className="h-3 w-3" />
+                        <span className="hidden sm:inline">{isExpanded ? 'Close Console' : 'Pull & Deploy'}</span>
+                        <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </button>
                     </div>
                   </div>
