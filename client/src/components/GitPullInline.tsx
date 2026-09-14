@@ -26,6 +26,8 @@ const STATUS_LABEL: Record<GitPullState['status'], string> = {
 export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone }) => {
   const [check, setCheck] = useState<CheckPullResult | null>(null);
   const [pullState, setPullState] = useState<GitPullState | null>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+  
   const logRef = useRef<HTMLDivElement>(null);
   const isRunning = pullState?.status === 'pulling' || pullState?.status === 'rebuilding';
 
@@ -65,16 +67,27 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
   }, [isRunning, project.containerName]);
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
-  }, [pullState?.log.length]);
+    if (autoScroll && logRef.current) {
+      logRef.current.scrollTo({ top: logRef.current.scrollHeight });
+    }
+  }, [pullState?.log.length, autoScroll]);
 
   const startPull = async () => {
+    setAutoScroll(true);
     const res = await authFetch(`/api/git-projects/${encodeURIComponent(project.containerName)}/pull`, {
       method: 'POST',
     });
     const data = await res.json();
     if (data.started) {
       setPullState({ status: 'pulling', log: [] });
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 40;
+    if (autoScroll !== isNearBottom) {
+      setAutoScroll(isNearBottom);
     }
   };
 
@@ -156,6 +169,7 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
           </div>
           <div
             ref={logRef}
+            onScroll={handleScroll}
             className="max-h-56 overflow-y-auto rounded-lg border border-cockpit-border bg-cockpit-panel p-3 font-mono text-[11px] leading-relaxed text-cockpit-muted"
           >
             {pullState.log.length === 0 ? (

@@ -1,6 +1,17 @@
 [
   {
   {
+    "id": "2026-09-14-smart-log-scroll-and-force-update",
+    "version": "1.1.5",
+    "title": "Smart Auto-Scroll Logs & Force Update Button",
+    "date": "2026-09-14",
+    "description": "Perbaikan UX pada terminal live update dan penambahan tombol paksa untuk App Updater, menyelesaikan keluhan scroll window yang terkunci otomatis.",
+    "highlights": [
+      "Smart Auto-Scroll: Jendela log pada saat proses pull & redeploy Git Project maupun App Updater tidak lagi me-lock layar secara paksa ke baris terbaru jika pengguna sengaja melakukan scroll ke atas.",
+      "Force App Update: Menambahkan tombol 'Pull & Redeploy' di status bar Overview (saat aplikasi dicek sudah berstatus Up to date) sehingga pengguna bisa memaksa eksekusi ulang siklus pembaruan Dashboard secara mandiri."
+    ]
+  },
+  {
     "id": "2026-09-14-brutalist-beta-ui-architecture",
     "version": "1.1.4",
     "title": "Global Brutalist Beta UI Architecture & Layout Engine",

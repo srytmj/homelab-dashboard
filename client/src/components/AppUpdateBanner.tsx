@@ -11,6 +11,7 @@ import {
   Terminal,
   X,
   AlertTriangle,
+  Download
 } from 'lucide-react';
 import { AppUpdateStatus, AppUpdateState } from '../types.js';
 import { authFetch } from '../utils/api.js';
@@ -24,6 +25,7 @@ export const AppUpdateBanner: React.FC = () => {
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showCommits, setShowCommits] = useState(false);
   const [reloadCountdown, setReloadCountdown] = useState<number | null>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   const logBottomRef = useRef<HTMLDivElement>(null);
   const pollTimerRef = useRef<any>(null);
@@ -92,10 +94,10 @@ export const AppUpdateBanner: React.FC = () => {
 
   // Scroll terminal logs to bottom when updated
   useEffect(() => {
-    if (showLogModal && logBottomRef.current) {
+    if (showLogModal && logBottomRef.current && autoScroll) {
       logBottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [updateState?.log, showLogModal]);
+  }, [updateState?.log, showLogModal, autoScroll]);
 
   // Auto reload countdown when update finishes successfully
   useEffect(() => {
@@ -131,6 +133,7 @@ export const AppUpdateBanner: React.FC = () => {
   const handleStartUpdate = async () => {
     setIsUpdating(true);
     setShowLogModal(true);
+    setAutoScroll(true);
     setUpdateState({
       status: 'updating',
       log: ['$ git fetch origin', 'Memulai proses pembaruan Homelab Dashboard...'],
@@ -160,6 +163,15 @@ export const AppUpdateBanner: React.FC = () => {
         message: err.message || 'Koneksi ke server gagal.',
         log: [`✕ Network error: ${err.message}`],
       });
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // user scrolling up disables autoscroll, scrolling to near bottom enables it
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+    if (autoScroll !== isNearBottom) {
+      setAutoScroll(isNearBottom);
     }
   };
 
@@ -306,6 +318,16 @@ export const AppUpdateBanner: React.FC = () => {
                 <span>{isChecking ? 'Memeriksa...' : 'Periksa Update'}</span>
               </button>
 
+              <button
+                onClick={handleStartUpdate}
+                disabled={isUpdating}
+                className="btn-ghost py-1 px-2.5 text-[11.5px]"
+                title="Jalankan update dan redeploy secara paksa"
+              >
+                <Download className={`h-3 w-3 ${isUpdating ? 'animate-bounce text-cockpit-accent' : 'text-cockpit-muted'}`} />
+                <span>Pull & Redeploy</span>
+              </button>
+
               <a
                 href={repoUrl}
                 target="_blank"
@@ -372,7 +394,10 @@ export const AppUpdateBanner: React.FC = () => {
               </p>
 
               {/* Terminal View */}
-              <div className="mt-3.5 max-h-72 min-h-48 overflow-y-auto rounded-lg border border-cockpit-border bg-black/80 p-3 font-mono text-[11.5px] leading-relaxed text-cockpit-text">
+              <div 
+                className="mt-3.5 max-h-72 min-h-48 overflow-y-auto rounded-lg border border-cockpit-border bg-black/80 p-3 font-mono text-[11.5px] leading-relaxed text-cockpit-text"
+                onScroll={handleScroll}
+              >
                 {updateState?.log && updateState.log.length > 0 ? (
                   updateState.log.map((line, idx) => (
                     <div
