@@ -131,9 +131,15 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
                           checking…
                         </span>
                       )}
-                      <span className={`pill ${project.hasUpdate ? 'pill-warn' : 'pill-neutral'}`}>
-                        {project.hasUpdate ? 'Update available' : project.lastKnownSha ? 'Up to date' : 'Not deployed yet'}
-                      </span>
+                      {project.lastPullStatus === 'failed' ? (
+                        <span className="pill pill-bad" title={project.lastPullMessage || 'Deploy failed'}>
+                          Deploy failed
+                        </span>
+                      ) : (
+                        <span className={`pill ${project.hasUpdate ? 'pill-warn' : 'pill-neutral'}`}>
+                          {project.hasUpdate ? 'Update available' : project.lastKnownSha ? 'Up to date' : 'Not deployed yet'}
+                        </span>
+                      )}
                       {canMarkDeployed && (
                         <button
                           onClick={() => handleMarkDeployed(project.containerName)}

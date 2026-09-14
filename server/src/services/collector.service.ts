@@ -19,6 +19,7 @@ export class CollectorService {
   private gitProjectsService: GitProjectsService;
   private getSentinelStatus?: () => SentinelStatus | undefined;
   private getAppVersion?: () => AppVersionInfo | undefined;
+  private getPrimaryNodeName?: () => string | undefined;
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
   private lastSnapshot: CockpitSnapshot | null = null;
@@ -32,7 +33,8 @@ export class CollectorService {
     pinsService: PinsService,
     gitProjectsService: GitProjectsService,
     getSentinelStatus?: () => SentinelStatus | undefined,
-    getAppVersion?: () => AppVersionInfo | undefined
+    getAppVersion?: () => AppVersionInfo | undefined,
+    getPrimaryNodeName?: () => string | undefined
   ) {
     this.dockerServices = dockerServices;
     this.proxmoxService = proxmoxService;
@@ -43,6 +45,7 @@ export class CollectorService {
     this.gitProjectsService = gitProjectsService;
     this.getSentinelStatus = getSentinelStatus;
     this.getAppVersion = getAppVersion;
+    this.getPrimaryNodeName = getPrimaryNodeName;
   }
 
   public start() {
@@ -100,6 +103,11 @@ export class CollectorService {
       this.sslService.getCertificates(),
       this.dockerServices[0].getDiskHygiene(),
     ]);
+
+    const customNodeName = this.getPrimaryNodeName ? this.getPrimaryNodeName() : undefined;
+    if (customNodeName) {
+      pveMetrics.nodeName = customNodeName;
+    }
 
     const storageData = await this.systemService.getStorageMatrix(pveStorage);
 

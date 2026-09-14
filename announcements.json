@@ -1,5 +1,18 @@
 [
   {
+    "id": "2026-09-14-user-settings-and-git-project-recovery",
+    "version": "1.1.11",
+    "title": "User Settings Hub, Node Renaming & Git Project Failure Recovery",
+    "date": "2026-09-14",
+    "description": "Menghadirkan panel User Settings terpadu untuk kustomisasi tema dan UI Style (Classic Glassmorphism vs Neo-Brutalism), kustomisasi nama Primary Node, ganti password login owner, serta tombol pemulihan Repull & Redeploy jika status Git project failed.",
+    "highlights": [
+      "User Settings Hub: Modal pengaturan komprehensif untuk memilih UI Style (Classic Glassmorphism vs Neo-Brutalism), Color Theme (Dark/Light), dan preferensi tampilan.",
+      "Dynamic Primary Node Name: Fleksibilitas mengganti label Primary Node (PVE / host) langsung dari dashboard dan disimpan di server dengan siaran real-time via WebSocket.",
+      "Password Management: Fitur ubah password akun owner / one-time login dengan verifikasi aman scrypt dan konfirmasi password baru.",
+      "Git Project Failure Recovery: Menyediakan tombol Repull & Redeploy (Force Sync) dan Retry Check saat terjadi kegagalan check upstream atau status failed, serta auto-clean file .git/index.lock yang tertinggal."
+    ]
+  },
+  {
     "id": "2026-09-14-beta-ui-feature-parity-shortcuts",
     "version": "1.1.10",
     "title": "Full Feature Parity & Shortcuts System for Beta Brutalist UI",

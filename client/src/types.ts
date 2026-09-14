@@ -270,6 +270,8 @@ export interface GitProjectStatus {
   latestCommitDate?: string;
   lastKnownSha?: string;
   hasUpdate: boolean;
+  lastPullStatus?: 'idle' | 'pulling' | 'rebuilding' | 'success' | 'failed';
+  lastPullMessage?: string;
 }
 
 export interface BackupRunResult {

@@ -266,6 +266,8 @@ export class GitProjectsService {
         hasUpdate: Boolean(
           record.lastKnownSha && record.cachedLatestSha && record.cachedLatestSha !== record.lastKnownSha
         ),
+        lastPullStatus: this.pullStates.get(containerName)?.status,
+        lastPullMessage: this.pullStates.get(containerName)?.message,
       };
     });
   }
@@ -372,6 +374,10 @@ export class GitProjectsService {
 
     try {
       const cwd = this.resolveWorkingTree(record);
+      const lockFile = path.join(cwd, '.git', 'index.lock');
+      if (fs.existsSync(lockFile)) {
+        try { fs.unlinkSync(lockFile); } catch {}
+      }
       await execFile('git', ['-C', cwd, 'fetch', 'origin', record.branch], EXEC_OPTS);
       const { stdout } = await execFile(
         'git',
@@ -471,6 +477,15 @@ export class GitProjectsService {
     }
 
     try {
+      // 0. Clean stale git lock if present
+      const lockFile = path.join(cwd, '.git', 'index.lock');
+      if (fs.existsSync(lockFile)) {
+        try {
+          fs.unlinkSync(lockFile);
+          appendLog('ℹ Stale .git/index.lock file detected and removed.');
+        } catch {}
+      }
+
       // 1. Check for uncommitted tracked changes and safely stash them so user edits are not lost
       try {
         const { stdout: statusOut } = await execFile('git', ['-C', cwd, 'status', '--porcelain'], EXEC_OPTS);

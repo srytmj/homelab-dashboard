@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   Server,
+  Settings,
   RefreshCw,
   Eye,
   EyeOff,
@@ -19,6 +20,7 @@ import { Theme } from '../hooks/useTheme.js';
 import { NAV_ROUTES } from './Sidebar.js';
 import { ClockWeatherWidget } from './ClockWeatherWidget.js';
 import { NotificationsPanel } from './NotificationsPanel.js';
+import { UserSettingsModal } from './UserSettingsModal.js';
 
 interface HeaderProps {
   snapshot: CockpitSnapshot | null;
@@ -48,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
 }) => {
   const { username, logout } = useAuth();
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const location = useLocation();
   const isBeta = location.pathname === '/beta';
 
@@ -119,6 +122,14 @@ export const Header: React.FC<HeaderProps> = ({
               </kbd>
             </button>
 
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              title="User Settings (Theme, Node Name, Password)"
+              className="icon-btn"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+
             <NotificationsPanel />
 
             <button
@@ -187,6 +198,12 @@ export const Header: React.FC<HeaderProps> = ({
           ))}
         </nav>
       </div>
+
+      <UserSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        currentPveNode={pve?.nodeName}
+      />
     </header>
   );
 };

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import { config } from './config.js';
 import { AuthService } from './services/auth.service.js';
+import { SettingsService } from './services/settings.service.js';
 import { DockerService } from './services/docker.service.js';
 import { ProxmoxService } from './services/proxmox.service.js';
 import { SystemService } from './services/system.service.js';
@@ -34,13 +35,14 @@ async function bootstrap() {
 
   await app.register(cors, {
     origin: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   });
 
   await app.register(fastifyWebsocket);
 
   // Initialize services
   const authService = new AuthService();
+  const settingsService = new SettingsService();
   const dockerServices = config.dockerHosts.map(
     (hostConfig, index) => new DockerService(hostConfig, index === 0)
   );
@@ -69,7 +71,8 @@ async function bootstrap() {
     pinsService,
     gitProjectsService,
     () => sentinelService?.getStatus(),
-    () => appUpdateService.getVersionInfo()
+    () => appUpdateService.getVersionInfo(),
+    () => settingsService.getPrimaryNodeName()
   );
 
   // The Sentinel bot and disk hygiene/prune only ever act on the primary
@@ -196,6 +199,30 @@ async function bootstrap() {
       authService.logout(token);
     }
     return { success: true, message: 'Logged out successfully.' };
+  });
+
+  app.post('/api/auth/change-password', async (req, reply) => {
+    const token = extractToken(req);
+    if (!authService.validateToken(token)) {
+      reply.status(401);
+      return { success: false, message: 'Unauthorized. Please login first.' };
+    }
+    const body = req.body as { currentPassword?: string; newPassword?: string };
+    const result = authService.changePassword(body?.currentPassword || '', body?.newPassword || '');
+    if (!result.success) {
+      reply.status(400);
+    }
+    return result;
+  });
+
+  // Settings routes (protected by preHandler)
+  app.get('/api/settings', async () => {
+    return settingsService.getSettings();
+  });
+
+  app.patch('/api/settings', async (req) => {
+    const body = req.body as { primaryNodeName?: string };
+    return settingsService.updateSettings(body || {});
   });
 
   // REST API: Protected Cockpit Routes

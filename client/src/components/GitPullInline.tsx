@@ -113,7 +113,40 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
       )}
 
       {!showLog && check && !check.ok && (
-        <p className="text-[12px] text-state-bad">{check.message || 'Could not check this project.'}</p>
+        <div className="space-y-2.5 rounded-lg border border-state-bad/30 bg-state-bad/[0.06] p-3">
+          <div className="flex items-start gap-2 text-[12px] text-state-bad">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Check failed or project diverged</p>
+              <p className="mt-0.5 font-mono text-[11px] text-cockpit-muted break-all">{check.message || 'Could not check this project.'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={startPull}
+              className="btn-danger flex items-center gap-1.5 text-[11.5px] py-1 px-2.5"
+              title="Force sync repository and rebuild container via docker compose"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Repull & Redeploy (Force Sync)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCheck(null);
+                authFetch(`/api/git-projects/${encodeURIComponent(project.containerName)}/check-pull`, { method: 'POST' })
+                  .then((res) => res.json())
+                  .then(setCheck)
+                  .catch(() => setCheck({ ok: false, message: 'Network error', riskyFiles: [], changedFiles: [] }));
+              }}
+              className="btn-ghost flex items-center gap-1.5 text-[11.5px] py-1 px-2.5"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry Check
+            </button>
+          </div>
+        </div>
       )}
 
       {!showLog && check?.ok && (
@@ -194,11 +227,11 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
                   <button
                     type="button"
                     onClick={startPull}
-                    className="btn-primary flex items-center gap-1.5 px-2.5 py-1 text-[11px] h-auto"
-                    title="Ulangi proses pull & rebuild"
+                    className="btn-danger flex items-center gap-1.5 px-2.5 py-1 text-[11px] h-auto"
+                    title="Repull and redeploy project cleanly"
                   >
                     <RotateCcw className="h-3 w-3" />
-                    Retry
+                    Repull & Redeploy
                   </button>
                   <button
                     type="button"

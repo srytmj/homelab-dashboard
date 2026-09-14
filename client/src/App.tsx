@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AuthScreen } from './components/AuthScreen.js';
 import { useCockpitData } from './hooks/useCockpitData.js';
@@ -26,7 +26,15 @@ import { ContainerMetric } from './types.js';
 
 function CockpitDashboard() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isBetaRoute = location.pathname.startsWith('/beta');
+
+  useEffect(() => {
+    const pref = localStorage.getItem('cockpit_preferred_ui');
+    if (pref === 'brutalism' && location.pathname === '/') {
+      navigate('/beta', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     if (isBetaRoute) {

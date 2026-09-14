@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import {
   Server,
+  Settings,
   RefreshCw,
   Eye,
   EyeOff,
@@ -18,6 +19,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { Theme } from '../hooks/useTheme.js';
 import { ClockWeatherWidget } from './ClockWeatherWidget.js';
 import { NotificationsPanel } from './NotificationsPanel.js';
+import { UserSettingsModal } from './UserSettingsModal.js';
 import { BETA_NAV_ROUTES } from './BetaSidebar.js';
 
 interface BetaHeaderProps {
@@ -48,6 +50,7 @@ export const BetaHeader: React.FC<BetaHeaderProps> = ({
   onRefresh,
 }) => {
   const { username, logout } = useAuth();
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const pve = snapshot?.host.pve;
   const pveOnline = pve?.connected ?? false;
   const allHealthy = isConnected && pveOnline;
@@ -116,6 +119,14 @@ export const BetaHeader: React.FC<BetaHeaderProps> = ({
               <kbd className="hidden lg:inline border border-cockpit-text/40 px-1 font-mono text-[9px] font-black group-hover:border-cockpit-bg">
                 Ctrl K
               </kbd>
+            </button>
+
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              title="User Settings"
+              className="flex items-center justify-center p-1.5 border-2 border-cockpit-text bg-cockpit-bg hover:bg-cockpit-text hover:text-cockpit-bg active:translate-y-[2px] transition-none"
+            >
+              <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </button>
 
             <NotificationsPanel />
@@ -190,6 +201,12 @@ export const BetaHeader: React.FC<BetaHeaderProps> = ({
           ))}
         </nav>
       </div>
+
+      <UserSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        currentPveNode={pve?.nodeName}
+      />
     </header>
   );
 };

@@ -5,6 +5,29 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 14:35 UTC]
+**Agent:** Gemini (User Settings Hub, Node Renaming & Git Project Failure Recovery)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **User Settings Modal (UserSettingsModal.tsx):**
+  - Added dedicated Settings modal accessible via the Settings icon in both Classic (`Header.tsx`) and Beta (`BetaHeader.tsx`) headers.
+  - Implemented UI Style Preference selection with descriptive names: **Classic Glassmorphism** (`/`) vs **Neo-Brutalism (Beta)** (`/beta`), with automatic route navigation and persistent storage in `localStorage` (`cockpit_preferred_ui`).
+  - Added Dark / Light color mode toggle.
+  - Implemented dynamic **Primary Node Name** customization with persistence in server-side `data/settings.json` via `SettingsService` (`GET /api/settings`, `PATCH /api/settings`), with one-click reset to default.
+  - Hooked custom node name into `CollectorService`, automatically updating `pve.nodeName` across all client telemetry views and headers.
+  - Implemented **Login / One-time Password Change** form calling `POST /api/auth/change-password` with current password validation using timing-safe scrypt verification and salt generation.
+- **Git Projects Failed State Recovery & Repull/Redeploy:**
+  - In `GitPullInline.tsx`, resolved the issue where a failed check (`check.ok === false`) rendered only red text with no action buttons. Added prominent **"Repull & Redeploy (Force Sync)"** and **"Retry Check"** buttons.
+  - When `pullState.status === "failed"`, added an explicit **"Repull & Redeploy"** action button styled as `btn-danger`.
+  - In `git-projects.service.ts`, added automatic stale `.git/index.lock` removal before running git operations in both `checkPull()` and `pullAndRebuild()`.
+  - Exposed `lastPullStatus` and `lastPullMessage` in `GitProjectStatus` snapshot telemetry, rendering a clear `Deploy failed` badge in `GitProjectsPage.tsx`.
+- **Quality & Parity Assurance:**
+  - Maintained 100% design token compliance using CSS RGB triplets.
+  - Verified compilation and build: `npm run build` passed with 0 errors across server and client.
+  - Updated `announcements.json`, `version.json`, and `package.json` to `1.1.11`.
+
+---
+
 ### [2026-09-14 12:25 UTC]
 **Agent:** Gemini (Feature Parity Rules & Layout Architecture Documentation)
 **Status:** `[COMPLETED]`

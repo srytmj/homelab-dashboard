@@ -138,6 +138,35 @@ export class AuthService {
     };
   }
 
+  public changePassword(currentPassword: string, newPassword: string): { success: boolean; message: string } {
+    if (!this.isRegistered() || !this.db.owner) {
+      return { success: false, message: 'No registered owner account found.' };
+    }
+
+    if (!currentPassword) {
+      return { success: false, message: 'Current password is required.' };
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, message: 'New password must be at least 6 characters.' };
+    }
+
+    const currentHash = this.hashPassword(currentPassword, this.db.owner.salt);
+    if (!crypto.timingSafeEqual(Buffer.from(currentHash, 'hex'), Buffer.from(this.db.owner.passwordHash, 'hex'))) {
+      return { success: false, message: 'Current password does not match.' };
+    }
+
+    const newSalt = crypto.randomBytes(16).toString('hex');
+    const newHash = this.hashPassword(newPassword, newSalt);
+
+    this.db.owner.passwordHash = newHash;
+    this.db.owner.salt = newSalt;
+    this.saveDb();
+
+    console.log(`[AuthService] Password successfully updated for user "${this.db.owner.username}".`);
+    return { success: true, message: 'Password updated successfully.' };
+  }
+
   public validateToken(token: string): boolean {
     if (!token) return false;
     const now = Date.now();
