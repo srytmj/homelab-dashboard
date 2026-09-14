@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ExternalLink, ArrowRight, Pin } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { redactText } from '../utils/formatters.js';
@@ -41,6 +41,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isPrivacyMode = false,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isBeta = location.pathname.startsWith('/beta');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,13 +56,30 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   }, [isOpen]);
 
   const items = useMemo<PaletteItem[]>(() => {
-    const pageItems: PaletteItem[] = PAGES.map((p) => ({
-      id: `page-${p.path}`,
-      group: 'Pages',
-      label: p.label,
-      icon: <ArrowRight className="h-3.5 w-3.5" />,
-      run: () => navigate(p.path),
-    }));
+    const pageItems: PaletteItem[] = PAGES.map((p) => {
+      let targetPath = p.path;
+      let label = p.label;
+
+      if (isBeta) {
+        if (p.path === '/beta') {
+          targetPath = '/';
+          label = 'Classic UI (Legacy)';
+        } else if (p.path === '/') {
+          targetPath = '/beta';
+          label = 'Overview (Beta)';
+        } else {
+          targetPath = `/beta${p.path}`;
+        }
+      }
+
+      return {
+        id: `page-${targetPath}`,
+        group: 'Pages',
+        label,
+        icon: <ArrowRight className="h-3.5 w-3.5" />,
+        run: () => navigate(targetPath),
+      };
+    });
 
     const pinnedItems: PaletteItem[] = containers
       .filter((c) => c.isPinned)
@@ -79,7 +98,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       });
 
     return [...pageItems, ...pinnedItems];
-  }, [containers, isPrivacyMode, navigate]);
+  }, [containers, isBeta, isPrivacyMode, navigate]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

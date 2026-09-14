@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { ProcessMetric } from '../types.js';
 import { authFetch } from '../utils/api.js';
 import { formatBytes, formatNetworkRate, getStatusColor } from '../utils/formatters.js';
@@ -127,14 +127,24 @@ export const ProcessesPage: React.FC = () => {
         </div>
 
         <div className="relative w-full sm:w-auto">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
           <input
             type="text"
             placeholder="Filter name, user, PID…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="field w-full sm:w-56 pl-8 text-[12.5px]"
+            className="field w-full sm:w-56 !pl-9 pr-7 text-[12.5px]"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-cockpit-muted hover:text-cockpit-text"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

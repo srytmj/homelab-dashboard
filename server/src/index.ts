@@ -398,6 +398,12 @@ async function bootstrap() {
     return gitProjectsService.getPullState(containerName);
   });
 
+  app.post('/api/git-projects/:containerName/reset-pull', async (request) => {
+    const { containerName } = request.params as { containerName: string };
+    gitProjectsService.resetPullState(containerName);
+    return { success: true };
+  });
+
   // Self App-Update Routes
   app.get('/api/app-update/status', async () => {
     return appUpdateService.getStatus();
@@ -486,6 +492,7 @@ async function bootstrap() {
   // Graceful shutdown
   const shutdown = async () => {
     console.log('[Server] Shutting down gracefully...');
+    gitProjectsService.stop();
     sentinelService?.stop();
     backupService.stop();
     collectorService.stop();

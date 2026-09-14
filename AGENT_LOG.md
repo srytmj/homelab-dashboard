@@ -5,6 +5,30 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 12:25 UTC]
+**Agent:** Gemini (Feature Parity Rules & Layout Architecture Documentation)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Created Comprehensive Layout Architecture Guide:** Added `docs/LAYOUT_AND_STYLES_GUIDE.md` containing the complete 100% Feature Parity Checklist, base code component wiring map, and step-by-step instructions for creating new UI styles without dropping features.
+- **Updated Agent Rules in CLAUDE.md:** Added `## UI Styles, Layout Variants & 100% Feature Parity Rule` and mandated that any agent creating/modifying styles or features MUST update `docs/LAYOUT_AND_STYLES_GUIDE.md` and `CLAUDE.md`.
+- **Linked Design System Documentation:** Updated `docs/DESIGN_SYSTEM.md` with cross-references to the parity checklist.
+
+---
+
+### [2026-09-14 12:20 UTC]
+**Agent:** Gemini (Beta UI Feature Parity & Shortcuts System)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Command Palette Beta Routing:** Updated `CommandPalette.tsx` to detect active `/beta` routes and dynamically rewrite page destinations so navigation stays within the Beta UI.
+- **Beta Header Enhancements:** Added missing `NotificationsPanel`, active `username` badge, and keybinding indicator `Ctrl K` on the CMD trigger button in `BetaHeader.tsx`.
+- **Collapsible Beta Sidebar:** Added collapse/expand state toggle with `localStorage` persistence (`cockpit-beta-sidebar-collapsed`) to `BetaSidebar.tsx`.
+- **Complete Host Vitals on Beta Overview:** Implemented real-time CPU usage % with status tones, RAM used vs total metrics, thermal package sensor with color-coded alerts, pinned container count, and expanded quick actions in `HomePageBeta.tsx`.
+- **Personal Web Shortcuts & Styling:** Integrated `BookmarksSection` with empty state CTA button in `HomePageBeta.tsx`, and added high-contrast `.shortcut-card` brutalist styling in `index.css`.
+- **Scoped Beta Notice:** Scoped the persistent Beta notice banner in `BetaLayout.tsx` exclusively to `/beta` overview with a dismiss button to keep sub-pages uncluttered.
+- **Version Bump:** Bumped to version 1.1.10 in `package.json` and `version.json`, added release entry in `announcements.json`.
+
+---
+
 ### [2026-09-14 12:15 UTC]
 **Agent:** Gemini (Force Pull & Resilient Redeploy for Git Projects)
 **Status:** `[COMPLETED]`
@@ -98,3 +122,13 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 - **UI Frontend (`client/src/pages/AiAgentsPage.tsx`):** Added responsive glassmorphism view with agent cards, live running indicators, progress meters, interactive mini bar charts, and real-time interaction log stream.
 - **Navigation Integration:** Added route `/ai-agents` in `App.tsx` and updated `Sidebar.tsx` / `Header.tsx` with `Sparkles` icon.
 - **Docs:** Updated `docs/USER_MANUAL.md` and `README.md` detailing the T3 Code zero-API-key architecture and configuration instructions.
+
+---
+
+### [2026-09-14 13:42 UTC]
+**Agent:** Antigravity (Bugfix: Search Component Icon Overlap)
+**Status:** 
+**Activities Completed:**
+- **Fixed Search Icon & Input Text Overlap in Beta UI:** Removed hardcoded `px-3.5 py-2` from `.beta-ui .field` in `client/src/index.css` which had a CSS specificity of (0, 2, 0) and was overriding utility classes like `pl-8` with `px-3.5` (14px), causing placeholder text and typed queries to collide directly with the 14px Search icon.
+- **Enhanced Search Padding and Spacing:** Applied `!pl-9 pr-7` and aligned Search icons with `left-3` across `ContainerGridSection.tsx`, `ProcessesPage.tsx`, and `GitProjectModal.tsx` for a clean 10px spacing buffer.
+- **Added One-Click Clear Search Button:** Added an interactive `X` button inside the search inputs that appears when text is entered, allowing quick clearing of search filters.

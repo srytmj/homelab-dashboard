@@ -152,7 +152,7 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
               Container
             </label>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
               <input
                 id="git-container"
                 type="text"
@@ -166,9 +166,22 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
                 onFocus={() => setIsContainerListOpen(true)}
                 onBlur={() => setTimeout(() => setIsContainerListOpen(false), 150)}
                 disabled={isSubmitting || isEditing}
-                className="field w-full pl-8"
+                className="field w-full !pl-9 pr-7"
                 autoComplete="off"
               />
+              {containerQuery && !isEditing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContainerQuery('');
+                    setContainerName('');
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-cockpit-muted hover:text-cockpit-text"
+                  title="Clear"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
 
             {isContainerListOpen && !isEditing && (

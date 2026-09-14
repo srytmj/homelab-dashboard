@@ -86,24 +86,24 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ target, onDisconnect
   }, [target, token]);
 
   return (
-    <div className="flex h-[70vh] flex-col overflow-hidden rounded-panel border border-cockpit-border bg-cockpit-bg">
-      <div className="flex items-center justify-between border-b border-cockpit-border bg-cockpit-topbar px-4 py-2">
-        <span className="flex items-center gap-2 font-mono text-[12px] text-cockpit-text">
+    <div className="panel flex h-[70vh] flex-col overflow-hidden">
+      <div className="panel-head flex items-center justify-between">
+        <span className="flex items-center gap-2 font-mono text-[12px]">
           {status === 'connected' ? (
             <Wifi className="h-3.5 w-3.5 text-state-good" />
           ) : (
             <WifiOff className="h-3.5 w-3.5 text-state-warn" />
           )}
-          {target}
-          <span className="text-cockpit-muted">
-            {status === 'connecting' ? 'connecting…' : status === 'connected' ? 'connected' : 'disconnected'}
+          <span className="font-bold tracking-wider">{target}</span>
+          <span className="opacity-75">
+            ({status === 'connecting' ? 'connecting…' : status === 'connected' ? 'connected' : 'disconnected'})
           </span>
         </span>
-        <button onClick={onDisconnect} className="btn-ghost py-1">
+        <button onClick={onDisconnect} className="btn-ghost py-1 text-xs">
           Disconnect
         </button>
       </div>
-      <div ref={containerRef} className="min-h-0 flex-1 p-2" />
+      <div ref={containerRef} className="min-h-0 flex-1 p-2 bg-[#101115]" />
     </div>
   );
 };

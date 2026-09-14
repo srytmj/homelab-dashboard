@@ -28,6 +28,17 @@ function CockpitDashboard() {
   const location = useLocation();
   const isBetaRoute = location.pathname.startsWith('/beta');
 
+  useEffect(() => {
+    if (isBetaRoute) {
+      document.documentElement.classList.add('beta-ui');
+    } else {
+      document.documentElement.classList.remove('beta-ui');
+    }
+    return () => {
+      document.documentElement.classList.remove('beta-ui');
+    };
+  }, [isBetaRoute]);
+
   const { isAuthenticated, isLoading } = useAuth();
   const { snapshot, isConnected, lastUpdated, refetch } = useCockpitData();
   const { theme, toggleTheme } = useTheme();

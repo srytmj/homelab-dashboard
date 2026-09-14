@@ -39,10 +39,10 @@ export const TerminalPage: React.FC = () => {
               <button
                 key={name}
                 onClick={() => setConnectedTarget(name)}
-                className="flex items-center gap-2.5 rounded-lg border border-cockpit-border bg-cockpit-bg px-4 py-3 text-left transition-colors hover:border-cockpit-accent/40 hover:bg-cockpit-panelHover"
+                className="shortcut-card flex items-center gap-3 px-4 py-3.5 text-left font-bold text-cockpit-text"
               >
-                <TerminalIcon className="h-4 w-4 text-cockpit-accent" />
-                <span className="font-semibold text-cockpit-text">{name}</span>
+                <TerminalIcon className="h-4 w-4 text-cockpit-accent shrink-0" />
+                <span className="font-mono tracking-wide truncate">{name}</span>
               </button>
             ))}
           </div>

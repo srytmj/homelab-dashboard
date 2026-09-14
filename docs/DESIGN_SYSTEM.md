@@ -85,3 +85,10 @@ Everything above collapses to near-zero duration under `prefers-reduced-motion`,
 ## Adding a section
 
 Reuse the panel shell, put items in rows, give each row one status signal, and take the threshold colours from `getStatusColor`. If a new colour seems necessary, the section probably needs a different structure instead.
+
+## Layout Variants & Feature Parity
+
+The dashboard supports design variants (e.g. Classic Glassmorphic UI vs. Beta Brutalist UI).
+When designing or extending new layout variants or themes:
+- All variants must adhere strictly to the 100% Feature Parity Checklist in [docs/LAYOUT_AND_STYLES_GUIDE.md](LAYOUT_AND_STYLES_GUIDE.md).
+- Do not omit features, navigation routes, shortcuts, widgets, or telemetry blocks when experimenting with new visual languages.

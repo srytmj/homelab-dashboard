@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Download, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Download, RefreshCw, RotateCcw } from 'lucide-react';
 import { GitProjectStatus, GitPullState } from '../types.js';
 import { authFetch } from '../utils/api.js';
 
@@ -42,7 +42,7 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
   }, [project.containerName]);
 
   useEffect(() => {
-    if (pullState) return; // already running or finished, nothing to check
+    if (pullState && pullState.status !== 'idle') return; // already running or finished, nothing to check
     authFetch(`/api/git-projects/${encodeURIComponent(project.containerName)}/check-pull`, { method: 'POST' })
       .then((res) => res.json())
       .then(setCheck)
@@ -81,6 +81,16 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
     if (data.started) {
       setPullState({ status: 'pulling', log: [] });
     }
+  };
+
+  const handleReset = async () => {
+    try {
+      await authFetch(`/api/git-projects/${encodeURIComponent(project.containerName)}/reset-pull`, {
+        method: 'POST',
+      });
+    } catch {}
+    setPullState(null);
+    setCheck(null);
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -152,21 +162,57 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
 
       {showLog && pullState && (
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-[12.5px]">
-            {isRunning && <RefreshCw className="h-3.5 w-3.5 animate-spin text-cockpit-accent" />}
-            <span
-              className={
-                pullState.status === 'success'
-                  ? 'text-state-good'
-                  : pullState.status === 'failed'
-                    ? 'text-state-bad'
-                    : 'text-cockpit-text'
-              }
-            >
-              {STATUS_LABEL[pullState.status]}
-            </span>
-            {pullState.message && <span className="text-cockpit-muted">— {pullState.message}</span>}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+            <div className="flex items-center gap-2 min-w-0">
+              {isRunning && <RefreshCw className="h-3.5 w-3.5 animate-spin text-cockpit-accent shrink-0" />}
+              <span
+                className={
+                  pullState.status === 'success'
+                    ? 'font-medium text-state-good'
+                    : pullState.status === 'failed'
+                      ? 'font-medium text-state-bad'
+                      : 'font-medium text-cockpit-text'
+                }
+              >
+                {STATUS_LABEL[pullState.status]}
+              </span>
+              {pullState.message && <span className="truncate text-cockpit-muted">— {pullState.message}</span>}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isRunning ? (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="rounded border border-state-bad/30 bg-state-bad/10 px-2.5 py-1 text-[11px] font-medium text-state-bad hover:bg-state-bad/20 transition-colors"
+                  title="Batalkan proses pull & rebuild"
+                >
+                  Cancel
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={startPull}
+                    className="btn-primary flex items-center gap-1.5 px-2.5 py-1 text-[11px] h-auto"
+                    title="Ulangi proses pull & rebuild"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="btn-ghost px-2.5 py-1 text-[11px] h-auto"
+                    title="Tutup log dan kembali ke pengecekan project"
+                  >
+                    Dismiss
+                  </button>
+                </>
+              )}
+            </div>
           </div>
+
           <div
             ref={logRef}
             onScroll={handleScroll}

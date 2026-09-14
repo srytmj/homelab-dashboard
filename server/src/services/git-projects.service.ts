@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFile as execFileCb, spawn } from 'node:child_process';
+import { execFile as execFileCb, spawn, ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { config } from '../config.js';
 import { GitProjectStatus, GitPullState } from '../types.js';
@@ -24,7 +24,8 @@ const REBUILD_ARGS: Record<RebuildCommand, string[]> = {
 // change the database — a heuristic, not a guarantee. See docs/USER_MANUAL.md.
 const MIGRATION_RISK_PATTERNS = [/migrations\//i, /prisma\/schema\.prisma$/i, /alembic\//i, /\.sql$/i];
 
-const EXEC_OPTS = { timeout: 5 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 };
+// 15-minute timeout for build commands to allow slow multi-stage container builds or large package downloads
+const EXEC_OPTS = { timeout: 15 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 };
 
 interface GitProjectRecord {
   repoOwner: string;
@@ -72,6 +73,7 @@ export class GitProjectsService {
   private dbPath: string;
   private db: GitProjectsDb;
   private pullStates: Map<string, GitPullState> = new Map();
+  private activeProcesses: Map<string, ChildProcess> = new Map();
 
   constructor(private notifications: NotificationsService) {
     const dataDir = path.resolve(__dirname, '../../../data');
@@ -156,10 +158,43 @@ export class GitProjectsService {
   }
 
   public unregister(containerName: string) {
+    this.resetPullState(containerName);
     delete this.db.projects[containerName];
-    this.pullStates.delete(containerName);
     this.saveDb();
     this.notifications.add('git-untrack', `Stopped tracking ${containerName}`);
+  }
+
+  /** Cancels any running pull/rebuild child process and resets pull state cleanly. */
+  public resetPullState(containerName: string): boolean {
+    const active = this.activeProcesses.get(containerName);
+    if (active) {
+      try {
+        active.kill('SIGTERM');
+        setTimeout(() => {
+          try {
+            if (!active.killed) active.kill('SIGKILL');
+          } catch {}
+        }, 1500);
+      } catch {}
+      this.activeProcesses.delete(containerName);
+    }
+    this.pullStates.delete(containerName);
+    return true;
+  }
+
+  /** Terminates all active child processes cleanly to prevent zombies when daemon stops. */
+  public stop() {
+    for (const [name, child] of this.activeProcesses.entries()) {
+      try {
+        child.kill('SIGTERM');
+        setTimeout(() => {
+          try {
+            if (!child.killed) child.kill('SIGKILL');
+          } catch {}
+        }, 1000);
+      } catch {}
+    }
+    this.activeProcesses.clear();
   }
 
   /** Marks the currently deployed commit, e.g. after a manual pull outside the dashboard. */
@@ -442,7 +477,7 @@ export class GitProjectsService {
         if (statusOut.trim()) {
           appendLog('ℹ Menemukan perubahan lokal pada repositori. Menyimpan backup sementara via git stash...');
           appendLog('$ git stash push -m "Auto-stashed before pull and redeploy"');
-          await this.spawnCapture('git', ['-C', cwd, 'stash', 'push', '-m', 'Auto-stashed before pull and redeploy'], cwd, appendLog);
+          await this.spawnCapture(containerName, 'git', ['-C', cwd, 'stash', 'push', '-m', 'Auto-stashed before pull and redeploy'], cwd, appendLog);
         }
       } catch (stashErr: any) {
         // Non-blocking stash attempt
@@ -451,18 +486,18 @@ export class GitProjectsService {
 
       // 2. Fetch latest commits from remote origin
       appendLog(`$ git fetch origin ${record.branch}`);
-      await this.spawnCapture('git', ['-C', cwd, 'fetch', 'origin', record.branch], cwd, appendLog);
+      await this.spawnCapture(containerName, 'git', ['-C', cwd, 'fetch', 'origin', record.branch], cwd, appendLog);
 
       // 3. Force-sync working tree cleanly to remote branch (prevents merge aborts while keeping untracked .env & volume data intact)
       appendLog(`$ git reset --hard origin/${record.branch}`);
-      await this.spawnCapture('git', ['-C', cwd, 'reset', '--hard', `origin/${record.branch}`], cwd, appendLog);
+      await this.spawnCapture(containerName, 'git', ['-C', cwd, 'reset', '--hard', `origin/${record.branch}`], cwd, appendLog);
 
       const { stdout: shaOut } = await execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], EXEC_OPTS);
       const newSha = shaOut.trim();
 
       state.status = 'rebuilding';
       appendLog(`$ docker ${REBUILD_ARGS[record.rebuildCommand].join(' ')}`);
-      await this.spawnCapture('docker', REBUILD_ARGS[record.rebuildCommand], cwd, appendLog);
+      await this.spawnCapture(containerName, 'docker', REBUILD_ARGS[record.rebuildCommand], cwd, appendLog);
 
       record.lastKnownSha = newSha;
       this.saveDb();
@@ -483,11 +518,26 @@ export class GitProjectsService {
     }
   }
 
-  /** Runs a fixed command via spawn, streaming each output line into onLine, and rejects on a non-zero exit. */
-  private spawnCapture(cmd: string, args: string[], cwd: string, onLine: (line: string) => void): Promise<void> {
+  /** Runs a fixed command via spawn, streaming each output line into onLine, tracking child process, and rejects on a non-zero exit. */
+  private spawnCapture(
+    containerName: string,
+    cmd: string,
+    args: string[],
+    cwd: string,
+    onLine: (line: string) => void
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const child = spawn(cmd, args, { cwd, timeout: EXEC_OPTS.timeout });
-      const pipe = (stream: NodeJS.ReadableStream) => {
+      this.activeProcesses.set(containerName, child);
+
+      const cleanup = () => {
+        if (this.activeProcesses.get(containerName) === child) {
+          this.activeProcesses.delete(containerName);
+        }
+      };
+
+      const pipe = (stream: NodeJS.ReadableStream | null) => {
+        if (!stream) return;
         let buffer = '';
         stream.on('data', (chunk: Buffer) => {
           buffer += chunk.toString();
@@ -501,10 +551,19 @@ export class GitProjectsService {
       };
       pipe(child.stdout);
       pipe(child.stderr);
-      child.on('error', (err) => reject(err));
-      child.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`${cmd} exited with code ${code}`));
+
+      child.on('error', (err) => {
+        cleanup();
+        reject(err);
+      });
+      child.on('close', (code, signal) => {
+        cleanup();
+        if (code === 0) {
+          resolve();
+        } else {
+          const detail = signal ? `killed with signal ${signal}` : `exited with code ${code}`;
+          reject(new Error(`${cmd} ${detail}`));
+        }
       });
     });
   }

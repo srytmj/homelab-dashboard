@@ -15,6 +15,7 @@ import {
   Server,
   LayoutGrid,
   List,
+  X,
 } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
@@ -313,14 +314,24 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <div className="relative flex-1 sm:flex-initial min-w-[160px]">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
             <input
               type="text"
               placeholder="Filter name, image, port"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="field w-full sm:w-44 lg:w-56 pl-8 text-[12.5px]"
+              className="field w-full sm:w-44 lg:w-56 !pl-9 pr-7 text-[12.5px]"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-cockpit-muted hover:text-cockpit-text"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           <div className="seg">
@@ -411,7 +422,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
               return (
                 <div
                   key={container.id}
-                  className="flex flex-col justify-between rounded-xl border border-cockpit-border bg-cockpit-bg/60 p-4 transition-all hover:border-cockpit-accent/40 hover:bg-cockpit-panel/80 hover:shadow-panel"
+                  className="container-card flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">

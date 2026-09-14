@@ -1,5 +1,18 @@
 [
   {
+    "id": "2026-09-14-beta-ui-feature-parity-shortcuts",
+    "version": "1.1.10",
+    "title": "Full Feature Parity & Shortcuts System for Beta Brutalist UI",
+    "date": "2026-09-14",
+    "description": "Menyempurnakan Beta Brutalist UI dengan menghadirkan seluruh fitur yang sebelumnya hanya ada di Legacy UI: Command Palette internal routing, bookmark shortcuts dengan brutalist card styling, panel notifikasi, collapsible sidebar, sensor thermal CPU, dan quick action deck.",
+    "highlights": [
+      "Integrated Shortcuts & Bookmarks: Menghadirkan kembali Personal Web Shortcuts di HomePageBeta dengan styling brutalist kontras tinggi, empty state action, dan visual card hover effect.",
+      "Command Palette Preservation: Navigasi via Ctrl+K di dalam Beta UI kini secara otomatis mempertahankan rute /beta/* sehingga pengguna tidak terlempar kembali ke Legacy UI.",
+      "Collapsible Beta Sidebar: Menambahkan tombol toggle expand/collapse pada BetaSidebar dengan persistensi localStorage untuk area kerja yang lebih luas.",
+      "Complete Vitals & Telemetry Parity: Menambahkan CPU load %, RAM used/total, sensor suhu Package Temp / Thermal, dan Quick Action launchpad ke dalam Beta Overview."
+    ]
+  },
+  {
     "id": "2026-09-14-force-pull-resilient-redeploy",
     "version": "1.1.9",
     "title": "Force Pull & Auto-Stash Resilient Git Project Redeploy",

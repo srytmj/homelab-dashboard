@@ -79,26 +79,26 @@ export const AiAgentsPage: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="flex items-center gap-2.5 font-display text-2xl font-bold tracking-tight text-cockpit-text">
+          <h1 className="flex items-center gap-2.5 text-2xl font-black uppercase tracking-tight text-cockpit-text">
             <Sparkles className="h-6 w-6 text-cockpit-accent animate-pulse" />
             AI Agents Monitor
           </h1>
-          <p className="text-xs text-cockpit-muted mt-1">
+          <p className="font-mono text-xs text-cockpit-muted mt-1 uppercase tracking-wide">
             Real-time usage tracking, 5-hour rolling windows, cooldown counters, and weekly burn rates via T3 Code.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setShowDocs(!showDocs)}
-            className="btn btn-secondary inline-flex items-center gap-1.5 text-xs"
+            className="btn-ghost inline-flex items-center gap-1.5 py-1.5 px-3 text-xs"
           >
             <Info className="h-3.5 w-3.5 text-cockpit-accent" />
-            <span>T3 Setup & Docs</span>
+            <span>T3 Setup &amp; Docs</span>
             {showDocs ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
           </button>
           <button
             onClick={fetchTelemetry}
-            className="btn btn-secondary inline-flex items-center gap-1.5 text-xs"
+            className="btn-ghost inline-flex items-center gap-1.5 py-1.5 px-3 text-xs"
             title="Refresh telemetry"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -108,32 +108,32 @@ export const AiAgentsPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="rounded-panel border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
+        <div className="border-2 border-state-bad bg-state-bad/10 p-3.5 text-xs font-mono text-state-bad shadow-[3px_3px_0_rgba(var(--state-bad)/0.4)]">
           {error}
         </div>
       )}
 
       {/* Docs / How It Works Collapsible Banner */}
       {showDocs && (
-        <div className="panel animate-fade-in-up border border-cockpit-accent/30 bg-cockpit-panel/90 p-5 space-y-4">
+        <div className="panel animate-fade-in-up p-5 space-y-4">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2 text-cockpit-text font-semibold text-sm">
+            <div className="flex items-center gap-2 text-cockpit-text font-bold text-sm uppercase tracking-wide">
               <Info className="h-4 w-4 text-cockpit-accent" />
-              <span>How AI Telemetry Works & Prerequisites</span>
+              <span>How AI Telemetry Works &amp; Prerequisites</span>
             </div>
-            <span className="pill text-[10.5px] bg-cockpit-accent/15 text-cockpit-accent border-cockpit-accent/30">
+            <span className="pill pill-accent text-[10.5px]">
               Zero-API-Key Architecture
             </span>
           </div>
           <div className="text-xs text-cockpit-muted space-y-2.5 leading-relaxed">
             <p>
               This dashboard monitors AI agents authenticated through <strong>T3 Code</strong> (such as your{' '}
-              <span className="text-cockpit-text font-medium">Claude Pro Subscription</span> and{' '}
-              <span className="text-cockpit-text font-medium">Google Account OAuth</span> for Gemini/Antigravity).
+              <span className="text-cockpit-text font-semibold">Claude Pro Subscription</span> and{' '}
+              <span className="text-cockpit-text font-semibold">Google Account OAuth</span> for Gemini/Antigravity).
               It tracks message turns and calculates sliding 5-hour limits and weekly reset cycles without requiring separate metered API keys.
             </p>
-            <div className="rounded-lg bg-cockpit-bg/60 p-3 border border-cockpit-border space-y-1.5 font-mono text-[11px]">
-              <div className="text-cockpit-text font-semibold">Requirements for other Homelab setups:</div>
+            <div className="border-2 border-cockpit-border/80 bg-cockpit-bg/60 p-3.5 space-y-1.5 font-mono text-[11px]">
+              <div className="text-cockpit-text font-bold uppercase tracking-wider">Requirements for other Homelab setups:</div>
               <div>• <strong>T3 Data Directory:</strong> Default path is <code className="text-cockpit-accent">~/.t3</code> (configurable via <code className="text-cockpit-accent">T3_DATA_DIR</code> environment variable).</div>
               <div>• <strong>Docker Deployment:</strong> Mount the host T3 directory into the container: <code className="text-cockpit-accent">-v ~/.t3:/root/.t3:ro</code>.</div>
               <div>• <strong>Files Read:</strong> <code className="text-cockpit-accent">~/.t3/caches/*.json</code> (agent metadata) and <code className="text-cockpit-accent">~/.t3/userdata/state.sqlite</code> (read-only turn history).</div>
@@ -146,81 +146,77 @@ export const AiAgentsPage: React.FC = () => {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="panel p-4 animate-fade-in-up stagger-1">
           <div className="flex items-center justify-between text-cockpit-muted text-xs">
-            <span>Active Agents</span>
-            <Radio className="h-4 w-4 text-cockpit-success animate-pulse" />
+            <span className="label">Active Agents</span>
+            <Radio className="h-4 w-4 text-state-good animate-pulse" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-cockpit-text">
+            <span className="text-2xl font-black font-mono text-cockpit-text">
               {data?.summary.activeAgentsNow ?? 0}
             </span>
-            <span className="text-xs text-cockpit-muted">/ {data?.summary.totalAgents ?? 4} registered</span>
+            <span className="text-xs text-cockpit-muted font-mono">/ {data?.summary.totalAgents ?? 4} registered</span>
           </div>
-          <div className="mt-1 text-[11px] text-cockpit-success flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-cockpit-success inline-block"></span>
-            Real-time multi-agent sync
+          <div className="mt-1 text-[11px] font-mono text-state-good flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 bg-state-good inline-block"></span>
+            Real-time sync
           </div>
         </div>
 
         <div className="panel p-4 animate-fade-in-up stagger-2">
           <div className="flex items-center justify-between text-cockpit-muted text-xs">
-            <span>Turns Today</span>
+            <span className="label">Turns Today</span>
             <Flame className="h-4 w-4 text-cockpit-accent" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-cockpit-text">
+            <span className="text-2xl font-black font-mono text-cockpit-text">
               {data?.summary.totalTurnsToday ?? 0}
             </span>
-            <span className="text-xs text-cockpit-muted">prompts</span>
+            <span className="text-xs text-cockpit-muted font-mono">prompts</span>
           </div>
-          <div className="mt-1 text-[11px] text-cockpit-muted">
-            All-time: <span className="text-cockpit-text font-mono">{data?.summary.totalTurnsAllTime ?? 0}</span>
+          <div className="mt-1 text-[11px] text-cockpit-muted font-mono">
+            All-time: <span className="text-cockpit-text font-bold">{data?.summary.totalTurnsAllTime ?? 0}</span>
           </div>
         </div>
 
         <div className="panel p-4 animate-fade-in-up stagger-3">
           <div className="flex items-center justify-between text-cockpit-muted text-xs">
-            <span>5-Hour Rolling Peak</span>
-            <Clock className="h-4 w-4 text-amber-400" />
+            <span className="label">5H Peak Load</span>
+            <Clock className="h-4 w-4 text-state-warn" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-cockpit-text">
+            <span className="text-2xl font-black font-mono text-cockpit-text">
               {data ? Math.max(...data.agents.map((a) => a.rolling5h.usagePercent), 0) : 0}%
             </span>
-            <span className="text-xs text-cockpit-muted">window load</span>
+            <span className="text-xs text-cockpit-muted font-mono">window</span>
           </div>
-          <div className="mt-1 text-[11px] text-cockpit-muted">
-            Safe zone (&lt;85% threshold)
+          <div className="mt-1 text-[11px] text-cockpit-muted font-mono">
+            Safe zone (&lt;85%)
           </div>
         </div>
 
         <div className="panel p-4 animate-fade-in-up stagger-4">
           <div className="flex items-center justify-between text-cockpit-muted text-xs">
-            <span>Telemetry Engine</span>
+            <span className="label">Telemetry</span>
             <Zap className="h-4 w-4 text-cockpit-accent" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-sm font-semibold font-mono text-cockpit-text">
+            <span className="text-sm font-bold font-mono text-cockpit-text">
               {data?.isT3Detected ? 'T3 Code Linked' : 'Offline'}
             </span>
           </div>
-          <div className="mt-1 text-[10.5px] text-cockpit-muted truncate" title={data?.t3Path}>
+          <div className="mt-1 text-[10.5px] text-cockpit-muted font-mono truncate" title={data?.t3Path}>
             {data?.t3Path || '~/.t3'}
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center justify-between border-b border-cockpit-border pb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-cockpit-border pb-3">
+        <div className="seg flex-wrap">
           {(['all', 'active', 'claude', 'gemini'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setFilter(tab)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                filter === tab
-                  ? 'bg-cockpit-accent text-white shadow-sm shadow-cockpit-accent/30'
-                  : 'bg-cockpit-panel text-cockpit-muted hover:text-cockpit-text hover:bg-cockpit-border/40'
-              }`}
+              className={`seg-btn ${filter === tab ? 'seg-btn-on' : ''}`}
             >
               {tab === 'all' && 'All Agents'}
               {tab === 'active' && 'Active Only'}
@@ -229,8 +225,8 @@ export const AiAgentsPage: React.FC = () => {
             </button>
           ))}
         </div>
-        <span className="text-xs text-cockpit-muted font-mono">
-          Showing {filteredAgents.length} agents
+        <span className="text-xs text-cockpit-muted font-mono font-bold uppercase tracking-wider">
+          {filteredAgents.length} agents displayed
         </span>
       </div>
 
@@ -241,85 +237,79 @@ export const AiAgentsPage: React.FC = () => {
           const isRunning = agent.status === 'running';
           const usage5h = agent.rolling5h.usagePercent;
           const usageColor =
-            usage5h >= 85 ? 'bg-red-500 text-red-500' : usage5h >= 60 ? 'bg-amber-400 text-amber-400' : 'bg-cockpit-accent text-cockpit-accent';
+            usage5h >= 85 ? 'bg-state-bad text-state-bad' : usage5h >= 60 ? 'bg-state-warn text-state-warn' : 'bg-cockpit-accent text-cockpit-accent';
 
           return (
             <div
               key={agent.id}
-              className={`panel relative overflow-hidden p-5 transition-all duration-300 hover:border-cockpit-accent/50 ${
-                isRunning ? 'border-cockpit-accent/40 shadow-lg shadow-cockpit-accent/5' : ''
+              className={`panel relative overflow-hidden p-5 ${
+                isRunning ? 'ring-2 ring-cockpit-accent' : ''
               }`}
             >
               {/* Top Card Bar */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center border-2 ${
                       isClaude
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                        : 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                        : 'border-blue-500/40 bg-blue-500/10 text-blue-400'
                     }`}
                   >
                     {isClaude ? <Bot className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-cockpit-text text-sm">{agent.displayName}</h3>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          isRunning
-                            ? 'bg-cockpit-success/15 text-cockpit-success border border-cockpit-success/30'
-                            : 'bg-cockpit-border/40 text-cockpit-muted'
-                        }`}
-                      >
-                        {isRunning && <span className="h-1.5 w-1.5 rounded-full bg-cockpit-success animate-ping"></span>}
-                        {isRunning ? 'Running turn' : 'Idle'}
+                      <h3 className="font-bold text-cockpit-text text-sm uppercase tracking-wide">{agent.displayName}</h3>
+                      <span className={`pill ${isRunning ? 'pill-good' : 'pill-neutral'}`}>
+                        {isRunning && <span className="h-1.5 w-1.5 bg-cockpit-bg inline-block animate-ping"></span>}
+                        {isRunning ? 'Running' : 'Idle'}
                       </span>
                     </div>
-                    <div className="text-[11px] text-cockpit-muted truncate max-w-[240px] mt-0.5">
-                      {agent.account} · <span className="text-cockpit-accent">{agent.plan}</span>
+                    <div className="text-[11px] font-mono text-cockpit-muted truncate max-w-[240px] mt-0.5 uppercase">
+                      {agent.account} · <span className="text-cockpit-accent font-semibold">{agent.plan}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="rounded bg-cockpit-border/40 px-2 py-1 font-mono text-[10.5px] text-cockpit-text border border-cockpit-border">
+                  <span className="pill pill-neutral font-mono text-[10.5px]">
                     {agent.currentModel}
                   </span>
                 </div>
               </div>
 
               {/* 5-Hour Rolling Limit Section */}
-              <div className="mt-5 rounded-xl border border-cockpit-border bg-cockpit-bg/50 p-4 space-y-2.5">
+              <div className="mt-5 border-2 border-cockpit-border/80 bg-cockpit-bg/50 p-4 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5 text-cockpit-text font-medium">
+                  <span className="flex items-center gap-1.5 text-cockpit-text font-bold uppercase tracking-wider text-[11px]">
                     <Clock className="h-3.5 w-3.5 text-cockpit-accent" />
                     5-Hour Rolling Window
                   </span>
                   <div className="font-mono text-xs">
-                    <span className="font-bold text-cockpit-text">{agent.rolling5h.turnsCount}</span>
+                    <span className="font-black text-cockpit-text">{agent.rolling5h.turnsCount}</span>
                     <span className="text-cockpit-muted"> / ~{agent.rolling5h.estimatedLimit} turns</span>
-                    <span className={`ml-2 font-semibold ${usageColor.split(' ')[1]}`}>
+                    <span className={`ml-2 font-bold ${usageColor.split(' ')[1]}`}>
                       ({agent.rolling5h.usagePercent}%)
                     </span>
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="h-2 w-full overflow-hidden rounded-full bg-cockpit-border/60">
+                <div className="track">
                   <div
-                    className={`h-full transition-all duration-500 ${usageColor.split(' ')[0]}`}
+                    className={`track-fill ${usageColor.split(' ')[0]}`}
                     style={{ width: `${Math.max(agent.rolling5h.usagePercent, 2)}%` }}
                   />
                 </div>
 
                 {/* Cooldown Timer */}
-                <div className="flex items-center justify-between text-[11px] text-cockpit-muted pt-1">
+                <div className="flex items-center justify-between text-[11px] font-mono text-cockpit-muted pt-1">
                   <span>
                     {agent.rolling5h.turnsCount > 0 ? (
                       <>
-                        Earliest turn frees:{' '}
-                        <strong className="text-cockpit-text font-mono">
+                        Turn frees:{' '}
+                        <strong className="text-cockpit-text font-bold">
                           {formatCountdown(agent.rolling5h.resetAt)}
                         </strong>
                       </>
@@ -328,7 +318,7 @@ export const AiAgentsPage: React.FC = () => {
                     )}
                   </span>
                   {agent.rolling5h.resetAt && (
-                    <span className="font-mono text-[10px]">
+                    <span className="text-[10px]">
                       {new Date(agent.rolling5h.resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
@@ -338,13 +328,13 @@ export const AiAgentsPage: React.FC = () => {
               {/* Weekly History Section */}
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between text-xs text-cockpit-muted">
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10.5px]">
                     <Calendar className="h-3.5 w-3.5 text-cockpit-muted" />
                     Past 7 Days Activity
                   </span>
                   <span className="font-mono text-[11px]">
-                    <span className="text-cockpit-text font-semibold">{agent.weekly.turnsCount}</span>
-                    <span className="text-cockpit-muted"> / ~{agent.weekly.estimatedLimit} weekly turns ({agent.weekly.usagePercent}%)</span>
+                    <span className="text-cockpit-text font-bold">{agent.weekly.turnsCount}</span>
+                    <span className="text-cockpit-muted"> / ~{agent.weekly.estimatedLimit} turns ({agent.weekly.usagePercent}%)</span>
                   </span>
                 </div>
 
@@ -356,17 +346,17 @@ export const AiAgentsPage: React.FC = () => {
 
                     return (
                       <div key={day.date} className="flex flex-col items-center gap-1">
-                        <div className="relative flex h-14 w-full items-end justify-center rounded bg-cockpit-bg/40 p-0.5">
+                        <div className="relative flex h-14 w-full items-end justify-center bg-cockpit-bg/50 p-0.5 border border-cockpit-border/60">
                           <div
-                            className={`w-full rounded-sm transition-all duration-300 ${
-                              day.count > 0 ? 'bg-cockpit-accent/80 hover:bg-cockpit-accent' : 'bg-cockpit-border/30'
+                            className={`w-full transition-all duration-100 ${
+                              day.count > 0 ? 'bg-cockpit-accent' : 'bg-cockpit-border/40'
                             }`}
                             style={{ height: `${heightPercent}%` }}
                             title={`${day.date}: ${day.count} turns`}
                           />
                         </div>
-                        <span className="font-mono text-[9.5px] text-cockpit-muted">{day.dayName}</span>
-                        <span className="font-mono text-[9px] text-cockpit-text font-medium">{day.count}</span>
+                        <span className="font-mono text-[9.5px] font-bold text-cockpit-muted uppercase">{day.dayName}</span>
+                        <span className="font-mono text-[9px] text-cockpit-text font-bold">{day.count}</span>
                       </div>
                     );
                   })}
@@ -382,20 +372,20 @@ export const AiAgentsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Radio className="h-4 w-4 text-cockpit-accent animate-pulse" />
-            <h2 className="font-semibold text-cockpit-text text-sm">Recent Interactions Stream</h2>
+            <h2 className="font-black text-cockpit-text text-sm uppercase tracking-wider">Recent Interactions Stream</h2>
           </div>
-          <span className="text-xs text-cockpit-muted font-mono">Live turn timeline</span>
+          <span className="text-xs text-cockpit-muted font-mono uppercase tracking-wider">Live turn timeline</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-xs">
             <thead>
-              <tr className="border-b border-cockpit-border text-cockpit-muted text-[11px]">
-                <th className="pb-2 font-medium">Timestamp</th>
-                <th className="pb-2 font-medium">Agent</th>
-                <th className="pb-2 font-medium">Model</th>
-                <th className="pb-2 font-medium">Duration</th>
-                <th className="pb-2 font-medium text-right">Status</th>
+              <tr className="border-b-2 border-cockpit-border text-cockpit-muted text-[11px] uppercase tracking-wider">
+                <th className="pb-2 font-bold">Timestamp</th>
+                <th className="pb-2 font-bold">Agent</th>
+                <th className="pb-2 font-bold">Model</th>
+                <th className="pb-2 font-bold">Duration</th>
+                <th className="pb-2 font-bold text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-cockpit-border/40">
@@ -403,15 +393,15 @@ export const AiAgentsPage: React.FC = () => {
                 data.recentTurns.map((turn) => {
                   const isRunning = turn.state === 'running';
                   return (
-                    <tr key={turn.turnId} className="hover:bg-cockpit-panel/60 transition-colors">
+                    <tr key={turn.turnId} className="hover:bg-cockpit-text/5 transition-colors">
                       <td className="py-2.5 text-cockpit-muted text-[11px]">
                         {new Date(turn.requestedAt).toLocaleTimeString()}
                       </td>
-                      <td className="py-2.5 text-cockpit-text font-medium">
+                      <td className="py-2.5 text-cockpit-text font-bold">
                         {turn.agentName}
                       </td>
                       <td className="py-2.5">
-                        <span className="rounded bg-cockpit-border/40 px-1.5 py-0.5 text-[10px] text-cockpit-accent">
+                        <span className="pill pill-neutral text-[10px]">
                           {turn.model}
                         </span>
                       </td>
@@ -419,13 +409,7 @@ export const AiAgentsPage: React.FC = () => {
                         {turn.durationSeconds !== undefined ? `${turn.durationSeconds}s` : isRunning ? 'In progress...' : '—'}
                       </td>
                       <td className="py-2.5 text-right">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            isRunning
-                              ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                              : 'bg-cockpit-success/15 text-cockpit-success border border-cockpit-success/30'
-                          }`}
-                        >
+                        <span className={`pill ${isRunning ? 'pill-warn' : 'pill-good'}`}>
                           {isRunning ? 'Processing' : 'Completed'}
                         </span>
                       </td>
@@ -434,7 +418,7 @@ export const AiAgentsPage: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-6 text-center text-cockpit-muted">
+                  <td colSpan={5} className="py-6 text-center text-cockpit-muted font-mono uppercase">
                     No recent interaction turns recorded.
                   </td>
                 </tr>

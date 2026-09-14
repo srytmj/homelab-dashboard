@@ -1,0 +1,139 @@
+# UI Styles, Layout Variants & Feature Parity Architecture Guide
+
+This document defines the mandatory blueprint and feature inventory for the Homelab Cockpit dashboard. 
+
+> [!IMPORTANT]
+> **Mandatory Agent Rule:**
+> When creating or updating a UI style, layout variant (e.g., Classic UI, Beta Brutalist UI, or future themes), or core dashboard feature, every AI agent **MUST** achieve 100% feature parity using the checklist in this document.
+> **No feature may be omitted or dropped.** Whenever new features or data points are introduced, agents **MUST** update this document and [CLAUDE.md](../CLAUDE.md) to keep documentation and code in lockstep.
+
+---
+
+## 1. Complete Feature Inventory & Parity Checklist
+
+Every layout variant (Classic, Beta, or new future variants) must implement or host the following capabilities:
+
+### A. Persistent Header & Global Actions
+- [ ] **Branding & Host Status:** Node status indicator (Healthy/Degraded), Node Name, and active Layout Badge (e.g., `Beta`, `Demo`).
+- [ ] **Active User Badge:** Display authenticated `username` badge.
+- [ ] **Clock & Weather Widget:** `<ClockWeatherWidget />` (opt-in geolocation, Open-Meteo API).
+- [ ] **Layout Switcher:** Quick toggle link between layout variants (e.g., `Beta UI` <-> `Legacy UI`).
+- [ ] **Command Deck (`Ctrl+K`):** Quick trigger button with visible `<kbd>Ctrl K</kbd>` shortcut indicator.
+- [ ] **Notifications Panel:** `<NotificationsPanel />` with live badge count and polling feed.
+- [ ] **Theme Switcher:** Light / Dark mode toggle button (`useTheme`).
+- [ ] **Privacy Mode Toggle:** Hide / Redact IP addresses, hostnames, and domain names (`isPrivacyMode`).
+- [ ] **Fullscreen Toggle:** Enter/exit browser fullscreen mode.
+- [ ] **Sync / Refresh Button:** Instant manual refresh trigger with last-updated timestamp tooltip and live pulse dot.
+- [ ] **User Logout:** Sign out action trigger (`useAuth().logout`).
+- [ ] **Mobile Navigation:** Responsive horizontal navigation strip (`md:hidden`) for phones/tablets.
+
+### B. Persistent Sidebar & Navigation Rail
+- [ ] **Complete Route Directory:**
+  1. Overview (`/` or `/beta`)
+  2. Container Fleet (`/fleet` or `/beta/fleet`)
+  3. Storage & Infra (`/infra` or `/beta/infra`)
+  4. Git Projects & Sync (`/git-projects` or `/beta/git-projects`)
+  5. Host Processes (`/processes` or `/beta/processes`)
+  6. SSH Web Terminal (`/terminal` or `/beta/terminal`)
+  7. Sentinel AI Watchdog (`/sentinel` or `/beta/sentinel`)
+  8. AI Agents Telemetry (`/ai-agents` or `/beta/ai-agents`)
+- [ ] **Collapsible Rail:** Sidebar expand/collapse toggle button with persistence in `localStorage` (e.g., `cockpit-sidebar-collapsed` / `cockpit-beta-sidebar-collapsed`).
+- [ ] **Responsive Breakpoints:** Sidebar visible on desktop (`hidden md:flex`), gracefully adapting to mobile.
+
+### C. Command Palette (`Ctrl+K`) Integration
+- [ ] **Route Scope Preservation:** Palette must detect if user is inside a layout variant (such as `/beta/*`) and rewrite target URLs so user remains within the current layout instead of being ejected.
+- [ ] **Cross-Layout Navigation:** Palette must offer an entry to switch back to the alternate layout (e.g., `Classic UI (Legacy)`).
+- [ ] **Pinned Container Launcher:** Show pinned containers with single-click launch to resolved public/Tailscale/LAN address.
+- [ ] **Quick Search Filtering:** Keyboard-navigable fuzzy filter over all registered pages and containers.
+
+### D. Overview / Home Page Vitals & Telemetry
+- [ ] **App Update Banner:** `<AppUpdateBanner />` mounted at top for git-based dashboard self-updates.
+- [ ] **Primary Node & Host Specs:**
+  - Proxmox VE Node name, IP, and connection badge (`PVE CONNECTED` / `PVE SIMULATED`).
+  - Docker host hostname and IP.
+  - CPU model specification text.
+  - All IPs and sensitive names passed through `redactText(val, isPrivacyMode)`.
+- [ ] **Compute Card:** Real-time CPU Usage % (`pve.cpuPercent`), allocated core count, dynamic status tone (`getStatusColor`), and progress bar.
+- [ ] **Memory Card:** Real-time RAM % used, numeric used bytes vs total capacity (`formatBytes`), and progress bar.
+- [ ] **Thermal / CPU Package Temp Card:** Sensor readout (`pve.cpuTempCelsius` or `dockerHost.thermalThrottle.packageTempCelsius`), status pill (`getTempColor`: `COOL`/`WARM`/`HOT`), and temperature scale bar.
+- [ ] **Workloads Card:** Running vs total container count (`runningCount / totalCount`), pinned containers badge (`PINNED TO CMD`).
+- [ ] **Network Throughput Card:** Real-time RX (Inbound) and TX (Outbound) byte rates per second (`formatBytes(throughput.rx)/s`).
+- [ ] **Storage & DAS Watchdog Summary:**
+  - Total used vs capacity across all storage mounts.
+  - Canary heartbeat status badge (`CANARY OK` vs `ALERT`).
+  - Physical Root SSD SMART status chip (`SMART PASSED`).
+  - Direct navigation link to Storage & Infra page.
+- [ ] **Quick Actions & Shortcuts Deck:**
+  - Direct trigger button to launch Command Deck (`Ctrl+K`).
+  - Direct shortcut links to all active homelab modules (Fleet, Infra, Terminal, Processes, Git Projects, Sentinel, AI Agents).
+- [ ] **Personal Web Shortcuts (`BookmarksSection`):**
+  - `<BookmarksSection />` startpage grid for personal links (YouTube, Homelab tools, etc.).
+  - Automatic Google favicon resolution.
+  - Interactive modal for adding, editing, and deleting shortcuts.
+  - Drag-and-drop reordering with persistent server-side save (`/api/bookmarks/reorder`).
+  - Actionable Empty State button ("Tambah Shortcut Pertama") when list is empty.
+
+### E. Layout Shell & Sub-page Hosting
+- [ ] **Outlet Hosting:** `<Outlet />` cleanly mounted for nested child routes.
+- [ ] **Scoped Notice / Warning Banners:** Informational or beta banners must be scoped strictly to the overview page (or dismissible via `X`), and must **never** block or shift down full-screen tools like `<TerminalPage />` or `<ProcessesPage />`.
+- [ ] **Watchdog Alerts:** `<DasWatchdogAlert />` mounted globally across the layout.
+
+---
+
+## 2. Base Code Architecture & File Map
+
+| Component / Layer | Primary Location | Responsibility |
+| :--- | :--- | :--- |
+| **Router & Shell** | `client/src/App.tsx` | Route definitions, layout switching, Command Palette state. |
+| **Layout Shell (Classic)** | `client/src/App.tsx` | Standard glassmorphic layout container. |
+| **Layout Shell (Beta)** | `client/src/layouts/BetaLayout.tsx` | High-contrast brutalist layout container with scoped alerts. |
+| **Header (Classic)** | `client/src/components/Header.tsx` | Glassmorphic top navigation bar with widgets and action buttons. |
+| **Header (Beta)** | `client/src/components/BetaHeader.tsx` | Brutalist top bar with notifications, `Ctrl+K` hint, and controls. |
+| **Sidebar (Classic)** | `client/src/components/Sidebar.tsx` | Desktop floating collapsible navigation rail (`NAV_ROUTES`). |
+| **Sidebar (Beta)** | `client/src/components/BetaSidebar.tsx` | Brutalist collapsible rail (`BETA_NAV_ROUTES`) with storage toggle. |
+| **Command Palette** | `client/src/components/CommandPalette.tsx` | Global `Ctrl+K` modal with layout-aware route preservation. |
+| **Overview (Classic)** | `client/src/pages/HomePage.tsx` | Glassmorphism dashboard overview with telemetry panels. |
+| **Overview (Beta)** | `client/src/pages/HomePageBeta.tsx` | Brutalist high-density telemetry overview, shortcuts & quick deck. |
+| **Personal Shortcuts** | `client/src/components/BookmarksSection.tsx` | Startpage bookmark cards with drag-and-drop & empty state CTA. |
+| **Formatters & Logic** | `client/src/utils/formatters.ts` | Single source of truth for byte sizing, redaction, and status thresholds (`getStatusColor`, `getTempColor`). |
+| **Design Tokens & Styles**| `client/src/index.css` & `tailwind.config.js` | CSS variables (`cockpit-*`, `state-*`) and theme overrides. |
+
+---
+
+## 3. Guide for Creating a New UI Style or Layout Variant
+
+When developing a new style variant (e.g., Minimalist, Cyberpunk, Compact, etc.):
+
+1. **Create the Layout Shell:**
+   - Create `client/src/layouts/<StyleName>Layout.tsx`.
+   - Render the layout's custom Header and Sidebar.
+   - Include `<DasWatchdogAlert />` and child `<Outlet />`.
+   - Ensure any banner is dismissible and scoped to overview only.
+
+2. **Implement Header & Sidebar Parity:**
+   - Follow Sections 1.A and 1.B of the parity checklist.
+   - Wire all global control triggers: theme, privacy mode, fullscreen, notifications, sync, logout, and `onOpenCommandPalette`.
+   - Keep route arrays synchronized with `NAV_ROUTES`.
+
+3. **Implement Overview / Home Page Parity:**
+   - Create `client/src/pages/<StyleName>HomePage.tsx`.
+   - Implement all data points from Section 1.D (Host specs, CPU load %, RAM used/total, Thermal sensor, Workloads/pins, Network RX/TX, Storage & DAS summary, Quick Actions deck, BookmarksSection).
+   - Use `getStatusColor()` and `getTempColor()` from `formatters.ts` for thresholds.
+   - Use `redactText()` for all IPs and sensitive strings.
+
+4. **Preserve Command Palette Navigation:**
+   - Update `CommandPalette.tsx` to detect `location.pathname.startsWith('/<style-route>')`.
+   - Ensure page navigation targets retain the active layout's path prefix.
+
+5. **Register Routes in `App.tsx`:**
+   - Register the layout under `<Route path="/<style-route>" element={<StyleLayout {...layoutProps} />}>`.
+   - Pass `onOpenCommandPalette` to the overview page component.
+
+6. **Validate & Verify:**
+   - Run full client and server checks: `npm run build`.
+   - Test responsive layout on both desktop and mobile viewports.
+
+7. **Update Documentation (Mandatory):**
+   - Append changes and notes to this guide (`docs/LAYOUT_AND_STYLES_GUIDE.md`).
+   - Append task summary to [AGENT_LOG.md](../AGENT_LOG.md).
+   - Bump version and update [announcements.json](../announcements.json).

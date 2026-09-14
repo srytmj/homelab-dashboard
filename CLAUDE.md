@@ -178,3 +178,18 @@ All user interface modifications must strictly preserve the modern glassmorphism
 - **Log Start of Task (Locking mechanism):** The VERY FIRST action upon receiving a task prompt is to write an entry marked `[IN PROGRESS]` into `AGENT_LOG.md`. This signals to concurrent agents that the file/feature is being worked on.
 - **Log Completion of Task:** Once the task is completed and pushed, update that same `AGENT_LOG.md` entry from `[IN PROGRESS]` to `[COMPLETED]` with a summary of the finalized changes. Always read `AGENT_LOG.md` first to check if another agent has locked a feature.
 - **Update Announcements on Commit:** Setiap kali melakukan commit pembaruan fitur atau UI, pastikan juga menambahkan entry pesan pembaruan (message update) ke dalam file `announcements.json`. Hal ini penting agar `AppUpdateBanner` di halaman Overview dapat langsung menampilkan ringkasan release notes.
+
+## UI Styles, Layout Variants & 100% Feature Parity Rule
+
+When an agent creates a new UI style/layout variant (e.g. Beta Brutalist UI, Cyberpunk, Compact) or modifies existing layouts:
+- **100% Feature Parity is Mandatory:** No feature, button, metric, widget, or capability may be omitted from a layout variant. Every layout must achieve complete functional parity with the base dashboard.
+- **Consult the Blueprint Checklist:** Always refer to [docs/LAYOUT_AND_STYLES_GUIDE.md](docs/LAYOUT_AND_STYLES_GUIDE.md) and check off all items (Header controls, Collapsible Sidebar with localStorage, Command Palette route isolation, CPU/RAM/Thermal/Throughput vitals, Storage & DAS summary, Quick Actions deck, Bookmarks & Shortcuts with empty state CTA, and mobile responsiveness).
+- **Command Palette (`Ctrl+K`) Preservation:** The Command Palette must detect active route prefixes (e.g., `/beta/*`) and keep navigation scoped within that style so the user is not unexpectedly kicked back to another UI variant.
+- **Unobtrusive Sub-pages:** Scoped banners (e.g., Beta warnings) must only appear on the main overview page or be dismissible so full-screen sub-page tools (SSH Terminal, Processes table) remain unobstructed.
+
+- **Mandatory Documentation Synchronization Rule:**
+  Whenever an agent introduces a new feature, changes existing behavior, or creates a new layout style:
+  1. The agent **MUST** update [docs/LAYOUT_AND_STYLES_GUIDE.md](docs/LAYOUT_AND_STYLES_GUIDE.md) with the feature inventory and component wiring map.
+  2. The agent **MUST** update [CLAUDE.md](CLAUDE.md) if conventions or tokens are affected.
+  3. The agent **MUST** record the completed work in [AGENT_LOG.md](AGENT_LOG.md) and [announcements.json](announcements.json).
+  This ensures any subsequent agent can easily follow the codebase, understand all existing features, and reproduce identical parity in new designs.

@@ -261,10 +261,17 @@ export const BookmarksSection: React.FC = () => {
       </div>
 
       {bookmarks.length === 0 ? (
-        <div className="px-5 py-8 text-center">
+        <div className="px-5 py-8 text-center flex flex-col items-center justify-center gap-3">
           <p className="text-[13px] text-cockpit-muted">
             Belum ada shortcut tersimpan — tambahkan link yang sering kamu gunakan.
           </p>
+          <button
+            onClick={() => setIsAdding(true)}
+            className="btn-primary flex items-center gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Tambah Shortcut Pertama</span>
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2.5 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -279,7 +286,7 @@ export const BookmarksSection: React.FC = () => {
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDragEnd={handleDragEnd}
-                  className={`group relative flex flex-col items-center justify-center gap-2 rounded-lg border p-3.5 text-center select-none transition-all cursor-grab active:cursor-grabbing ${
+                  className={`shortcut-card group relative flex flex-col items-center justify-center gap-2 rounded-lg border p-3.5 text-center select-none transition-all cursor-grab active:cursor-grabbing ${
                     draggedIndex === index
                       ? 'border-cockpit-accent bg-cockpit-accent/15 opacity-40 scale-95 shadow-inner'
                       : 'border-cockpit-accent/40 bg-cockpit-accent/5 hover:border-cockpit-accent hover:bg-cockpit-panel'
@@ -308,7 +315,7 @@ export const BookmarksSection: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 title={`Open ${b.name} (${b.url}) in new tab`}
-                className="group relative flex flex-col items-center justify-center gap-2 rounded-lg border border-cockpit-border bg-cockpit-bg p-3.5 text-center transition-all hover:border-cockpit-accent/50 hover:bg-cockpit-panel/60 active:scale-[0.98] cursor-pointer"
+                className="shortcut-card group relative flex flex-col items-center justify-center gap-2 rounded-lg border border-cockpit-border bg-cockpit-bg p-3.5 text-center transition-all hover:border-cockpit-accent/50 hover:bg-cockpit-panel/60 active:scale-[0.98] cursor-pointer"
               >
                 <button
                   type="button"

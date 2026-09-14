@@ -17,6 +17,7 @@ import { CockpitSnapshot } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import { Theme } from '../hooks/useTheme.js';
 import { ClockWeatherWidget } from './ClockWeatherWidget.js';
+import { NotificationsPanel } from './NotificationsPanel.js';
 import { BETA_NAV_ROUTES } from './BetaSidebar.js';
 
 interface BetaHeaderProps {
@@ -68,6 +69,11 @@ export const BetaHeader: React.FC<BetaHeaderProps> = ({
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <h1 className="text-lg sm:text-xl font-black tracking-widest text-cockpit-text uppercase leading-none">Cockpit</h1>
                   <span className="bg-cockpit-text text-cockpit-bg px-1.5 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-widest leading-none">Beta</span>
+                  {username && (
+                    <span className="hidden sm:inline-flex border border-cockpit-text/60 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-cockpit-muted">
+                      {username}
+                    </span>
+                  )}
                   {snapshot?.isDemoMode && <span className="bg-state-warn text-cockpit-bg px-1.5 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-widest leading-none">Demo</span>}
                 </div>
                 <p className="font-mono mt-0.5 sm:mt-1 truncate tracking-widest text-[9.5px] sm:text-[10px] uppercase font-bold text-cockpit-muted">
@@ -107,7 +113,12 @@ export const BetaHeader: React.FC<BetaHeaderProps> = ({
             >
               <Terminal className="h-3.5 w-3.5" />
               <span className="hidden xs:inline">CMD</span>
+              <kbd className="hidden lg:inline border border-cockpit-text/40 px-1 font-mono text-[9px] font-black group-hover:border-cockpit-bg">
+                Ctrl K
+              </kbd>
             </button>
+
+            <NotificationsPanel />
 
             <div className="flex border-2 border-cockpit-text bg-cockpit-bg shrink-0">
               <button

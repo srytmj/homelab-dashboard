@@ -30,8 +30,8 @@ ENV HOST=0.0.0.0
 # "docker outside of docker") back the Git Projects pull/rebuild feature.
 # rclone backs scheduled/on-demand backup and restore. unzip backs config
 # import (extracts only two named files from a small downloaded archive).
-# No other feature in this image runs a shell command against the host.
-RUN apk add --no-cache git docker-cli docker-cli-compose unzip
+# tini acts as PID 1 to reap zombie processes and forward signals properly.
+RUN apk add --no-cache git docker-cli docker-cli-compose unzip tini
 
 # Install production dependencies only
 COPY server/package*.json ./server/
@@ -44,6 +44,7 @@ COPY --from=client-builder /app/client/dist ./client/dist
 # Expose Cockpit Web Port
 EXPOSE 3000
 
-# Run Server
+# Run Server with tini as init process to reap zombie processes
 WORKDIR /app/server
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/index.js"]
