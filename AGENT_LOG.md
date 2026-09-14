@@ -5,6 +5,15 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 11:51 UTC]
+**Agent:** Gemini (Fix Window Auto-Scroll Bug during App Update)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Identified Root Cause:** Located `scrollIntoView()` on dummy child div in `AppUpdateBanner.tsx` that hijacked the browser `window` scroll every 1 second during update log streaming.
+- **Container-Scoped Auto-Scroll:** Replaced `scrollIntoView()` with `scrollTo({ top: scrollHeight })` called directly on the scrollable terminal `div` container via `logContainerRef`.
+- **Preserved User Scroll Control:** Scrolling up inside the terminal continues to disengage auto-scroll without window disruption, allowing users to scroll freely to earlier logs or browse the page.
+- **Version Bump & Announcements:** Updated `announcements.json` for v1.1.8 and bumped `package.json` and `version.json`.
+
 ### [2026-09-14 11:43 UTC]
 **Agent:** Gemini (Beta UI Perfection, Mobile Layout & Dedicated Storage/DAS Real-time SMART Watchdog)
 **Status:** `[COMPLETED]`

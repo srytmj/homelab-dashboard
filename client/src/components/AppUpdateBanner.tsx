@@ -27,7 +27,7 @@ export const AppUpdateBanner: React.FC = () => {
   const [reloadCountdown, setReloadCountdown] = useState<number | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
-  const logBottomRef = useRef<HTMLDivElement>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
   const pollTimerRef = useRef<any>(null);
 
   const fetchStatus = async () => {
@@ -92,10 +92,10 @@ export const AppUpdateBanner: React.FC = () => {
     return () => clearInterval(pollTimerRef.current);
   }, [isUpdating]);
 
-  // Scroll terminal logs to bottom when updated
+  // Scroll terminal logs to bottom within container only (never scrolling browser window)
   useEffect(() => {
-    if (showLogModal && logBottomRef.current && autoScroll) {
-      logBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (showLogModal && logContainerRef.current && autoScroll) {
+      logContainerRef.current.scrollTo({ top: logContainerRef.current.scrollHeight });
     }
   }, [updateState?.log, showLogModal, autoScroll]);
 
@@ -395,6 +395,7 @@ export const AppUpdateBanner: React.FC = () => {
 
               {/* Terminal View */}
               <div 
+                ref={logContainerRef}
                 className="mt-3.5 max-h-72 min-h-48 overflow-y-auto rounded-lg border border-cockpit-border bg-black/80 p-3 font-mono text-[11.5px] leading-relaxed text-cockpit-text"
                 onScroll={handleScroll}
               >
@@ -420,7 +421,6 @@ export const AppUpdateBanner: React.FC = () => {
                 ) : (
                   <div className="py-8 text-center text-cockpit-muted">Tidak ada log proses update.</div>
                 )}
-                <div ref={logBottomRef} />
               </div>
 
               {/* Status footer */}

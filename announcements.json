@@ -1,5 +1,16 @@
 [
   {
+    "id": "2026-09-14-fix-window-autoscroll-updater",
+    "version": "1.1.8",
+    "title": "Fix Window Auto-Scroll Lock during App Update",
+    "date": "2026-09-14",
+    "description": "Memperbaiki bug di mana browser window secara paksa ditarik ke bawah saat proses \"Sedang memperbarui dashboard...\", sehingga pengguna kini bebas scroll ke atas dan membaca log tanpa gangguan.",
+    "highlights": [
+      "Container-Scoped Auto-Scroll: Mengganti pemanggilan scrollIntoView() global dengan scrollTo({ top: scrollHeight }) langsung pada kontainer terminal AppUpdateBanner.",
+      "Scroll Freedom: Mencegah pembajakan scroll window browser saat log update diperbarui tiap detik, memungkinkan pengguna melihat bagian atas modal maupun dashboard dengan leluasa."
+    ]
+  },
+  {
     "id": "2026-09-14-beta-ui-perfection-dedicated-storage-smart",
     "version": "1.1.7",
     "title": "Beta UI Brutalist Perfection & Dedicated Storage SMART Watchdog",
