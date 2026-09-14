@@ -28,6 +28,7 @@ interface GithubCommit {
 export class AppUpdateService {
   private repoRoot: string;
   private isGitRepo: boolean = false;
+  private dataDir: string;
   private repoOwner: string = 'srytmj';
   private repoName: string = 'homelab-dashboard';
   private branch: string = 'main';
@@ -53,6 +54,10 @@ export class AppUpdateService {
   };
 
   constructor(private notifications: NotificationsService) {
+    this.dataDir = path.resolve(__dirname, "../../../data");
+    if (!fs.existsSync(this.dataDir)) {
+      try { fs.mkdirSync(this.dataDir, { recursive: true }); } catch {}
+    }
     this.repoRoot = this.detectRepoRoot();
     this.isGitRepo = fs.existsSync(path.join(this.repoRoot, '.git'));
     this.loadBaselineVersion();
@@ -211,6 +216,39 @@ export class AppUpdateService {
   }
 
   public getUpdateState(): AppUpdateState {
+    const statusFile = path.join(this.dataDir, 'redeploy-status.json');
+    const logFile = path.join(this.dataDir, 'redeploy.log');
+
+    // Merge external out-of-process redeployer logs if available
+    if (fs.existsSync(logFile)) {
+      try {
+        const rawLog = fs.readFileSync(logFile, 'utf-8');
+        const lines = rawLog.split(/\r?\n/).map((l) => l.trimEnd()).filter(Boolean);
+        if (lines.length > 0) {
+          this.updateState.log = lines.slice(-MAX_UPDATE_LOG_LINES);
+        }
+      } catch {}
+    }
+
+    if (fs.existsSync(statusFile)) {
+      try {
+        const rawStatus = fs.readFileSync(statusFile, 'utf-8');
+        const parsed = JSON.parse(rawStatus);
+        if (parsed.status && (parsed.project === 'homelab-dashboard' || parsed.project === 'homelab-cockpit')) {
+          this.updateState.status = parsed.status;
+          if (parsed.error) this.updateState.message = parsed.error;
+          if (parsed.status === 'success') {
+            this.hasUpdate = false;
+            this.behindBy = 0;
+            if (parsed.sha && parsed.sha !== 'unknown') {
+              this.currentSha = parsed.sha;
+            }
+            this.loadBaselineVersion();
+          }
+        }
+      } catch {}
+    }
+
     return this.updateState;
   }
 
@@ -380,15 +418,75 @@ export class AppUpdateService {
       return { started: false, message: 'Update sedang berjalan. Mohon tunggu proses selesai.' };
     }
 
-    if (!this.isGitRepo) {
-      return {
-        started: false,
-        message: 'Direktori aplikasi saat ini bukan git repository. Pastikan folder repo terhubung atau lakukan pull image container terbaru.',
-      };
+    this.updateState = {
+      status: 'updating',
+      log: [
+        `[${new Date().toISOString()}] Memulai pipeline pembaruan Homelab Dashboard...`,
+        'ℹ Memicu out-of-process redeployer via trigger file & background runner...',
+      ],
+      startedAt: Date.now(),
+    };
+
+    const triggerFile = path.join(this.dataDir, '.redeploy-trigger');
+    const statusFile = path.join(this.dataDir, 'redeploy-status.json');
+    const logFile = path.join(this.dataDir, 'redeploy.log');
+
+    try {
+      fs.writeFileSync(triggerFile, 'homelab-dashboard', 'utf-8');
+      fs.writeFileSync(
+        statusFile,
+        JSON.stringify(
+          {
+            status: 'updating',
+            project: 'homelab-dashboard',
+            startedAt: Date.now(),
+          },
+          null,
+          2
+        ),
+        'utf-8'
+      );
+      fs.writeFileSync(
+        logFile,
+        `[${new Date().toISOString()}] Dashboard triggered redeploy. Waiting for runner...
+`,
+        'utf-8'
+      );
+    } catch (err: any) {
+      console.error('[AppUpdateService] Failed to write trigger files:', err.message);
+    }
+
+    // Try to trigger detached host script if available
+    const scriptCandidates = [
+      '/root/homelab-redeploy.sh',
+      path.join(this.repoRoot, 'scripts/homelab-redeploy.sh'),
+      '/projects/homelab-dashboard/scripts/homelab-redeploy.sh',
+    ];
+
+    let runnerSpawned = false;
+    for (const sPath of scriptCandidates) {
+      if (fs.existsSync(sPath)) {
+        try {
+          const child = spawn('bash', [sPath, 'homelab-dashboard'], {
+            detached: true,
+            stdio: 'ignore',
+          });
+          child.unref();
+          runnerSpawned = true;
+          console.log(`[AppUpdateService] Spawned detached redeployer: ${sPath}`);
+          break;
+        } catch (e: any) {
+          console.warn(`[AppUpdateService] Could not spawn ${sPath}:`, e.message);
+        }
+      }
+    }
+
+    // Fallback: internal update if git repo exists and no runner could be spawned
+    if (!runnerSpawned && this.isGitRepo) {
+      this.performUpdate().catch(() => {});
     }
 
     this.notifications.add('app-update-start', 'Memulai pembaruan Homelab Dashboard...');
-    this.performUpdate().catch(() => {});
     return { started: true };
   }
 

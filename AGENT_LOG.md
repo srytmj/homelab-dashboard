@@ -5,6 +5,34 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 19:10 UTC]
+**Agent:** Gemini (Standalone Out-of-Process Redeployer & Seamless Service Reconnect)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Standalone Out-of-Process Redeployer Script (`scripts/homelab-redeploy.sh` & `/root/homelab-redeploy.sh`):**
+  - Created an executable standalone bash runner that operates completely outside the container's process tree, preventing Docker Compose from killing the update process mid-flight when restarting `homelab-cockpit`.
+  - Implemented auto-stash of tracked changes, stale `.git/index.lock` cleanup, `git fetch origin <branch>`, `git reset --hard origin/<branch>`, and auto-detection/creation of missing Docker networks (`homelab-net`).
+  - Executes `docker compose up -d --build --force-recreate` and writes status updates to `data/redeploy-status.json` and persistent logs to `data/redeploy.log`.
+  - Added `--watch` daemon mode to continuously monitor `data/.redeploy-trigger`, allowing triggers from the web dashboard to be processed immediately by host background runners.
+  - Copied to `/root/homelab-redeploy.sh` and created a systemd service template `scripts/homelab-redeploy.service`.
+- **Backend Out-of-Process Integration:**
+  - In `server/src/services/app-update.service.ts`:
+    - Updated `startUpdate()` to write to `.redeploy-trigger` and spawn the detached script runner out-of-process.
+    - Updated `getUpdateState()` to tail `data/redeploy.log` and read `data/redeploy-status.json` so the dashboard displays live stdout lines directly from the host runner.
+  - In `server/src/services/git-projects.service.ts`:
+    - Added self-redeploy detection for `homelab-cockpit` / `homelab-dashboard` so it triggers the out-of-process runner instead of in-container Docker commands that terminate the Node.js process.
+- **Frontend Seamless Reconnection & Downtime Graceful Recovery:**
+  - In `client/src/components/AppUpdateBanner.tsx`:
+    - Handled temporary connection drops during Docker container rebuilds.
+    - Replaces failure states with a transitional "Service Restarting" status while automatically polling `/api/health`.
+    - Automatically reloads the page once the new container boots up and responds with 200 OK.
+  - In `client/src/components/GitPullInline.tsx`:
+    - Added similar self-redeploy reconnect logic and health polling when updating `homelab-cockpit` / `homelab-dashboard`.
+- **Verification & Build:**
+  - Validated bash script syntax: `bash -n scripts/homelab-redeploy.sh`.
+  - Ran `npm run build`: 0 errors across client and server.
+  - Bumped version to `1.1.13` across `package.json`, `version.json`, and `announcements.json`.
+
 ### [2026-09-14 15:50 UTC]
 **Agent:** Gemini (Removed Beta UI & Instant Primary Node Customization)
 **Status:** `[COMPLETED]`

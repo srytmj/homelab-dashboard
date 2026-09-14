@@ -26,6 +26,8 @@ export const AppUpdateBanner: React.FC = () => {
   const [showCommits, setShowCommits] = useState(false);
   const [reloadCountdown, setReloadCountdown] = useState<number | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const failCountRef = useRef(0);
 
   const logContainerRef = useRef<HTMLDivElement>(null);
   const pollTimerRef = useRef<any>(null);
@@ -71,6 +73,10 @@ export const AppUpdateBanner: React.FC = () => {
       try {
         const res = await authFetch('/api/app-update/update-status');
         if (res.ok) {
+          failCountRef.current = 0;
+          if (isReconnecting) {
+            setIsReconnecting(false);
+          }
           const state: AppUpdateState = await res.json();
           setUpdateState(state);
 
@@ -82,9 +88,30 @@ export const AppUpdateBanner: React.FC = () => {
             setIsUpdating(false);
             fetchStatus();
           }
+        } else {
+          await handlePollError();
         }
       } catch {
-        // ignore
+        await handlePollError();
+      }
+    };
+
+    const handlePollError = async () => {
+      failCountRef.current += 1;
+      // If 2 or more consecutive failures while updating, container was recreated and is restarting
+      if (failCountRef.current >= 2) {
+        setIsReconnecting(true);
+        try {
+          const healthRes = await fetch('/api/health');
+          if (healthRes.ok) {
+            setIsReconnecting(false);
+            setIsUpdating(false);
+            setReloadCountdown(2);
+            fetchStatus();
+          }
+        } catch {
+          // Service is still restarting
+        }
       }
     };
 
@@ -393,6 +420,16 @@ export const AppUpdateBanner: React.FC = () => {
                   : 'Proses pembaruan selesai.'}
               </p>
 
+              {isReconnecting && (
+                <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-[12px] text-amber-300">
+                  <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-amber-400" />
+                  <div>
+                    <p className="font-bold">Service Restarting</p>
+                    <p className="text-[11px] opacity-90">Container Homelab Cockpit sedang direstart ke build baru oleh out-of-process runner. Halaman akan otomatis memuat ulang saat service online (biasanya 5–15 detik)...</p>
+                  </div>
+                </div>
+              )}
+
               {/* Terminal View */}
               <div 
                 ref={logContainerRef}
@@ -425,7 +462,12 @@ export const AppUpdateBanner: React.FC = () => {
 
               {/* Status footer */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-cockpit-border/60 pt-3">
-                {isUpdating ? (
+                {isReconnecting ? (
+                  <div className="flex items-center gap-2 text-[12.5px] text-amber-400">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Menunggu Homelab Cockpit online kembali...</span>
+                  </div>
+                ) : isUpdating ? (
                   <div className="flex items-center gap-2 text-[12.5px] text-cockpit-accent">
                     <RefreshCw className="h-4 w-4 animate-spin" />
                     <span>Sedang memperbarui dashboard... Mohon tunggu.</span>

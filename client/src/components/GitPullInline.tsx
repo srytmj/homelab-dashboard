@@ -27,6 +27,9 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
   const [check, setCheck] = useState<CheckPullResult | null>(null);
   const [pullState, setPullState] = useState<GitPullState | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const isSelf = project.containerName === 'homelab-cockpit' || project.repoName === 'homelab-dashboard';
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const failCountRef = useRef(0);
   
   const logRef = useRef<HTMLDivElement>(null);
   const isRunning = pullState?.status === 'pulling' || pullState?.status === 'rebuilding';
@@ -53,14 +56,33 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
     if (!isRunning) return;
     const interval = setInterval(() => {
       authFetch(`/api/git-projects/${encodeURIComponent(project.containerName)}/pull-status`)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to get status');
+          return res.json();
+        })
         .then((data: GitPullState) => {
+          failCountRef.current = 0;
+          if (isReconnecting) setIsReconnecting(false);
           setPullState(data);
           if (data.status === 'success' || data.status === 'failed') {
             onDone();
           }
         })
-        .catch(() => {});
+        .catch(async () => {
+          if (isSelf) {
+            failCountRef.current += 1;
+            if (failCountRef.current >= 2) {
+              setIsReconnecting(true);
+              try {
+                const healthRes = await fetch('/api/health');
+                if (healthRes.ok) {
+                  setIsReconnecting(false);
+                  window.location.reload();
+                }
+              } catch {}
+            }
+          }
+        });
     }, 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps

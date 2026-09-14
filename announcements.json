@@ -1,5 +1,17 @@
 [
   {
+    "id": "2026-09-14-standalone-out-of-process-redeployer",
+    "version": "1.1.13",
+    "title": "Standalone Out-of-Process Redeployer & Seamless Service Reconnect",
+    "date": "2026-09-14",
+    "description": "Menghadirkan skrip eksekusi mandiri di host (scripts/homelab-redeploy.sh & /root/homelab-redeploy.sh) dan watcher daemon untuk proses redeploy yang kebal dari terminasi container, serta auto-reconnect cerdas saat service sempat down.",
+    "highlights": [
+      "Standalone Host Redeployer (scripts/homelab-redeploy.sh): Skrip mandiri di host (/root/homelab-redeploy.sh) yang melakukan auto-stash, fetch, reset, auto-heal network Docker 'homelab-net', dan docker compose up -d --build --force-recreate tanpa terputus ketika container cockpit direstart.",
+      "Watcher / Daemon Mode (--watch): Daemon pemantau trigger file yang siap dijalankan di host atau sebagai systemd service (scripts/homelab-redeploy.service) untuk menangkap perintah redeploy dari web dashboard secara real-time.",
+      "Seamless Downtime & Auto-Reconnect: Ketika container sedang direcreate dan koneksi terputus sesaat ('service sempet down'), UI dashboard tidak menampilkan fatal error melainkan status transisi 'Service Restarting', memantau /api/health secara berkala, dan otomatis reload saat container baru aktif ('trus naik lagi')."
+    ]
+  },
+  {
     "id": "2026-09-14-remove-beta-ui-and-fix-node-name-customization",
     "version": "1.1.12",
     "title": "Removed Beta UI & Instant Primary Node Customization",

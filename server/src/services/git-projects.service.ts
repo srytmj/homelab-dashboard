@@ -70,13 +70,15 @@ export interface PullResult {
 }
 
 export class GitProjectsService {
+  private dataDir: string;
   private dbPath: string;
   private db: GitProjectsDb;
   private pullStates: Map<string, GitPullState> = new Map();
   private activeProcesses: Map<string, ChildProcess> = new Map();
 
   constructor(private notifications: NotificationsService) {
-    const dataDir = path.resolve(__dirname, '../../../data');
+    this.dataDir = path.resolve(__dirname, '../../../data');
+    const dataDir = this.dataDir;
     if (!fs.existsSync(dataDir)) {
       try {
         fs.mkdirSync(dataDir, { recursive: true });
@@ -509,6 +511,55 @@ export class GitProjectsService {
 
       const { stdout: shaOut } = await execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], EXEC_OPTS);
       const newSha = shaOut.trim();
+
+      const isSelf = containerName === 'homelab-cockpit' || record.repoName === 'homelab-dashboard';
+      if (isSelf) {
+        appendLog('ℹ Terdeteksi self-redeploy pada container Homelab Cockpit.');
+        appendLog('ℹ Memicu out-of-process runner agar proses rebuild tidak terputus saat container dimatikan...');
+
+        record.lastKnownSha = newSha;
+        this.saveDb();
+
+        const triggerFile = path.join(this.dataDir, '.redeploy-trigger');
+        const statusFile = path.join(this.dataDir, 'redeploy-status.json');
+        try {
+          fs.writeFileSync(triggerFile, 'homelab-dashboard', 'utf-8');
+          fs.writeFileSync(
+            statusFile,
+            JSON.stringify({
+              status: 'rebuilding',
+              project: 'homelab-dashboard',
+              startedAt: Date.now(),
+            }),
+            'utf-8'
+          );
+        } catch {}
+
+        const scriptCandidates = [
+          '/root/homelab-redeploy.sh',
+          path.join(cwd, 'scripts/homelab-redeploy.sh'),
+          '/projects/homelab-dashboard/scripts/homelab-redeploy.sh',
+        ];
+
+        for (const sPath of scriptCandidates) {
+          if (fs.existsSync(sPath)) {
+            try {
+              const child = spawn('bash', [sPath, 'homelab-dashboard'], {
+                detached: true,
+                stdio: 'ignore',
+              });
+              child.unref();
+              appendLog(`$ spawned detached runner: ${sPath}`);
+              break;
+            } catch {}
+          }
+        }
+
+        appendLog('✔ Sinyal redeploy berhasil dikirim ke runner host.');
+        appendLog('⏳ Container akan direstart. Koneksi web akan terputus sesaat lalu terhubung kembali otomatis.');
+        state.status = 'rebuilding';
+        return { success: true, message: 'Self redeploy triggered out-of-process.', newSha };
+      }
 
       state.status = 'rebuilding';
       appendLog(`$ docker ${REBUILD_ARGS[record.rebuildCommand].join(' ')}`);
