@@ -135,6 +135,42 @@ Format is `type(scope): subject`, subject in lowercase imperative with no traili
 
 The hooks are installed by the `prepare` script, so they exist after `npm install` at the repo root. An agent working in a fresh clone that has not installed root dependencies will find commits passing unchecked; run the install first.
 
+## UI Styling & Design Consistency Rules
+
+All user interface modifications must strictly preserve the modern glassmorphism aesthetic and design tokens:
+
+- **Glassmorphism & Surfaces:**
+  - Standard panels must use `.panel` and `.panel-head` classes (`bg-cockpit-panel/85 backdrop-blur-xl border border-cockpit-border/60 shadow-panel`).
+  - Cards and sub-panels (e.g. Container Fleet cards, AI Agent cards, metric tiles) must use `rounded-xl border border-cockpit-border/60 bg-cockpit-bg/50 backdrop-blur-md` with hover state `hover:border-cockpit-accent/40 hover:bg-cockpit-panel/80`.
+  - NEVER use opaque solid backgrounds (`bg-gray-800`, `bg-slate-900`) or raw hex color codes in JSX. Always use the defined `cockpit-*` and `state-*` CSS tokens.
+
+- **Button Hierarchy & Interactive Controls:**
+  - Primary call-to-action: `.btn-primary` (accent background, white text, subtle glow on hover).
+  - Secondary / Cancel / Neutral: `.btn-ghost` (subtle border, translucent glass background, hover highlight).
+  - Destructive / Dangerous: `.btn-danger` (state-bad background, strictly for prune, restore, restart).
+  - Icon-only buttons: `.icon-btn` (`rounded-xl p-2`, border and backdrop blur with `hover:border-cockpit-accent/50 active:scale-95`).
+  - Segmented controls: Container `.seg` with children `.seg-btn`, active state `.seg-btn-on`.
+
+- **Form Controls & Inputs:**
+  - Inputs, selects, and textareas must use `.field` (`rounded-xl`, translucent background, monospace font, `focus:border-cockpit-accent focus:shadow-glow-accent`).
+  - Search / filter toolbars must use responsive wrapping (`flex flex-wrap items-center gap-2`).
+
+- **Typography & Numerical Metrics:**
+  - Panel headers: `.panel-title` (`text-[14px] font-bold tracking-tight text-cockpit-text`) and `.panel-sub` (`text-[12px] text-cockpit-muted`).
+  - Section / Column labels: `.label` (`font-mono text-[10.5px] uppercase tracking-[0.1em] text-cockpit-muted`).
+  - Numeric metrics: Always use `.metric` or `.metric-lg` with `font-mono tabular-nums` to eliminate layout jitter.
+  - Status badges: Always use `.pill` variants (`.pill-good`, `.pill-warn`, `.pill-bad`, `.pill-accent`, `.pill-neutral`).
+
+- **Color Semantics:**
+  - `cockpit-accent` is strictly for interactive selections, links, and active controls.
+  - `state-good`, `state-warn`, and `state-bad` are strictly reserved for operational health states. Never mix status colors with accents.
+
+- **Modals & Dialogs:**
+  - All modal overlays must be rendered through `createPortal(..., document.body)` with `.overlay` and `.modal-panel` classes to guarantee correct z-index layering and prevent clipping by parent `overflow-hidden` boundaries.
+
+- **Micro-interactions:**
+  - Apply `active:scale-95` and transition smoothing to clickable cards, pills, and buttons.
+
 ## Agent Workflow Rules
 
 - **ALWAYS propose and review first:** When asked to audit, add a feature, or modify code, provide a detailed review or a step-by-step proposal of what you intend to do. 

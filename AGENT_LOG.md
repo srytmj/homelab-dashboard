@@ -80,3 +80,14 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 - **App Update/Announcements Feature:** Implemented backend service (`app-update.service.ts`), API routes, and frontend banner (`AppUpdateBanner.tsx`) to pull updates directly from GitHub.
 - **Maximum UI Polish (Glassmorphism):** Overhauled `index.css` and `tailwind.config.js`. Transformed all `.panel` classes, modal popups, and navbars into an elegant glassmorphism visual.
 - **Agent Workflow Rules Initiated:** Created standard workflow guardrails in `CLAUDE.md`.
+
+---
+
+### [2026-09-14 05:07 UTC]
+**Agent:** Gemini (UI Styling Consistency Rules in CLAUDE.md)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **UI Styling & Design Consistency Section:** Documented glassmorphism surface tokens, card borders, and hover effects in `CLAUDE.md`.
+- **Button & Control Hierarchy:** Added explicit rules for `.btn-primary`, `.btn-ghost`, `.btn-danger`, `.icon-btn`, `.seg`/`.seg-btn`, and `.field`.
+- **Typography & Metric Standards:** Formalized usage of `.panel-title`, `.label`, `.metric` with `font-mono tabular-nums`, and status `.pill` variants.
+- **Color Semantics & Portals:** Clarified separation of `cockpit-accent` vs `state-*` health indicators and mandated `createPortal` for modals.
