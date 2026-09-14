@@ -55,6 +55,7 @@ body {
 }
 
 @layer components {
+  /* LEGACY UI (Default) */
   .panel {
     @apply rounded-panel border border-cockpit-border/60 bg-cockpit-panel/85 backdrop-blur-xl shadow-panel transition-all duration-300;
   }
@@ -161,13 +162,132 @@ body {
 
   .overlay {
     @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md;
-    animation: overlayIn 0.25s ease-out forwards;
+    /* base */ animation: overlayIn 0.25s ease-out forwards;
   }
 
   .modal-panel {
     @apply border border-cockpit-border/60 shadow-2xl;
     animation: panelIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   }
+
+  /* BETA UI (Brutalist Overrides) */
+  .beta-ui .panel {
+    @apply rounded-none border-2 border-cockpit-text bg-cockpit-bg backdrop-blur-none shadow-[4px_4px_0_rgba(var(--cockpit-text)/1)] transition-transform duration-75 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_rgba(var(--cockpit-text)/1)];
+  }
+
+  .beta-ui .panel-head {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b-2 border-cockpit-text px-5 py-3 bg-cockpit-text text-cockpit-bg rounded-none;
+  }
+
+  .beta-ui .panel-title {
+    @apply text-[15px] font-bold tracking-widest text-cockpit-bg uppercase;
+  }
+
+  .beta-ui .panel-sub {
+    @apply mt-0.5 text-[11px] text-cockpit-bg/80 font-mono uppercase tracking-widest;
+  }
+
+  .beta-ui .label {
+    @apply font-mono text-[11px] font-bold uppercase tracking-widest text-cockpit-muted bg-cockpit-border/10 inline-block px-1.5 py-0.5 border border-cockpit-border;
+  }
+
+  .beta-ui .metric {
+    @apply font-mono font-black tabular-nums text-cockpit-text tracking-tighter;
+  }
+
+  .beta-ui .metric-lg {
+    @apply font-mono text-[32px] font-black leading-none tabular-nums text-cockpit-text tracking-tighter drop-shadow-none;
+  }
+
+  .beta-ui .metric-unit {
+    @apply border-l-2 border-cockpit-text/30 pl-2 ml-2 text-[12px] font-bold text-cockpit-muted tracking-widest uppercase;
+  }
+
+  .beta-ui .pill {
+    @apply inline-flex items-center gap-1.5 rounded-none px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)] border-2 border-cockpit-text;
+  }
+
+  .beta-ui .pill-good {
+    @apply bg-state-good text-cockpit-bg border-cockpit-text shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)];
+  }
+
+  .beta-ui .pill-warn {
+    @apply bg-state-warn text-cockpit-bg border-cockpit-text shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)];
+  }
+
+  .beta-ui .pill-bad {
+    @apply bg-state-bad text-cockpit-bg border-cockpit-text shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)];
+  }
+
+  .beta-ui .pill-neutral {
+    @apply bg-cockpit-muted text-cockpit-bg border-cockpit-text shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)];
+  }
+
+  .beta-ui .pill-accent {
+    @apply bg-cockpit-accent text-white border-cockpit-text shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)];
+  }
+  
+  .beta-ui .data-row {
+    @apply border-b-2 border-cockpit-border/80 py-3 text-[13.5px] rounded-none hover:bg-cockpit-text/5 px-3 mx-0 mb-1 border-dotted;
+  }
+
+  .beta-ui .track {
+    @apply h-2.5 w-full overflow-hidden rounded-none bg-cockpit-border border border-cockpit-text shadow-none;
+  }
+  
+  .beta-ui .track-fill {
+    @apply rounded-none;
+  }
+
+  .beta-ui .seg {
+    @apply flex items-center gap-0.5 rounded-none border-2 border-cockpit-text bg-cockpit-bg p-1 shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)] backdrop-blur-none;
+  }
+
+  .beta-ui .seg-btn {
+    @apply rounded-none px-3 py-1 font-mono text-[11px] font-bold text-cockpit-muted uppercase tracking-widest transition-none hover:bg-cockpit-text/10 hover:text-cockpit-text active:translate-y-[1px];
+  }
+
+  .beta-ui .seg-btn-on {
+    @apply bg-cockpit-text text-cockpit-bg hover:bg-cockpit-text hover:text-cockpit-bg shadow-none;
+  }
+
+  .beta-ui .icon-btn {
+    @apply rounded-none border-2 border-cockpit-text bg-cockpit-bg p-2 text-cockpit-text shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)] backdrop-blur-none transition-none hover:bg-cockpit-text hover:text-cockpit-bg hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] active:scale-100;
+  }
+
+  .beta-ui .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-none px-4 py-2 text-[12px] font-black uppercase tracking-widest shadow-[3px_3px_0_rgba(var(--cockpit-text)/1)] transition-none hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none active:scale-100 disabled:pointer-events-none disabled:opacity-50 border-2;
+  }
+
+  .beta-ui .btn-primary {
+    @apply bg-cockpit-accent text-white border-cockpit-text;
+  }
+
+  .beta-ui .btn-ghost {
+    @apply border-cockpit-text bg-cockpit-bg text-cockpit-text;
+  }
+
+  .beta-ui .btn-danger {
+    @apply bg-state-bad text-white border-cockpit-text;
+  }
+
+  .beta-ui .field {
+    @apply rounded-none border-2 border-cockpit-text bg-cockpit-bg px-3.5 py-2 font-mono text-[12.5px] font-bold text-cockpit-text shadow-[2px_2px_0_rgba(var(--cockpit-text)/1)] placeholder-cockpit-muted/60 backdrop-blur-none focus:outline-none focus:bg-cockpit-bg/80 focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all duration-75;
+  }
+
+  .beta-ui .modal-panel {
+    @apply rounded-none border-4 border-cockpit-text shadow-[8px_8px_0_rgba(var(--cockpit-text)/1)] bg-cockpit-bg;
+  }
+
+  .beta-ui .overlay { 
+    animation: overlayInBeta 0.1s ease-out forwards;
+    @apply bg-cockpit-bg/80 backdrop-blur-none;
+    /* Hard crosshatch pattern for background overlay */
+    background-image: radial-gradient(var(--cockpit-text) 1px, transparent 1px);
+    background-size: 10px 10px;
+    background-position: 0 0;
+  }
+
 }
 
 ::-webkit-scrollbar {
@@ -194,9 +314,19 @@ body {
   outline-offset: 2px;
 }
 
+.beta-ui :focus-visible {
+  outline: 2px solid var(--cockpit-text);
+  outline-offset: 4px;
+}
+
 @keyframes overlayIn {
   from { opacity: 0; backdrop-filter: blur(0px); }
   to { opacity: 1; backdrop-filter: blur(12px); }
+}
+
+@keyframes overlayInBeta {
+  from { opacity: 0; }
+  to { opacity: 1; backdrop-filter: none; }
 }
 
 .animate-fadeIn {
@@ -205,6 +335,11 @@ body {
 
 .animate-popIn {
   animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.beta-ui .animate-popIn {
+  /* No bouncy pop in beta */
+  animation: fadeIn 0.1s ease-out forwards;
 }
 
 /* Staggered lists if we want them */
