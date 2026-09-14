@@ -512,7 +512,28 @@ export class GitProjectsService {
 
       state.status = 'rebuilding';
       appendLog(`$ docker ${REBUILD_ARGS[record.rebuildCommand].join(' ')}`);
-      await this.spawnCapture(containerName, 'docker', REBUILD_ARGS[record.rebuildCommand], cwd, appendLog);
+      try {
+        await this.spawnCapture(containerName, 'docker', REBUILD_ARGS[record.rebuildCommand], cwd, appendLog);
+      } catch (dockerErr: any) {
+        // Auto-heal missing external docker network if detected in output
+        const fullLog = state.log.join('\n');
+        const netMatch = fullLog.match(/network\s+([^\s'"]+)\s+declared as external, but could not be found/i);
+        if (netMatch && netMatch[1]) {
+          const missingNet = netMatch[1];
+          appendLog(`⚠ External network "${missingNet}" is missing on host.`);
+          appendLog(`ℹ Auto-creating external network: $ docker network create ${missingNet}...`);
+          try {
+            await execFile('docker', ['network', 'create', missingNet], EXEC_OPTS);
+            appendLog(`✔ Network "${missingNet}" created successfully.`);
+            appendLog(`$ docker ${REBUILD_ARGS[record.rebuildCommand].join(' ')} (retrying...)`);
+            await this.spawnCapture(containerName, 'docker', REBUILD_ARGS[record.rebuildCommand], cwd, appendLog);
+          } catch (retryErr: any) {
+            throw new Error(`Failed to recreate external network ${missingNet}: ${retryErr.message || dockerErr.message}`);
+          }
+        } else {
+          throw dockerErr;
+        }
+      }
 
       record.lastKnownSha = newSha;
       this.saveDb();

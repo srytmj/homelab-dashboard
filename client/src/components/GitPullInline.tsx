@@ -294,6 +294,46 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
               pullState.log.map((line, i) => <div key={i}>{line}</div>)
             )}
           </div>
+
+          {/* Bottom sticky action bar so user never misses the button when scrolling through logs */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-cockpit-border/60">
+            <div className="text-[12px] text-cockpit-muted min-w-0 flex items-center gap-1.5">
+              {pullState.status === 'failed' ? (
+                <span className="font-semibold text-state-bad flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Deploy failed. Click Force Pull & Redeploy to retry cleanly.
+                </span>
+              ) : pullState.status === 'success' ? (
+                <span className="font-semibold text-state-good">
+                  Deployment succeeded.
+                </span>
+              ) : isRunning ? (
+                <span className="text-cockpit-accent animate-pulse">Running deployment pipeline...</span>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={startPull}
+                disabled={isRunning}
+                className="btn-danger flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold shadow-sm"
+                title="Force sync and rebuild project container"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Force Pull & Redeploy
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={isRunning}
+                className="btn-ghost px-3 py-1.5 text-[12px]"
+                title="Close and dismiss log"
+              >
+                Dismiss Log
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
