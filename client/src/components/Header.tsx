@@ -1,6 +1,18 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Server, RefreshCw, Eye, EyeOff, Maximize2, Minimize2, Terminal, LogOut, Sun, Moon } from 'lucide-react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import {
+  Server,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Maximize2,
+  Minimize2,
+  Terminal,
+  LogOut,
+  Sun,
+  Moon,
+  LayoutGrid,
+} from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
 import { Theme } from '../hooks/useTheme.js';
@@ -36,6 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
 }) => {
   const { username, logout } = useAuth();
+  const location = useLocation();
+  const isBeta = location.pathname === '/beta';
+
   const pve = snapshot?.host.pve;
   const pveOnline = pve?.connected ?? false;
   const allHealthy = isConnected && pveOnline;
@@ -70,6 +85,28 @@ export const Header: React.FC<HeaderProps> = ({
           <ClockWeatherWidget />
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Link
+              to={isBeta ? '/' : '/beta'}
+              title={isBeta ? 'Return to Classic Dashboard' : 'Switch to Brutalist Beta UI'}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] sm:text-[12.5px] font-semibold transition-all duration-150 active:scale-95 ${
+                isBeta
+                  ? 'border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
+                  : 'border-blue-500/40 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25'
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>{isBeta ? 'Classic UI' : 'Beta UI'}</span>
+              <span
+                className={`hidden xs:inline rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider border ${
+                  isBeta
+                    ? 'border-amber-500/30 bg-amber-500/20 text-amber-300'
+                    : 'border-blue-500/30 bg-blue-500/20 text-blue-300'
+                }`}
+              >
+                {isBeta ? 'Active' : 'New'}
+              </span>
+            </Link>
+
             <button
               onClick={onOpenCommandPalette}
               title="Open Command Deck (Ctrl+K)"

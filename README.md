@@ -20,28 +20,6 @@ Running on an unprivileged Ubuntu 24.04 LXC on the M710q under Proxmox VE 8, rep
 
 Netdata, Uptime Kuma, Portainer, and legacy dashboards were decommissioned. Full write-up in [docs/case-study.md](docs/case-study.md).
 
-## Web Design & Interface Preview
-
-### 1. Legacy Overview Dashboard
-The main command center providing instant homelab visibility: real-time CPU and memory telemetry, package temperatures, uptime, DAS mount health, quick startpage shortcuts, weather, and container status totals.
-
-![Overview Dashboard](docs/screenshots/overview.png)
-
-### 2. Experimental Brutalist UI (Beta)
-We're currently experimenting with a secondary brutalist/constructivist dashboard layout option (available via the "Switch to Beta UI" button on the main overview block before you login vs inside depending on versions). It removes blur/glassmorphism entirely in favor of a strictly structured layout, mono fonts, and stark grid borders. 
-
-![Brutalist Beta UI](docs/screenshots/beta_ui.png)
-
-### 3. Fleet Management
-Real-time container inventory across all configured Docker hosts. Features sparkline history for CPU and memory, live per-second network transfer rates, L7 HTTP health probe verification, container logs, restarts, and custom public tunnel domain pins.
-
-![Fleet Management](docs/screenshots/fleet.png)
-
-### 4. Infrastructure & Storage Watchdog
-Comprehensive hardware metrics, Proxmox VE vzdump backup history, external DAS mount status with `.mounted` canary tracking, disk read/write throughput charts, disaster recovery backups, and safe layer pruning.
-
-![Infrastructure & Storage](docs/screenshots/infra.png)
-
 ## Architecture
 
 ```text
