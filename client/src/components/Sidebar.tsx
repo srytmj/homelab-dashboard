@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home,
-  LayoutGrid,
   Boxes,
   Server,
   GitBranch,
@@ -16,7 +15,6 @@ import {
 
 export const NAV_ROUTES = [
   { path: '/', label: 'Overview', icon: Home },
-  { path: '/beta', label: 'Beta UI', icon: LayoutGrid, isBeta: true },
   { path: '/fleet', label: 'Fleet', icon: Boxes },
   { path: '/infra', label: 'Infra', icon: Server },
   { path: '/git-projects', label: 'Git projects', icon: GitBranch },
@@ -43,7 +41,7 @@ export const Sidebar: React.FC = () => {
       try {
         localStorage.setItem(STORAGE_KEY, String(next));
       } catch {
-        // localStorage unavailable — collapse state just won't persist
+        // ignore
       }
       return next;
     });
@@ -51,11 +49,11 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`sticky top-4 z-10 my-4 ml-4 hidden max-h-[calc(100vh-2rem)] shrink-0 flex-col self-start rounded-panel border border-cockpit-border bg-cockpit-panel/80 backdrop-blur-xl shadow-panel transition-all duration-200 md:flex ${
-        isCollapsed ? 'w-[60px]' : 'w-[190px]'
+      className={`hidden md:flex flex-col border-r border-cockpit-border bg-cockpit-panel/30 transition-all duration-200 shrink-0 ${
+        isCollapsed ? 'w-16' : 'w-56'
       }`}
     >
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2.5">
+      <nav className="flex-1 space-y-1 p-3">
         {NAV_ROUTES.map((route) => {
           const Icon = route.icon;
           return (
@@ -76,11 +74,6 @@ export const Sidebar: React.FC = () => {
                 <Icon className="h-4 w-4 shrink-0" />
                 {!isCollapsed && <span className="truncate">{route.label}</span>}
               </div>
-              {!isCollapsed && route.isBeta && (
-                <span className="rounded bg-blue-500/20 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-blue-400 border border-blue-500/30">
-                  Beta
-                </span>
-              )}
             </NavLink>
           );
         })}
@@ -89,7 +82,7 @@ export const Sidebar: React.FC = () => {
       <button
         onClick={toggle}
         title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="flex items-center justify-center border-t border-cockpit-border/60 py-2.5 text-cockpit-muted transition-colors duration-150 hover:bg-cockpit-panelHover hover:text-cockpit-text"
+        className="flex h-10 items-center justify-center border-t border-cockpit-border text-cockpit-muted transition-colors hover:bg-cockpit-panelHover hover:text-cockpit-text"
       >
         {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
       </button>

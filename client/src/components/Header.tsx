@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   Server,
   Settings,
@@ -12,7 +12,6 @@ import {
   LogOut,
   Sun,
   Moon,
-  LayoutGrid,
 } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -51,12 +50,24 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { username, logout } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
-  const location = useLocation();
-  const isBeta = location.pathname === '/beta';
 
   const pve = snapshot?.host.pve;
   const pveOnline = pve?.connected ?? false;
   const allHealthy = isConnected && pveOnline;
+
+  const [cachedNodeName, setCachedNodeName] = React.useState<string | null>(() => {
+    return localStorage.getItem('cockpit_primary_node_name');
+  });
+
+  React.useEffect(() => {
+    const handleNodeUpdate = () => {
+      setCachedNodeName(localStorage.getItem('cockpit_primary_node_name'));
+    };
+    window.addEventListener('cockpit_settings_updated', handleNodeUpdate);
+    return () => window.removeEventListener('cockpit_settings_updated', handleNodeUpdate);
+  }, []);
+
+  const displayNodeName = cachedNodeName || pve?.nodeName;
 
   return (
     <header className="sticky top-0 z-40 border-b border-cockpit-border bg-cockpit-topbar/80 backdrop-blur-xl shadow-sm">
@@ -80,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {snapshot?.isDemoMode && <span className="pill pill-warn">Demo</span>}
               </div>
               <p className="label mt-0.5 truncate normal-case tracking-normal text-[10px] sm:text-[10.5px]">
-                Owner POV{pve?.nodeName ? ` · ${pve.nodeName}` : ''}
+                Owner POV{displayNodeName ? ` · ${displayNodeName}` : ''}
               </p>
             </div>
           </div>
@@ -88,28 +99,6 @@ export const Header: React.FC<HeaderProps> = ({
           <ClockWeatherWidget />
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <Link
-              to={isBeta ? '/' : '/beta'}
-              title={isBeta ? 'Return to Classic Dashboard' : 'Switch to Brutalist Beta UI'}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] sm:text-[12.5px] font-semibold transition-all duration-150 active:scale-95 ${
-                isBeta
-                  ? 'border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
-                  : 'border-blue-500/40 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25'
-              }`}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              <span>{isBeta ? 'Classic UI' : 'Beta UI'}</span>
-              <span
-                className={`hidden xs:inline rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider border ${
-                  isBeta
-                    ? 'border-amber-500/30 bg-amber-500/20 text-amber-300'
-                    : 'border-blue-500/30 bg-blue-500/20 text-blue-300'
-                }`}
-              >
-                {isBeta ? 'Active' : 'New'}
-              </span>
-            </Link>
-
             <button
               onClick={onOpenCommandPalette}
               title="Open Command Deck (Ctrl+K)"
@@ -142,41 +131,50 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={onTogglePrivacy}
-              title={isPrivacyMode ? 'Privacy mode on — IPs and domains hidden' : 'Hide IPs and domains'}
-              className={`icon-btn ${isPrivacyMode ? 'border-state-warn/40 text-state-warn' : ''}`}
+              title={isPrivacyMode ? 'Disable privacy mode' : 'Enable privacy mode (masks IPs & IDs)'}
+              className={`icon-btn ${isPrivacyMode ? 'bg-cockpit-accent/15 text-cockpit-accent' : ''}`}
             >
               {isPrivacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             </button>
 
             <button
               onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen (wall display)'}
-              className="icon-btn hidden sm:inline-flex"
+              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              className="icon-btn hidden sm:flex"
             >
               {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </button>
 
             <button
               onClick={onRefresh}
-              title={lastUpdated ? `Last update ${lastUpdated.toLocaleTimeString()} — click to refresh` : 'Refresh'}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-2 sm:px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
-                isConnected
-                  ? 'border-state-good/30 bg-state-good/10 text-state-good'
-                  : 'border-state-bad/30 bg-state-bad/10 text-state-bad'
-              }`}
+              title="Refresh telemetry immediately"
+              className="icon-btn"
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-state-good' : 'bg-state-bad'}`} />
-              <span className="font-semibold hidden xs:inline">{isConnected ? 'Live' : 'Reconnecting'}</span>
-              <RefreshCw className="h-3 w-3 opacity-70" />
+              <RefreshCw className="h-3.5 w-3.5" />
             </button>
 
             <button
               onClick={logout}
-              title={username ? `Sign out ${username}` : 'Sign out'}
-              className="icon-btn hover:border-state-bad/40 hover:text-state-bad"
+              title="Lock terminal & sign out"
+              className="icon-btn hover:text-state-bad"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
+          </div>
+        </div>
+
+        {/* Sub-header status bar */}
+        <div className="flex items-center justify-between border-t border-cockpit-border/60 py-1.5 text-[11px] font-mono text-cockpit-muted">
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${
+                isConnected ? 'bg-state-good' : 'bg-state-bad animate-pulse'
+              }`}
+            />
+            <span>{isConnected ? 'Telemetry active' : 'Connecting stream…'}</span>
+          </div>
+          <div className="text-[11px] opacity-75">
+            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : '—'}
           </div>
         </div>
 
@@ -203,6 +201,7 @@ export const Header: React.FC<HeaderProps> = ({
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         currentPveNode={pve?.nodeName}
+        onSettingsUpdated={onRefresh}
       />
     </header>
   );

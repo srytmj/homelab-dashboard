@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AuthScreen } from './components/AuthScreen.js';
 import { useCockpitData } from './hooks/useCockpitData.js';
@@ -10,7 +10,6 @@ import { RestartModal } from './components/RestartModal.js';
 import { PruneModal } from './components/PruneModal.js';
 import { PinDomainModal } from './components/PinDomainModal.js';
 import { HomePage } from './pages/HomePage.js';
-import { HomePageBeta } from './pages/HomePageBeta.js';
 import { FleetPage } from './pages/FleetPage.js';
 import { InfraPage } from './pages/InfraPage.js';
 import { SentinelPage } from './pages/SentinelPage.js';
@@ -18,35 +17,12 @@ import { GitProjectsPage } from './pages/GitProjectsPage.js';
 import { ProcessesPage } from './pages/ProcessesPage.js';
 import { AiAgentsPage } from './pages/AiAgentsPage.js';
 import { LegacyLayout } from './layouts/LegacyLayout.js';
-import { BetaLayout } from './layouts/BetaLayout.js';
 
 // Lazy-loaded: xterm.js is heavy and only needed by owners who use SSH.
 const TerminalPage = lazy(() => import('./pages/TerminalPage.js').then((m) => ({ default: m.TerminalPage })));
 import { ContainerMetric } from './types.js';
 
 function CockpitDashboard() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isBetaRoute = location.pathname.startsWith('/beta');
-
-  useEffect(() => {
-    const pref = localStorage.getItem('cockpit_preferred_ui');
-    if (pref === 'brutalism' && location.pathname === '/') {
-      navigate('/beta', { replace: true });
-    }
-  }, [location.pathname, navigate]);
-
-  useEffect(() => {
-    if (isBetaRoute) {
-      document.documentElement.classList.add('beta-ui');
-    } else {
-      document.documentElement.classList.remove('beta-ui');
-    }
-    return () => {
-      document.documentElement.classList.remove('beta-ui');
-    };
-  }, [isBetaRoute]);
-
   const { isAuthenticated, isLoading } = useAuth();
   const { snapshot, isConnected, lastUpdated, refetch } = useCockpitData();
   const { theme, toggleTheme } = useTheme();
@@ -96,11 +72,7 @@ function CockpitDashboard() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className={isBetaRoute ? 'beta-ui font-sans' : ''}>
-        <AuthScreen />
-      </div>
-    );
+    return <AuthScreen />;
   }
 
   const layoutProps = {
@@ -114,7 +86,7 @@ function CockpitDashboard() {
     onToggleFullscreen: toggleFullscreen,
     onToggleTheme: toggleTheme,
     onOpenCommandPalette: () => setIsCommandPaletteOpen(true),
-    onRefresh: refetch
+    onRefresh: refetch,
   };
 
   const PageRoutes = () => (
@@ -148,17 +120,10 @@ function CockpitDashboard() {
   );
 
   return (
-    <div className={isBetaRoute ? 'beta-ui font-sans' : ''}>
+    <div>
       <Routes>
-        {/* Legacy UI Layout */}
         <Route path="/" element={<LegacyLayout {...layoutProps} />}>
           <Route index element={<HomePage snapshot={snapshot} throughput={throughput} isPrivacyMode={isPrivacyMode} />} />
-          {PageRoutes()}
-        </Route>
-
-        {/* Beta Brutalist Layout */}
-        <Route path="/beta" element={<BetaLayout {...layoutProps} />}>
-          <Route index element={<HomePageBeta snapshot={snapshot} throughput={throughput} isPrivacyMode={isPrivacyMode} />} />
           {PageRoutes()}
         </Route>
         

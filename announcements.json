@@ -1,5 +1,17 @@
 [
   {
+    "id": "2026-09-14-remove-beta-ui-and-fix-node-name-customization",
+    "version": "1.1.12",
+    "title": "Removed Beta UI & Instant Primary Node Customization",
+    "date": "2026-09-14",
+    "description": "Menghapus rute dan layout Beta UI sepenuhnya untuk menyederhanakan antarmuka kembali ke Classic Glassmorphism, serta memperbaiki bug persistensi dan siaran nama custom Primary Node.",
+    "highlights": [
+      "Cleaned up Beta UI: Menghapus layout, header, sidebar, dan rute /beta sepenuhnya sehingga dashboard kembali fokus pada antarmuka utama yang stabil.",
+      "Instant Primary Node Name: Memperbaiki siaran WebSocket dan penulisan setting sehingga nama custom Primary Node langsung teraplikasikan seketika di seluruh tampilan.",
+      "Streamlined User Settings: Memfokuskan modal pengaturan pada kustomisasi nama node, tema warna (Dark/Light), dan keamanan akun owner."
+    ]
+  },
+  {
     "id": "2026-09-14-user-settings-and-git-project-recovery",
     "version": "1.1.11",
     "title": "User Settings Hub, Node Renaming & Git Project Failure Recovery",

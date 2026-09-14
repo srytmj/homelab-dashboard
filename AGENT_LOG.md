@@ -5,6 +5,27 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 15:50 UTC]
+**Agent:** Gemini (Removed Beta UI & Instant Primary Node Customization)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Removed Beta UI Entirely:**
+  - Deleted `BetaLayout.tsx`, `BetaHeader.tsx`, `BetaSidebar.tsx`, and `HomePageBeta.tsx`.
+  - Removed `/beta` routes, route redirect logic, and `beta-ui` body class from `App.tsx`.
+  - Removed "Switch to Beta UI" promotional banner from `HomePage.tsx`.
+  - Removed Beta UI switcher and button pill from `Header.tsx` and `Sidebar.tsx`.
+  - Cleaned up Beta page mappings from `CommandPalette.tsx`.
+- **Fixed Primary Node Name Customization:**
+  - In `server/src/index.ts`, updated `PATCH /api/settings` to immediately trigger `await collectorService.collectAndBroadcast()` so WebSocket connected clients receive updated telemetry in real-time without delay.
+  - In `server/src/services/collector.service.ts`, ensured that both `pveMetrics.nodeName` and `dockerHostMetrics.hostname` adopt the custom node name from `settingsService.getPrimaryNodeName()`. Made `collectAndBroadcast()` public.
+  - In `client/src/components/UserSettingsModal.tsx`, streamlined the settings modal into two clean tabs: **Node & Appearance** and **Account Security**. Saved custom node name immediately to `localStorage` and dispatched `cockpit_settings_updated` custom window event, triggering instant optimistic UI updates.
+  - In `Header.tsx` and `HomePage.tsx`, hooked into the dynamic node name cache and custom settings event so node label updates render immediately across all views.
+- **Verification & Build:**
+  - Verified compilation and build: `npm run build` passed with 0 errors across server and client.
+  - Bumped version to `1.1.12` across `package.json`, `version.json`, and `announcements.json`.
+
+---
+
 ### [2026-09-14 14:35 UTC]
 **Agent:** Gemini (User Settings Hub, Node Renaming & Git Project Failure Recovery)
 **Status:** `[COMPLETED]`

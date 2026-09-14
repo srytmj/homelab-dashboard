@@ -222,7 +222,9 @@ async function bootstrap() {
 
   app.patch('/api/settings', async (req) => {
     const body = req.body as { primaryNodeName?: string };
-    return settingsService.updateSettings(body || {});
+    const updated = settingsService.updateSettings(body || {});
+    await collectorService.collectAndBroadcast();
+    return updated;
   });
 
   // REST API: Protected Cockpit Routes

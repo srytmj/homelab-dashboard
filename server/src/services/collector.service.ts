@@ -107,6 +107,7 @@ export class CollectorService {
     const customNodeName = this.getPrimaryNodeName ? this.getPrimaryNodeName() : undefined;
     if (customNodeName) {
       pveMetrics.nodeName = customNodeName;
+      dockerHostMetrics.hostname = customNodeName;
     }
 
     const storageData = await this.systemService.getStorageMatrix(pveStorage);
@@ -169,7 +170,7 @@ export class CollectorService {
     return this.dockerServices.find((service) => service.name === container.dockerHost);
   }
 
-  private async collectAndBroadcast() {
+  public async collectAndBroadcast() {
     try {
       const snapshot = await this.collect();
       if (this.wsClients.size > 0) {

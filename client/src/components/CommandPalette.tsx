@@ -1,21 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ExternalLink, ArrowRight, Pin } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { Search, ArrowRight, Pin, X } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { redactText } from '../utils/formatters.js';
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
-  containers: ContainerMetric[] | undefined;
+  containers?: ContainerMetric[];
   isPrivacyMode?: boolean;
 }
 
-type PaletteGroup = 'Pages' | 'Pinned containers';
-
 interface PaletteItem {
   id: string;
-  group: PaletteGroup;
+  group: string;
   label: string;
   sublabel?: string;
   icon: React.ReactNode;
@@ -24,7 +23,6 @@ interface PaletteItem {
 
 const PAGES = [
   { path: '/', label: 'Overview' },
-  { path: '/beta', label: 'Beta UI (Experimental)' },
   { path: '/fleet', label: 'Fleet' },
   { path: '/infra', label: 'Infra' },
   { path: '/git-projects', label: 'Git projects' },
@@ -41,8 +39,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isPrivacyMode = false,
 }) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const isBeta = location.pathname.startsWith('/beta');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -57,27 +53,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   const items = useMemo<PaletteItem[]>(() => {
     const pageItems: PaletteItem[] = PAGES.map((p) => {
-      let targetPath = p.path;
-      let label = p.label;
-
-      if (isBeta) {
-        if (p.path === '/beta') {
-          targetPath = '/';
-          label = 'Classic UI (Legacy)';
-        } else if (p.path === '/') {
-          targetPath = '/beta';
-          label = 'Overview (Beta)';
-        } else {
-          targetPath = `/beta${p.path}`;
-        }
-      }
-
       return {
-        id: `page-${targetPath}`,
+        id: `page-${p.path}`,
         group: 'Pages',
-        label,
+        label: p.label,
         icon: <ArrowRight className="h-3.5 w-3.5" />,
-        run: () => navigate(targetPath),
+        run: () => navigate(p.path),
       };
     });
 
@@ -98,7 +79,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       });
 
     return [...pageItems, ...pinnedItems];
-  }, [containers, isBeta, isPrivacyMode, navigate]);
+  }, [containers, isPrivacyMode, navigate]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -120,94 +101,87 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'Escape') {
       e.preventDefault();
-      setSelected((s) => Math.min(s + 1, filtered.length - 1));
+      onClose();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelected((prev) => (filtered.length ? (prev + 1) % filtered.length : 0));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelected((s) => Math.max(s - 1, 0));
+      setSelected((prev) => (filtered.length ? (prev - 1 + filtered.length) % filtered.length : 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (filtered[selected]) activate(filtered[selected]);
-    } else if (e.key === 'Escape') {
-      onClose();
+      if (filtered[selected]) {
+        activate(filtered[selected]);
+      }
     }
   };
 
-  let runningIndex = -1;
-  const groups: PaletteGroup[] = ['Pages', 'Pinned containers'];
-
-  return (
-    <div className="overlay items-start pt-[12vh]" onClick={onClose}>
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-16 sm:pt-24 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
       <div
-        className="panel modal-panel w-full max-w-lg overflow-hidden shadow-2xl shadow-black/50"
+        className="w-full max-w-lg rounded-xl border border-cockpit-border bg-cockpit-panel shadow-2xl overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
-        <div className="flex items-center gap-2.5 border-b border-cockpit-border px-4 py-3">
-          <Search className="h-4 w-4 shrink-0 text-cockpit-muted" />
+        <div className="flex items-center gap-2.5 border-b border-cockpit-border px-3.5 py-2.5">
+          <Search className="h-4 w-4 text-cockpit-muted shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Jump to a page or a pinned container…"
-            className="w-full bg-transparent text-[13.5px] text-cockpit-text placeholder-cockpit-muted focus:outline-none"
+            placeholder="Type a command or jump to page…"
+            className="flex-1 bg-transparent font-sans text-[13px] text-cockpit-text placeholder:text-cockpit-muted focus:outline-none"
           />
-          <kbd className="label rounded border border-cockpit-border px-1.5 py-0.5">Esc</kbd>
+          <kbd className="rounded border border-cockpit-border px-1.5 py-0.5 font-mono text-[10px] text-cockpit-muted">
+            ESC
+          </kbd>
+          <button onClick={onClose} className="text-cockpit-muted hover:text-cockpit-text ml-1">
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        <div className="max-h-[50vh] overflow-y-auto py-2">
-          {filtered.length === 0 && (
-            <p className="px-4 py-8 text-center text-[13px] text-cockpit-muted">Nothing matches "{query}".</p>
+        <div className="max-h-80 overflow-y-auto p-1.5">
+          {filtered.length === 0 ? (
+            <div className="p-4 text-center text-[12.5px] text-cockpit-muted">No commands match &ldquo;{query}&rdquo;</div>
+          ) : (
+            filtered.map((item, index) => {
+              const isSelected = index === selected;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => activate(item)}
+                  onMouseEnter={() => setSelected(index)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[12.5px] transition-colors ${
+                    isSelected
+                      ? 'bg-cockpit-accent/15 text-cockpit-accent'
+                      : 'text-cockpit-text hover:bg-cockpit-panelHover'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="shrink-0 text-cockpit-muted">{item.icon}</span>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{item.label}</div>
+                      {item.sublabel && (
+                        <div className="text-[11px] text-cockpit-muted truncate">{item.sublabel}</div>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[10.5px] font-mono text-cockpit-muted uppercase tracking-wider shrink-0 ml-2">
+                    {item.group}
+                  </span>
+                </button>
+              );
+            })
           )}
-
-          {groups.map((group) => {
-            const groupItems = filtered.filter((item) => item.group === group);
-            if (groupItems.length === 0) return null;
-
-            return (
-              <div key={group} className="px-2 py-1">
-                <p className="label px-2 py-1.5">{group}</p>
-                {groupItems.map((item) => {
-                  runningIndex += 1;
-                  const itemIndex = runningIndex;
-                  const isSelected = itemIndex === selected;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => activate(item)}
-                      onMouseEnter={() => setSelected(itemIndex)}
-                      className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors ${
-                        isSelected
-                          ? 'bg-cockpit-accent text-white'
-                          : 'text-cockpit-text hover:bg-cockpit-panelHover'
-                      }`}
-                    >
-                      <span className={isSelected ? 'text-white' : 'text-cockpit-muted'}>
-                        {item.icon}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium">{item.label}</p>
-                        {item.sublabel && (
-                          <p
-                            className={`truncate font-mono text-[11px] ${
-                              isSelected ? 'text-white/80' : 'text-cockpit-muted'
-                            }`}
-                          >
-                            {item.sublabel}
-                          </p>
-                        )}
-                      </div>
-                      <ExternalLink className="h-3 w-3 shrink-0 opacity-40" />
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
