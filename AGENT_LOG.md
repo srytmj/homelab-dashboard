@@ -5,6 +5,19 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 05:00 UTC]
+**Agent:** Gemini (Real-Time Updater Engine & Unified Commit Sync v1.1.3)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Real-Time Update Engine:** Added 30-second client-side polling in `AppUpdateBanner.tsx` and reduced `githubCheckIntervalMs` to 60s in `server/src/config.ts`.
+- **Auto-Fetch on Check:** Updated `checkForUpdates()` in `app-update.service.ts` to run `git fetch origin ${branch}` and inspect local repo.
+- **Accurate Divergence Detection:** Eliminated version semver false-positives so that differing commit SHAs between local `HEAD` and remote `origin/main` always trigger an update status.
+- **Resilient Rebase & Reset Fallback:** Hardened `performUpdate()` to use `git pull --rebase origin ${branch}` with clean fallback to `git reset --hard origin/${branch}` to prevent stalled state on diverged local commits.
+- **Integrated Docker & Compose from docker-host:** Unified `Dockerfile` (optimized packages) and `docker-compose.yml` (mounted read-only `/root/.t3` volume for AI Agent telemetry).
+- **Bumped Version to 1.1.3:** Added release announcement in `announcements.json` and bumped `version.json` and `package.json` to `1.1.3`.
+
+---
+
 ### [2026-09-14 04:52 UTC]
 **Agent:** Gemini (Fleet Card View Sort Controls)
 **Status:** `[COMPLETED]`

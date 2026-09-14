@@ -423,6 +423,10 @@ async function bootstrap() {
     return { targets: terminalService.getTargetNames() };
   });
 
+  app.get('/api/ai-agents/telemetry', async () => {
+    return aiAgentsService.getTelemetry();
+  });
+
   app.get('/api/backup/status', async () => {
     return backupService.getStatus();
   });

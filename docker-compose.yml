@@ -54,7 +54,8 @@ services:
       # rclone remote config for backup/restore, set up once yourself on the
       # host with `rclone config` — Cockpit never handles Drive/Nextcloud
       # OAuth itself, only runs `rclone sync` against whatever you configure.
-      - ${RCLONE_CONFIG_PATH:-~/.config/rclone/rclone.conf}:/root/.config/rclone/rclone.conf:ro
+      # T3 Code AI agent telemetry (read-only SQLite state and caches)
+      - ${T3_DATA_PATH:-/var/lib/docker/volumes/docker-compose_t3code_data/_data/.t3}:/root/.t3:ro
       # In-browser terminal: one shared private key for every SSH_TARGETS
       # entry. Generate this pair yourself and put the public half in
       # authorized_keys on each target — Cockpit never generates or accepts

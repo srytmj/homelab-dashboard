@@ -217,6 +217,11 @@ export class AppUpdateService {
   public async checkForUpdates(force: boolean = false): Promise<AppUpdateStatus> {
     this.lastCheckedAt = Date.now();
     if (this.isGitRepo) {
+      try {
+        await execFile('git', ['-C', this.repoRoot, 'fetch', 'origin', this.branch], EXEC_OPTS);
+      } catch (err: any) {
+        console.warn('[AppUpdateService] git fetch warning during update check:', err.message);
+      }
       await this.inspectLocalRepo();
     }
 
@@ -227,7 +232,7 @@ export class AppUpdateService {
       }
 
       // Fetch latest commits
-      const commitsUrl = `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/commits?sha=${this.branch}&per_page=15`;
+      const commitsUrl = `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/commits?sha=${this.branch}&per_page=30`;
       const res = await fetch(commitsUrl, { headers });
       if (!res.ok) {
         throw new Error(`GitHub API returned ${res.status}`);
@@ -282,13 +287,8 @@ export class AppUpdateService {
           this.hasUpdate = true;
           this.behindBy = currentIndex;
         } else {
-          // Current SHA not found in top 15 commits.
-          // Compare version strings: if remoteVersion is defined and matches our current version, we are up-to-date!
-          if (remoteVersion && remoteVersion === this.version) {
-            this.hasUpdate = false;
-            this.behindBy = 0;
-          } else if (this.isGitRepo) {
-            // Check git rev-list to see if origin has commits ahead of us
+          // Current SHA not found in top commits (e.g. diverged local commit or older)
+          if (this.isGitRepo) {
             try {
               const { stdout: revCount } = await execFile(
                 'git',
@@ -296,15 +296,32 @@ export class AppUpdateService {
                 EXEC_OPTS
               );
               const count = parseInt(revCount.trim(), 10);
-              this.hasUpdate = count > 0;
-              this.behindBy = count;
+              const isDifferentSha = Boolean(
+                this.latestSha &&
+                this.currentSha !== 'unknown' &&
+                !this.latestSha.startsWith(this.currentSha) &&
+                !this.currentSha.startsWith(this.latestSha)
+              );
+              this.hasUpdate = count > 0 || isDifferentSha;
+              this.behindBy = count > 0 ? count : (isDifferentSha ? 1 : 0);
             } catch {
-              this.hasUpdate = false;
-              this.behindBy = 0;
+              const isDifferentSha = Boolean(
+                this.latestSha &&
+                this.currentSha !== 'unknown' &&
+                !this.latestSha.startsWith(this.currentSha) &&
+                !this.currentSha.startsWith(this.latestSha)
+              );
+              this.hasUpdate = isDifferentSha;
+              this.behindBy = this.hasUpdate ? 1 : 0;
             }
           } else {
-            // Static environment without git: only update if remoteVersion is different
-            this.hasUpdate = Boolean(remoteVersion && remoteVersion !== this.version);
+            const isDifferentSha = Boolean(
+              this.latestSha &&
+              this.currentSha !== 'unknown' &&
+              !this.latestSha.startsWith(this.currentSha) &&
+              !this.currentSha.startsWith(this.latestSha)
+            );
+            this.hasUpdate = isDifferentSha;
             this.behindBy = this.hasUpdate ? 1 : 0;
           }
         }
@@ -406,8 +423,16 @@ export class AppUpdateService {
       appendLog(`$ git fetch origin ${this.branch}`);
       await this.spawnCapture('git', ['-C', this.repoRoot, 'fetch', 'origin', this.branch], this.repoRoot, appendLog);
 
-      appendLog(`$ git pull origin ${this.branch}`);
-      await this.spawnCapture('git', ['-C', this.repoRoot, 'pull', 'origin', this.branch], this.repoRoot, appendLog);
+      appendLog(`$ git pull --rebase origin ${this.branch}`);
+      try {
+        await this.spawnCapture('git', ['-C', this.repoRoot, 'pull', '--rebase', 'origin', this.branch], this.repoRoot, appendLog);
+      } catch {
+        appendLog('ℹ Terdeteksi divergensi commit lokal. Melakukan sinkronisasi bersih ke origin...');
+        try {
+          await this.spawnCapture('git', ['-C', this.repoRoot, 'rebase', '--abort'], this.repoRoot, () => {});
+        } catch {}
+        await this.spawnCapture('git', ['-C', this.repoRoot, 'reset', '--hard', `origin/${this.branch}`], this.repoRoot, appendLog);
+      }
 
       const { stdout: headOut } = await execFile('git', ['-C', this.repoRoot, 'rev-parse', 'HEAD'], EXEC_OPTS);
       const newSha = headOut.trim();

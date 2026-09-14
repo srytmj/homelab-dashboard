@@ -49,7 +49,14 @@ export const AppUpdateBanner: React.FC = () => {
 
   useEffect(() => {
     fetchStatus();
-  }, []);
+    // Background polling every 30s to keep update detection real-time
+    const interval = setInterval(() => {
+      if (!isUpdating) {
+        fetchStatus();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isUpdating]);
 
   // Poll update progress when update is running
   useEffect(() => {
