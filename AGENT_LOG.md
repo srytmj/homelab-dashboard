@@ -5,6 +5,17 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 12:15 UTC]
+**Agent:** Gemini (Force Pull & Resilient Redeploy for Git Projects)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Identified Root Cause:** Standard `git pull` aborted when tracked files (such as `docker-compose.yml`) had local modifications on disk.
+- **Implemented Force Sync Pipeline:** Replaced `git pull` in `git-projects.service.ts` with `git fetch origin <branch>` and `git reset --hard origin/<branch>`, guaranteeing clean deployment without aborting.
+- **Data & Environment Protection:** Integrated auto-stash (`git stash push -m "Auto-stashed before pull and redeploy"`) prior to reset to safeguard tracked edits, while preserving all untracked runtime files (.env, bind mount data, databases).
+- **Version Bump & Announcements:** Added release announcement to `announcements.json` for v1.1.9 and bumped `package.json` and `version.json`.
+
+---
+
 ### [2026-09-14 11:51 UTC]
 **Agent:** Gemini (Fix Window Auto-Scroll Bug during App Update)
 **Status:** `[COMPLETED]`

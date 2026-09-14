@@ -1,5 +1,16 @@
 [
   {
+    "id": "2026-09-14-force-pull-resilient-redeploy",
+    "version": "1.1.9",
+    "title": "Force Pull & Auto-Stash Resilient Git Project Redeploy",
+    "date": "2026-09-14",
+    "description": "Menghilangkan kegagalan pull & redeploy akibat konflik perubahan lokal pada file repository (misal docker-compose.yml), dengan menerapkan force pull bersih via git fetch & reset --hard serta auto-stash pengaman data.",
+    "highlights": [
+      "Force Pull Pipeline: Mengganti git pull standar dengan git fetch + git reset --hard origin/<branch> untuk memastikan kontainer selalu ter-redeploy tanpa error Aborting.",
+      "Auto-Stash Data Protection: Perubahan lokal pada file tracked tersimpan otomatis ke git stash sebelum reset, sementara file untracked (.env, direktori database, volume data) tetap aman dan tidak tersentuh."
+    ]
+  },
+  {
     "id": "2026-09-14-fix-window-autoscroll-updater",
     "version": "1.1.8",
     "title": "Fix Window Auto-Scroll Lock during App Update",

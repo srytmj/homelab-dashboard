@@ -436,8 +436,26 @@ export class GitProjectsService {
     }
 
     try {
-      appendLog(`$ git pull origin ${record.branch}`);
-      await this.spawnCapture('git', ['-C', cwd, 'pull', 'origin', record.branch], cwd, appendLog);
+      // 1. Check for uncommitted tracked changes and safely stash them so user edits are not lost
+      try {
+        const { stdout: statusOut } = await execFile('git', ['-C', cwd, 'status', '--porcelain'], EXEC_OPTS);
+        if (statusOut.trim()) {
+          appendLog('ℹ Menemukan perubahan lokal pada repositori. Menyimpan backup sementara via git stash...');
+          appendLog('$ git stash push -m "Auto-stashed before pull and redeploy"');
+          await this.spawnCapture('git', ['-C', cwd, 'stash', 'push', '-m', 'Auto-stashed before pull and redeploy'], cwd, appendLog);
+        }
+      } catch (stashErr: any) {
+        // Non-blocking stash attempt
+        appendLog(`ℹ Stash info: ${stashErr.message || "clean working tree"}`);
+      }
+
+      // 2. Fetch latest commits from remote origin
+      appendLog(`$ git fetch origin ${record.branch}`);
+      await this.spawnCapture('git', ['-C', cwd, 'fetch', 'origin', record.branch], cwd, appendLog);
+
+      // 3. Force-sync working tree cleanly to remote branch (prevents merge aborts while keeping untracked .env & volume data intact)
+      appendLog(`$ git reset --hard origin/${record.branch}`);
+      await this.spawnCapture('git', ['-C', cwd, 'reset', '--hard', `origin/${record.branch}`], cwd, appendLog);
 
       const { stdout: shaOut } = await execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], EXEC_OPTS);
       const newSha = shaOut.trim();
