@@ -287,6 +287,43 @@ body {
     background-size: 10px 10px;
     background-position: 0 0;
   }
+  .beta-ui [class*="rounded"] {
+    border-radius: 0px !important;
+  }
+
+  .beta-ui [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .beta-ui * {
+    transition-duration: 75ms !important;
+  }
+
+  .beta-ui .container-card {
+    @apply rounded-none border-2 border-cockpit-text bg-cockpit-bg backdrop-blur-none shadow-[3px_3px_0_rgba(var(--cockpit-text)/1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[5px_5px_0_rgba(var(--cockpit-text)/1)];
+  }
+
+  .beta-ui .container-card-action {
+    @apply rounded-none border-2 border-cockpit-text bg-cockpit-bg text-cockpit-text hover:bg-cockpit-text hover:text-cockpit-bg active:scale-100;
+  }
+
+  /* Table overrides in Beta UI */
+  .beta-ui table {
+    @apply w-full border-collapse font-mono;
+  }
+
+  .beta-ui th {
+    @apply border-b-2 border-cockpit-text bg-cockpit-bg px-4 py-2.5 text-left font-mono text-[10px] font-black uppercase tracking-widest text-cockpit-text;
+  }
+
+  .beta-ui td {
+    @apply border-b border-cockpit-border/60 px-4 py-2.5 font-mono text-[12px] text-cockpit-text;
+  }
+
+  .beta-ui tr:hover td {
+    @apply bg-cockpit-text/5;
+  }
 
 }
 
@@ -353,4 +390,34 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+/* Beta Brutalist Scrollbars */
+.beta-ui ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.beta-ui ::-webkit-scrollbar-track {
+  background: var(--cockpit-bg);
+  border-left: 2px solid var(--cockpit-text);
+  border-top: 2px solid var(--cockpit-text);
+}
+
+.beta-ui ::-webkit-scrollbar-thumb {
+  background: var(--cockpit-text);
+  border: none;
+  border-radius: 0px;
+}
+
+@keyframes brutalistSlideIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.beta-ui .animate-fade-in,
+.beta-ui .animate-fade-in-up,
+.beta-ui .animate-panel-in {
+  animation: brutalistSlideIn 0.08s ease-out forwards !important;
 }

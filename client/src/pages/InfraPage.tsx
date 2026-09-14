@@ -63,6 +63,8 @@ const BackupPanel: React.FC = () => {
 
   useEffect(() => {
     loadStatus();
+    const interval = setInterval(loadStatus, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleRunBackup = async () => {
@@ -151,14 +153,12 @@ export const InfraPage: React.FC<InfraPageProps> = ({ snapshot, isPrivacyMode, o
       <div className="seg">
         <button
           onClick={() => setView('overview')}
-          className={`seg-btn ${view === 'overview' ? 'seg-btn-on' : ''}`}
-        >
+          className={`seg-btn ${view === 'overview' ? 'seg-btn-on' : ''}`}        >
           Overview
         </button>
         <button
           onClick={() => setView('performance')}
-          className={`seg-btn ${view === 'performance' ? 'seg-btn-on' : ''}`}
-        >
+          className={`seg-btn ${view === 'performance' ? 'seg-btn-on' : ''}`}        >
           Performance
         </button>
       </div>
@@ -167,12 +167,14 @@ export const InfraPage: React.FC<InfraPageProps> = ({ snapshot, isPrivacyMode, o
         <div className="space-y-4">
           <DockerHostsPanel snapshot={snapshot} />
 
-          <div className="grid items-start gap-4 lg:grid-cols-3">
-            <StorageMatrixSection
-              storage={snapshot?.storage}
-              hygiene={snapshot?.dockerHygiene}
-              onOpenPruneModal={onOpenPruneModal}
-            />
+          {/* Dedicated Full-Width Storage & DAS Watchdog Section */}
+          <StorageMatrixSection
+            storage={snapshot?.storage}
+            hygiene={snapshot?.dockerHygiene}
+            onOpenPruneModal={onOpenPruneModal}
+          />
+
+          <div className="grid items-start gap-4 lg:grid-cols-2">
             <TailscaleMatrixSection tailscale={snapshot?.tailscale} isPrivacyMode={isPrivacyMode} />
             <SslTrackerSection certificates={snapshot?.sslCertificates} isPrivacyMode={isPrivacyMode} />
           </div>

@@ -1,5 +1,19 @@
 [
   {
+    "id": "2026-09-14-beta-ui-perfection-dedicated-storage-smart",
+    "version": "1.1.7",
+    "title": "Beta UI Brutalist Perfection & Dedicated Storage SMART Watchdog",
+    "date": "2026-09-14",
+    "description": "Penyempurnaan visual Brutalist menyeluruh pada Beta UI, optimasi responsivitas mobile phone, serta pemisahan Storage & DAS Watchdog menjadi section mandiri lengkap dengan telemetri SMART dan I/O real-time.",
+    "highlights": [
+      "Dedicated Storage & DAS Watchdog: Memisahkan panel penyimpanan dari kolom sempit menjadi section penuh mandiri di InfraPage dengan detail LVM-thin allocations dan container workloads.",
+      "Real-Time SMART & I/O Telemetry: Menampilkan status SMART (PASSED/WARNING), throughput baca/tulis live (MB/s), active time disk %, serta latensi respons secara langsung.",
+      "Enhanced Canary Watchdog: Visualisasi status deteksi file .mounted live dengan pulse indicator untuk mencegah risiko overflow root filesystem saat enclosure eksternal terputus.",
+      "Overview Real-time Storage Vital: Menambahkan blok ringkasan Storage & DAS Watchdog ke dalam grid Core Vitals HomePage Beta.",
+      "Universal Brutalist Styling: Reset sudut rounded-none, penonaktifan backdrop blur, kustomisasi brutalist scrollbars, dan animasi snappy 0.08s di seluruh antarmuka Beta.",
+      "Mobile UX Refinement: Navigasi horizontal bar yang ergonomis dan penataan header actions rapi tanpa horizontal overflow pada layar HP."
+    ]
+  },
   {
     "id": "2026-09-14-beta-overview-parity-mobile",
     "version": "1.1.6",
@@ -35,6 +49,7 @@
       "Pembaruan Dokumentasi: Pembersihan screenshot lawas di README menyisakan overview interface dashboard utama"
     ]
   },
+  {
     "id": "2026-09-14-realtime-updater-fleet-sort",
     "version": "1.1.3",
     "title": "Real-Time Update Engine, Fleet Card Sorting & T3 Volume Wire",

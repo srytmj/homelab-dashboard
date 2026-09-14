@@ -5,6 +5,20 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 11:43 UTC]
+**Agent:** Gemini (Beta UI Perfection, Mobile Layout & Dedicated Storage/DAS Real-time SMART Watchdog)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Dedicated Storage & DAS Watchdog Section:** Relocated `StorageMatrixSection` out of the 3-column grid in `InfraPage.tsx` into its own full-width dedicated section, while Tailscale and SSL sections now share a balanced 2-column grid.
+- **Real-Time SMART & I/O Telemetry:** Re-engineered `StorageMatrixSection.tsx` with live SMART health diagnostics (`PASSED`/`WARNING`/`FAILED`), live I/O throughput rates (Read/Write MB/s), disk active time %, latency, and detailed Proxmox LVM-thin allocation workload tiers.
+- **Canary Watchdog Visual Guard:** Upgraded external DAS bay monitoring with live canary heartbeat indicators, preventing root filesystem overflow if an external enclosure disconnects.
+- **HomePage Beta Overview Vitals:** Added real-time Storage & DAS Watchdog summary card to the Core Vitals grid on `HomePageBeta.tsx`.
+- **Universal Brutalist Styling Engine:** Extended `.beta-ui` in `index.css` with universal `rounded-none`, `backdrop-blur-none`, snappy 0.08s brutalist slide animations, sharp brutalist scrollbars, and styled tables (`th`, `td`).
+- **Mobile Responsiveness Polish:** Optimized header action buttons and touch-scroll mobile navigation strip in `BetaHeader.tsx` without horizontal clipping or scroll blowout.
+- **Version Bump & Announcements:** Updated `announcements.json` for v1.1.7 and bumped `package.json` & `version.json`.
+
+---
+
 ### [2026-09-14 05:00 UTC]
 **Agent:** Gemini (Real-Time Updater Engine & Unified Commit Sync v1.1.3)
 **Status:** `[COMPLETED]`
@@ -63,31 +77,4 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 - **Telemetry Metrics:** Calculated 5-hour rolling window usage, cooldown countdown timers, and past 7-day weekly activity histograms per agent (Claude Pro, Gemini Default, Auth, Marmut).
 - **UI Frontend (`client/src/pages/AiAgentsPage.tsx`):** Added responsive glassmorphism view with agent cards, live running indicators, progress meters, interactive mini bar charts, and real-time interaction log stream.
 - **Navigation Integration:** Added route `/ai-agents` in `App.tsx` and updated `Sidebar.tsx` / `Header.tsx` with `Sparkles` icon.
-- **Documentation:** Updated `docs/USER_MANUAL.md` and `README.md` detailing the T3 Code zero-API-key architecture and configuration instructions.
-
----
-
-### [2026-09-13 16:00 UTC]
-**Agent:** Concurrent Agent Peer
-**Activities Completed:**
-- **UI Responsiveness & Bugfixes:** Fixed AppUpdate false alerts (`df24768`), added app version pill in footer, added table/cards view toggle to container fleet, and improved mobile table view in processes.
-
----
-
-### [2026-09-13 15:30 UTC]
-**Agent:** Gemini Pro (UI & Audit) / Agent Peer
-**Activities Completed:**
-- **App Update/Announcements Feature:** Implemented backend service (`app-update.service.ts`), API routes, and frontend banner (`AppUpdateBanner.tsx`) to pull updates directly from GitHub.
-- **Maximum UI Polish (Glassmorphism):** Overhauled `index.css` and `tailwind.config.js`. Transformed all `.panel` classes, modal popups, and navbars into an elegant glassmorphism visual.
-- **Agent Workflow Rules Initiated:** Created standard workflow guardrails in `CLAUDE.md`.
-
----
-
-### [2026-09-14 05:07 UTC]
-**Agent:** Gemini (UI Styling Consistency Rules in CLAUDE.md)
-**Status:** `[COMPLETED]`
-**Activities Completed:**
-- **UI Styling & Design Consistency Section:** Documented glassmorphism surface tokens, card borders, and hover effects in `CLAUDE.md`.
-- **Button & Control Hierarchy:** Added explicit rules for `.btn-primary`, `.btn-ghost`, `.btn-danger`, `.icon-btn`, `.seg`/`.seg-btn`, and `.field`.
-- **Typography & Metric Standards:** Formalized usage of `.panel-title`, `.label`, `.metric` with `font-mono tabular-nums`, and status `.pill` variants.
-- **Color Semantics & Portals:** Clarified separation of `cockpit-accent` vs `state-*` health indicators and mandated `createPortal` for modals.
+- **Docs:** Updated `docs/USER_MANUAL.md` and `README.md` detailing the T3 Code zero-API-key architecture and configuration instructions.

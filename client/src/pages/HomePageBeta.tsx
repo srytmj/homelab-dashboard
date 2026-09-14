@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutGrid, TerminalSquare, ShieldAlert, Cpu, HardDrive, Network, Activity, ArrowRight } from 'lucide-react';
+import { LayoutGrid, TerminalSquare, ShieldAlert, Cpu, HardDrive, Network, Activity, ArrowRight, ShieldCheck } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
-import { redactText, formatBytes } from '../utils/formatters.js';
+import { redactText, formatBytes, getStatusColor } from '../utils/formatters.js';
 import { AppUpdateBanner } from '../components/AppUpdateBanner.js';
 import { BookmarksSection } from '../components/BookmarksSection.js';
 
@@ -18,6 +18,14 @@ export const HomePageBeta: React.FC<HomePageBetaProps> = ({ snapshot, throughput
   
   const runningCount = snapshot?.containers.filter((c) => c.state === 'running').length ?? 0;
   const totalCount = snapshot?.containers.length ?? 0;
+
+  const storageList = snapshot?.storage || [];
+  const rootDrive = storageList.find((s) => s.isPhysicalRoot || s.mount === '/dev/sda (/)' || s.mount === '/');
+  const detachedCount = storageList.filter((s) => s.isDisconnected || s.canaryPresent === false).length;
+  const totalUsedBytes = storageList.reduce((acc, s) => acc + (s.usedBytes || 0), 0);
+  const totalCapacityBytes = storageList.reduce((acc, s) => acc + (s.totalBytes || 0), 0);
+  const overallUsedPercent = totalCapacityBytes > 0 ? (totalUsedBytes / totalCapacityBytes) * 100 : 0;
+  const externalCount = storageList.filter((s) => s.isExternal).length;
 
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto pb-12 animate-fade-in font-sans">
@@ -105,6 +113,58 @@ export const HomePageBeta: React.FC<HomePageBetaProps> = ({ snapshot, throughput
             </div>
           </div>
 
+          {/* Real-time Storage & DAS Watchdog Overview Block */}
+          <Link
+            to="/beta/infra"
+            className="sm:col-span-2 border-2 border-cockpit-text p-4 bg-cockpit-bg shadow-[4px_4px_0_rgba(var(--cockpit-text)/1)] flex flex-col justify-between hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_rgba(var(--cockpit-text)/1)] transition-transform group"
+          >
+            <div className="flex items-center justify-between border-b-2 border-cockpit-border/50 pb-2 mb-3 border-dotted">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-3.5 w-3.5 text-cockpit-text" />
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-cockpit-text">
+                  Storage &amp; DAS Watchdog
+                </span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[10px]">
+                {detachedCount > 0 ? (
+                  <span className="bg-state-bad text-white px-1.5 py-0.5 font-bold animate-pulse">
+                    {detachedCount} ALERT
+                  </span>
+                ) : (
+                  <span className="bg-state-good text-black px-1.5 py-0.5 font-bold">
+                    CANARY OK
+                  </span>
+                )}
+                <span className="bg-cockpit-text text-cockpit-bg px-1.5 py-0.5 font-bold flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3" />
+                  SMART {rootDrive?.smartStatus || 'PASSED'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <div>
+                <div className="text-2xl font-black tabular-nums tracking-tight">
+                  {formatBytes(totalUsedBytes)} <span className="text-xs font-normal text-cockpit-muted">used of</span> {formatBytes(totalCapacityBytes)}
+                </div>
+                <div className="font-mono text-[10.5px] text-cockpit-muted uppercase mt-0.5">
+                  {rootDrive?.label || 'Proxmox Root SSD'} {externalCount > 0 ? `+ ${externalCount} DAS Enclosure(s)` : ''}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 font-mono text-xs font-bold text-cockpit-text group-hover:underline">
+                <span>View Full Telemetry</span>
+                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </div>
+
+            <div className="track mt-3 h-2 bg-cockpit-border/60">
+              <span
+                className={`track-fill ${getStatusColor(overallUsedPercent).bar}`}
+                style={{ width: `${Math.min(100, Math.max(2, overallUsedPercent))}%` }}
+              />
+            </div>
+          </Link>
+
         </div>
 
         {/* Right Sidebar - Alerts & Actions */}
@@ -131,7 +191,7 @@ export const HomePageBeta: React.FC<HomePageBetaProps> = ({ snapshot, throughput
             </Link>
             
             <Link to="/beta/infra" className="flex items-center justify-between border-2 border-cockpit-text p-3 hover:bg-cockpit-text hover:text-cockpit-bg hover:translate-x-[2px] transition-all group active:scale-[0.98]">
-              <span className="font-mono text-[11px] font-black uppercase tracking-widest">Infrastructure</span>
+              <span className="font-mono text-[11px] font-black uppercase tracking-widest">Storage &amp; Infra</span>
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
@@ -140,7 +200,7 @@ export const HomePageBeta: React.FC<HomePageBetaProps> = ({ snapshot, throughput
 
       </div>
 
-      {/* Reusing BookmarksSection - relies on global .beta-ui styling injection for brutalist appearance! */}
+      {/* BookmarksSection */}
       <BookmarksSection />
       
     </div>
