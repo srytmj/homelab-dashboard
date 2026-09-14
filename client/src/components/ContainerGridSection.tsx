@@ -210,8 +210,8 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
   const [hostFilter, setHostFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<SortKey>('cpu');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<SortKey>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
@@ -277,7 +277,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
       setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
     } else {
       setSortBy(column);
-      setSortOrder('desc');
+      setSortOrder(column === 'name' ? 'asc' : 'desc');
     }
   };
 
@@ -340,6 +340,44 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
           </div>
 
           {hostNames.length > 1 && <HostFilter hosts={hostNames} value={hostFilter} onChange={setHostFilter} />}
+
+          {/* Card View Sort Controls */}
+          {viewMode === 'cards' && (
+            <div className="flex items-center gap-1.5" title="Sort fleet containers">
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    const key = e.target.value as SortKey;
+                    setSortBy(key);
+                    setSortOrder(key === 'name' ? 'asc' : 'desc');
+                  }}
+                  className="field py-1 pl-2.5 pr-7 text-[12px] bg-cockpit-panel cursor-pointer rounded-lg border-cockpit-border focus:border-cockpit-accent text-cockpit-text"
+                >
+                  <option value="name">Sort: Name</option>
+                  <option value="cpu">Sort: CPU</option>
+                  <option value="ram">Sort: RAM</option>
+                  <option value="network">Sort: Network</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-cockpit-muted" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                title={sortOrder === 'asc' ? 'Ascending (A-Z / Min-Max) - Click for Descending' : 'Descending (Z-A / Max-Min) - Click for Ascending'}
+                className="icon-btn h-[33px] px-2 flex items-center gap-1 border border-cockpit-border hover:border-cockpit-accent/40 rounded-lg"
+              >
+                {sortOrder === 'asc' ? (
+                  <ArrowUp className="h-3.5 w-3.5 text-cockpit-accent" />
+                ) : (
+                  <ArrowDown className="h-3.5 w-3.5 text-cockpit-accent" />
+                )}
+                <span className="text-[10px] font-mono uppercase text-cockpit-muted">
+                  {sortOrder}
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* View Mode Toggle */}
           <div className="seg hidden sm:inline-flex" title="Switch layout view">

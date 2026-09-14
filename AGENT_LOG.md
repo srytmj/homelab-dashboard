@@ -5,6 +5,16 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-14 04:52 UTC]
+**Agent:** Gemini (Fleet Card View Sort Controls)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Default Sort by Name:** Changed default sorting in Container Fleet (`client/src/components/ContainerGridSection.tsx`) from `cpu` (desc) to `name` (asc A-Z).
+- **Sort Controls in Cards View:** Added dedicated Sort By dropdown (Name, CPU, RAM, Network) and toggle order button (ASC / DESC with direction arrow icons) in the toolbar when in Card View mode.
+- **Bi-directional Order Memory:** Made column toggles default to ascending for name and descending for resource metrics (CPU/RAM/NET).
+
+---
+
 ### [2026-09-13 16:47 UTC]
 **Agent:** Gemini (Show Google Account Email on Antigravity Cards)
 **Status:** `[COMPLETED]`
