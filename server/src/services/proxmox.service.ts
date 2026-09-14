@@ -1,5 +1,16 @@
-import { PveHostMetrics, PveBackupVitals } from '../types.js';
+import {
+  PveHostMetrics,
+  PveBackupVitals,
+  PveStorageVitals,
+  PveStoragePool,
+  StorageAllocationItem,
+} from '../types.js';
 import { config } from '../config.js';
+
+// If rejectUnauthorized is false, allow connecting to homelab self-signed certs
+if (config.proxmox.rejectUnauthorized === false) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 export class ProxmoxService {
   private isConfigured: boolean;
@@ -12,14 +23,17 @@ export class ProxmoxService {
     );
   }
 
-  public async getMetrics(): Promise<PveHostMetrics> {
+  public async getMetrics(localLxcRootUsage?: { used: number; total: number }): Promise<PveHostMetrics> {
     if (!this.isConfigured || config.demoMode) {
-      return this.getSimulatedMetrics();
+      return this.getSimulatedMetrics(localLxcRootUsage);
     }
 
     try {
-      const nodeStatus = await this.fetchNodeStatus();
-      const backupVitals = await this.fetchBackupVitals();
+      const [nodeStatus, backupVitals, storageVitals] = await Promise.all([
+        this.fetchNodeStatus(),
+        this.fetchBackupVitals(),
+        this.getStorageVitals(localLxcRootUsage),
+      ]);
 
       const cpuPercent = Number(((nodeStatus.cpu || 0) * 100).toFixed(1));
       const ramUsedBytes = nodeStatus.memory?.used || 0;
@@ -46,25 +60,263 @@ export class ProxmoxService {
         uptimeSeconds: nodeStatus.uptime || 0,
         pveVersion: nodeStatus.pveversion || 'pve-manager/8.2',
         backupVitals,
+        storageVitals,
       };
     } catch (err: any) {
       console.warn(`[ProxmoxService] API call failed: ${err.message}. Using simulated fallback.`);
-      return this.getSimulatedMetrics();
+      return this.getSimulatedMetrics(localLxcRootUsage);
     }
   }
 
-  private async fetchNodeStatus(): Promise<any> {
-    const { url, node, tokenId, tokenSecret, rejectUnauthorized } = config.proxmox;
-    const endpoint = `${url}/api2/json/nodes/${node}/status`;
+  public async getStorageVitals(localLxcRootUsage?: { used: number; total: number }): Promise<PveStorageVitals> {
+    if (!this.isConfigured || config.demoMode) {
+      return this.getSimulatedStorageVitals(localLxcRootUsage);
+    }
+
+    try {
+      const [disks, pools, lxcs] = await Promise.all([
+        this.fetchPveJson<any[]>('/disks/list').catch(() => null),
+        this.fetchPveJson<any[]>('/storage').catch(() => null),
+        this.fetchPveJson<any[]>('/lxc').catch(() => null),
+      ]);
+
+      if (!disks && !pools) {
+        return this.getSimulatedStorageVitals(localLxcRootUsage);
+      }
+
+      // Find physical disk /dev/sda or MidasForce SSD 256GB
+      const sda =
+        disks?.find((d: any) => d.devpath === '/dev/sda') ||
+        disks?.find((d: any) => (d.model || '').toLowerCase().includes('midasforce') || d.type === 'ssd') ||
+        disks?.[0];
+
+      const physicalDiskSize = sda?.size || 256060514304; // 256 GB (238.47 GiB)
+      const physicalModel = sda?.model || 'MidasForce SSD 256GB';
+      const rawSmart = String(sda?.health || 'PASSED').toUpperCase();
+      const smartStatus: 'PASSED' | 'WARNING' | 'FAILED' | 'UNKNOWN' =
+        rawSmart.includes('PASS') || rawSmart === 'OK'
+          ? 'PASSED'
+          : rawSmart.includes('WARN')
+          ? 'WARNING'
+          : rawSmart.includes('FAIL')
+          ? 'FAILED'
+          : 'UNKNOWN';
+
+      // Parse pools (local, local-lvm)
+      const parsedPools: PveStoragePool[] = (pools || []).map((p: any) => ({
+        id: p.storage,
+        type: p.type,
+        totalBytes: p.total || 0,
+        usedBytes: p.used || 0,
+        freeBytes: p.avail || 0,
+        usedPercent: p.total ? Number(((p.used / p.total) * 100).toFixed(1)) : 0,
+        active: Boolean(p.active),
+        content: p.content,
+      }));
+
+      const localPool = parsedPools.find((p) => p.id === 'local') || {
+        id: 'local',
+        type: 'dir',
+        totalBytes: 32212254720,
+        usedBytes: 8808038400,
+        freeBytes: 23404216320,
+        usedPercent: 27.3,
+        active: true,
+        content: 'iso,vztmpl,backup',
+      };
+
+      const localLvmPool = parsedPools.find((p) => p.id === 'local-lvm') || {
+        id: 'local-lvm',
+        type: 'lvmthin',
+        totalBytes: 168589934592, // ~157 GiB thin pool
+        usedBytes: 52102103040,
+        freeBytes: 116487831552,
+        usedPercent: 30.9,
+        active: true,
+        content: 'rootdir,images',
+      };
+
+      // Match LXC allocations
+      const lxc100 = lxcs?.find((c: any) => String(c.vmid) === '100');
+      const lxc101 = lxcs?.find((c: any) => String(c.vmid) === '101');
+
+      // LXC 100: docker-host (150 GB allocated)
+      const lxc100Allocated = lxc100?.maxdisk || 150 * 1024 * 1024 * 1024;
+      const lxc100Used = localLxcRootUsage?.used || lxc100?.disk || 46091173888;
+
+      // LXC 101: apps-host (30 GB allocated)
+      const lxc101Allocated = lxc101?.maxdisk || 30 * 1024 * 1024 * 1024;
+      const lxc101Used = lxc101?.disk || 6012954240;
+
+      // PVE host local
+      const pveHostAllocated = localPool.totalBytes || 32212254720;
+      const pveHostUsed = localPool.usedBytes || 8808038400;
+
+      const allocations: StorageAllocationItem[] = [
+        {
+          id: 'alloc_pve_local',
+          name: 'PVE Host (local)',
+          type: 'pve-host',
+          allocatedBytes: pveHostAllocated,
+          usedBytes: pveHostUsed,
+          freeBytes: Math.max(0, pveHostAllocated - pveHostUsed),
+          usedPercent: Number(((pveHostUsed / pveHostAllocated) * 100).toFixed(1)),
+          shareOfDiskPercent: Number(((pveHostAllocated / physicalDiskSize) * 100).toFixed(1)),
+        },
+        {
+          id: 'alloc_lxc_100',
+          name: 'LXC 100: docker-host',
+          type: 'lxc',
+          vmid: '100',
+          allocatedBytes: lxc100Allocated,
+          usedBytes: lxc100Used,
+          freeBytes: Math.max(0, lxc100Allocated - lxc100Used),
+          usedPercent: Number(((lxc100Used / lxc100Allocated) * 100).toFixed(1)),
+          shareOfDiskPercent: Number(((lxc100Allocated / physicalDiskSize) * 100).toFixed(1)),
+        },
+        {
+          id: 'alloc_lxc_101',
+          name: 'LXC 101: apps-host',
+          type: 'lxc',
+          vmid: '101',
+          allocatedBytes: lxc101Allocated,
+          usedBytes: lxc101Used,
+          freeBytes: Math.max(0, lxc101Allocated - lxc101Used),
+          usedPercent: Number(((lxc101Used / lxc101Allocated) * 100).toFixed(1)),
+          shareOfDiskPercent: Number(((lxc101Allocated / physicalDiskSize) * 100).toFixed(1)),
+        },
+      ];
+
+      const totalUsedBytes = pveHostUsed + (localLvmPool.usedBytes || (lxc100Used + lxc101Used));
+      const totalFreeBytes = Math.max(0, physicalDiskSize - totalUsedBytes);
+      const usedPercent = Number(((totalUsedBytes / physicalDiskSize) * 100).toFixed(1));
+
+      return {
+        connected: true,
+        physicalDisk: {
+          devpath: sda?.devpath || '/dev/sda',
+          model: physicalModel,
+          sizeBytes: physicalDiskSize,
+          smartStatus,
+          type: sda?.type || 'ssd',
+          serial: sda?.serial,
+        },
+        pools: parsedPools.length > 0 ? parsedPools : [localPool, localLvmPool],
+        allocations,
+        totalBytes: physicalDiskSize,
+        usedBytes: totalUsedBytes,
+        freeBytes: totalFreeBytes,
+        usedPercent,
+        allocatedBytes: pveHostAllocated + lxc100Allocated + lxc101Allocated,
+      };
+    } catch (err: any) {
+      console.warn(`[ProxmoxService] Storage vitals fetch failed: ${err.message}. Using simulated fallback.`);
+      return this.getSimulatedStorageVitals(localLxcRootUsage);
+    }
+  }
+
+  public getSimulatedStorageVitals(localLxcRootUsage?: { used: number; total: number }): PveStorageVitals {
+    const physicalDiskSize = 256060514304; // 256 GB (238.47 GiB)
+    const pveHostAllocated = 32212254720; // 30 GB
+    const pveHostUsed = 8808038400; // ~8.2 GB
+
+    const lxc100Allocated = 161061273600; // 150 GB
+    const lxc100Used = localLxcRootUsage?.used || 46091173888; // ~42.9 GB
+
+    const lxc101Allocated = 32212254720; // 30 GB
+    const lxc101Used = 6012954240; // ~5.6 GB
+
+    const totalUsedBytes = pveHostUsed + lxc100Used + lxc101Used;
+    const totalFreeBytes = Math.max(0, physicalDiskSize - totalUsedBytes);
+    const usedPercent = Number(((totalUsedBytes / physicalDiskSize) * 100).toFixed(1));
+
+    const allocations: StorageAllocationItem[] = [
+      {
+        id: 'alloc_pve_local',
+        name: 'PVE Host (local)',
+        type: 'pve-host',
+        allocatedBytes: pveHostAllocated,
+        usedBytes: pveHostUsed,
+        freeBytes: Math.max(0, pveHostAllocated - pveHostUsed),
+        usedPercent: Number(((pveHostUsed / pveHostAllocated) * 100).toFixed(1)),
+        shareOfDiskPercent: Number(((pveHostAllocated / physicalDiskSize) * 100).toFixed(1)),
+      },
+      {
+        id: 'alloc_lxc_100',
+        name: 'LXC 100: docker-host',
+        type: 'lxc',
+        vmid: '100',
+        allocatedBytes: lxc100Allocated,
+        usedBytes: lxc100Used,
+        freeBytes: Math.max(0, lxc100Allocated - lxc100Used),
+        usedPercent: Number(((lxc100Used / lxc100Allocated) * 100).toFixed(1)),
+        shareOfDiskPercent: Number(((lxc100Allocated / physicalDiskSize) * 100).toFixed(1)),
+      },
+      {
+        id: 'alloc_lxc_101',
+        name: 'LXC 101: apps-host',
+        type: 'lxc',
+        vmid: '101',
+        allocatedBytes: lxc101Allocated,
+        usedBytes: lxc101Used,
+        freeBytes: Math.max(0, lxc101Allocated - lxc101Used),
+        usedPercent: Number(((lxc101Used / lxc101Allocated) * 100).toFixed(1)),
+        shareOfDiskPercent: Number(((lxc101Allocated / physicalDiskSize) * 100).toFixed(1)),
+      },
+    ];
+
+    const pools: PveStoragePool[] = [
+      {
+        id: 'local',
+        type: 'dir',
+        totalBytes: pveHostAllocated,
+        usedBytes: pveHostUsed,
+        freeBytes: pveHostAllocated - pveHostUsed,
+        usedPercent: 27.3,
+        active: true,
+        content: 'iso,vztmpl,backup',
+      },
+      {
+        id: 'local-lvm',
+        type: 'lvmthin',
+        totalBytes: 168589934592, // ~157 GiB thin pool
+        usedBytes: lxc100Used + lxc101Used,
+        freeBytes: 168589934592 - (lxc100Used + lxc101Used),
+        usedPercent: 30.9,
+        active: true,
+        content: 'rootdir,images',
+      },
+    ];
+
+    return {
+      connected: this.isConfigured,
+      physicalDisk: {
+        devpath: '/dev/sda',
+        model: 'MidasForce SSD 256GB',
+        sizeBytes: physicalDiskSize,
+        smartStatus: 'PASSED',
+        type: 'ssd',
+      },
+      pools,
+      allocations,
+      totalBytes: physicalDiskSize,
+      usedBytes: totalUsedBytes,
+      freeBytes: totalFreeBytes,
+      usedPercent,
+      allocatedBytes: pveHostAllocated + lxc100Allocated + lxc101Allocated,
+    };
+  }
+
+  private async fetchPveJson<T>(apiPath: string): Promise<T | null> {
+    if (!this.isConfigured) return null;
+    const { url, node, tokenId, tokenSecret } = config.proxmox;
+    const endpoint = `${url}/api2/json/nodes/${node}${apiPath}`;
 
     const res = await fetch(endpoint, {
       headers: {
-        'Authorization': `PVEAPIToken=${tokenId}=${tokenSecret}`,
-        'Accept': 'application/json',
+        Authorization: `PVEAPIToken=${tokenId}=${tokenSecret}`,
+        Accept: 'application/json',
       },
-      // Node 18+ native fetch with dispatcher or TLS agent
-      // @ts-ignore
-      rejectUnauthorized,
       signal: AbortSignal.timeout(3000),
     });
 
@@ -72,41 +324,32 @@ export class ProxmoxService {
       throw new Error(`HTTP ${res.status} ${res.statusText}`);
     }
 
-    const data = (await res.json()) as { data: any };
-    return data.data;
+    const json = (await res.json()) as { data: T };
+    return json.data;
+  }
+
+  private async fetchNodeStatus(): Promise<any> {
+    const data = await this.fetchPveJson<any>('/status');
+    if (!data) throw new Error('No data received from node status');
+    return data;
   }
 
   private async fetchBackupVitals(): Promise<PveBackupVitals> {
     try {
-      const { url, node, tokenId, tokenSecret, rejectUnauthorized } = config.proxmox;
-      const endpoint = `${url}/api2/json/nodes/${node}/tasks?typefilter=vzdump&limit=1`;
-
-      const res = await fetch(endpoint, {
-        headers: {
-          'Authorization': `PVEAPIToken=${tokenId}=${tokenSecret}`,
-          'Accept': 'application/json',
-        },
-        // @ts-ignore
-        rejectUnauthorized,
-        signal: AbortSignal.timeout(3000),
-      });
-
-      if (res.ok) {
-        const json = await res.json() as any;
-        const lastTask = json.data?.[0];
-        if (lastTask) {
-          const isSuccess = lastTask.status === 'OK';
-          return {
-            status: isSuccess ? 'succeeded' : 'failed',
-            lastBackupTime: new Date(lastTask.endtime * 1000).toLocaleString(),
-            lastBackupTimestamp: lastTask.endtime * 1000,
-            targetStorage: 'pve-backup (DAS Bay 2)',
-            backupSizeBytes: 14800000000, // ~14.8 GB
-            durationSeconds: (lastTask.endtime - lastTask.starttime) || 240,
-            vmid: '100 (docker-host)',
-            logSummary: isSuccess ? 'Backup finished successfully without errors' : lastTask.status,
-          };
-        }
+      const data = await this.fetchPveJson<any[]>('/tasks?typefilter=vzdump&limit=1');
+      const lastTask = data?.[0];
+      if (lastTask) {
+        const isSuccess = lastTask.status === 'OK';
+        return {
+          status: isSuccess ? 'succeeded' : 'failed',
+          lastBackupTime: new Date(lastTask.endtime * 1000).toLocaleString(),
+          lastBackupTimestamp: lastTask.endtime * 1000,
+          targetStorage: 'pve-backup (DAS Bay 2)',
+          backupSizeBytes: 14800000000, // ~14.8 GB
+          durationSeconds: lastTask.endtime - lastTask.starttime || 240,
+          vmid: '100 (docker-host)',
+          logSummary: isSuccess ? 'Backup finished successfully without errors' : lastTask.status,
+        };
       }
     } catch {
       // fallback
@@ -131,7 +374,7 @@ export class ProxmoxService {
     };
   }
 
-  private getSimulatedMetrics(): PveHostMetrics {
+  private getSimulatedMetrics(localLxcRootUsage?: { used: number; total: number }): PveHostMetrics {
     const now = Date.now();
     const mockCpuPercent = Number((14.5 + Math.sin(now / 5000) * 4.5).toFixed(1));
     const mockRamPercent = 58.2;
@@ -153,6 +396,7 @@ export class ProxmoxService {
       uptimeSeconds: 846200, // ~9 days
       pveVersion: 'pve-manager/8.2.4',
       backupVitals: this.getSimulatedBackupVitals(),
+      storageVitals: this.getSimulatedStorageVitals(localLxcRootUsage),
     };
   }
 }

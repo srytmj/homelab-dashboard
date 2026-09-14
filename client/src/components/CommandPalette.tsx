@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ExternalLink, ArrowRight, Terminal, Pin } from 'lucide-react';
+import { Search, ExternalLink, ArrowRight, Pin } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { redactText } from '../utils/formatters.js';
 
@@ -24,12 +24,14 @@ interface PaletteItem {
 
 const PAGES = [
   { path: '/', label: 'Overview' },
+  { path: '/beta', label: 'Beta UI (Experimental)' },
   { path: '/fleet', label: 'Fleet' },
   { path: '/infra', label: 'Infra' },
   { path: '/git-projects', label: 'Git projects' },
   { path: '/processes', label: 'Processes' },
   { path: '/terminal', label: 'Terminal' },
   { path: '/sentinel', label: 'Sentinel' },
+  { path: '/ai-agents', label: 'AI Agents' },
 ];
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -158,41 +160,33 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                       onClick={() => activate(item)}
                       onMouseEnter={() => setSelected(itemIndex)}
                       className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors ${
-                        isSelected ? 'bg-cockpit-accent/10 text-cockpit-accent' : 'text-cockpit-text'
+                        isSelected
+                          ? 'bg-cockpit-accent text-white'
+                          : 'text-cockpit-text hover:bg-cockpit-panelHover'
                       }`}
                     >
-                      <span className={isSelected ? 'text-cockpit-accent' : 'text-cockpit-muted'}>{item.icon}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium">{item.label}</span>
-                        {item.sublabel && (
-                          <span className="block truncate font-mono text-[11px] text-cockpit-muted">
-                            {item.sublabel}
-                          </span>
-                        )}
+                      <span className={isSelected ? 'text-white' : 'text-cockpit-muted'}>
+                        {item.icon}
                       </span>
-                      {item.group === 'Pinned containers' && (
-                        <ExternalLink className="h-3 w-3 shrink-0 text-cockpit-muted" />
-                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium">{item.label}</p>
+                        {item.sublabel && (
+                          <p
+                            className={`truncate font-mono text-[11px] ${
+                              isSelected ? 'text-white/80' : 'text-cockpit-muted'
+                            }`}
+                          >
+                            {item.sublabel}
+                          </p>
+                        )}
+                      </div>
+                      <ExternalLink className="h-3 w-3 shrink-0 opacity-40" />
                     </button>
                   );
                 })}
               </div>
             );
           })}
-
-          {items.filter((i) => i.group === 'Pinned containers').length === 0 && !query && (
-            <p className="px-4 py-3 text-[12px] text-cockpit-muted">
-              Nothing pinned yet — pin a container from the Fleet table to launch it from here.
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4 border-t border-cockpit-border px-4 py-2 font-mono text-[10.5px] text-cockpit-muted">
-          <span className="flex items-center gap-1">
-            <Terminal className="h-3 w-3" /> Ctrl+K anywhere
-          </span>
-          <span>↑↓ to move</span>
-          <span>Enter to open</span>
         </div>
       </div>
     </div>

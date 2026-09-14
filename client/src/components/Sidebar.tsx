@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home,
+  LayoutGrid,
   Boxes,
   Server,
   GitBranch,
@@ -15,6 +16,7 @@ import {
 
 export const NAV_ROUTES = [
   { path: '/', label: 'Overview', icon: Home },
+  { path: '/beta', label: 'Beta UI', icon: LayoutGrid, isBeta: true },
   { path: '/fleet', label: 'Fleet', icon: Boxes },
   { path: '/infra', label: 'Infra', icon: Server },
   { path: '/git-projects', label: 'Git projects', icon: GitBranch },
@@ -63,15 +65,22 @@ export const Sidebar: React.FC = () => {
               end={route.path === '/'}
               title={route.label}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors duration-150 ${
+                `flex items-center justify-between rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors duration-150 ${
                   isActive
                     ? 'bg-cockpit-accent/10 text-cockpit-accent'
                     : 'text-cockpit-muted hover:bg-cockpit-panelHover hover:text-cockpit-text'
                 }`
               }
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span className="truncate">{route.label}</span>}
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Icon className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span className="truncate">{route.label}</span>}
+              </div>
+              {!isCollapsed && route.isBeta && (
+                <span className="rounded bg-blue-500/20 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-blue-400 border border-blue-500/30">
+                  Beta
+                </span>
+              )}
             </NavLink>
           );
         })}
@@ -80,9 +89,9 @@ export const Sidebar: React.FC = () => {
       <button
         onClick={toggle}
         title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="m-2 flex items-center justify-center gap-2 rounded-lg border border-cockpit-border bg-cockpit-bg py-1.5 text-cockpit-muted transition-colors hover:text-cockpit-text"
+        className="flex items-center justify-center border-t border-cockpit-border/60 py-2.5 text-cockpit-muted transition-colors duration-150 hover:bg-cockpit-panelHover hover:text-cockpit-text"
       >
-        {isCollapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
+        {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
       </button>
     </aside>
   );

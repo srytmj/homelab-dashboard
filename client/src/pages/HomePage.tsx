@@ -19,6 +19,7 @@ export const HomePage: React.FC<HomePageProps> = ({ snapshot, throughput, isPriv
   const pinnedCount = snapshot?.containers.filter((c) => c.isPinned).length ?? 0;
   const pve = snapshot?.host.pve;
   const dockerHost = snapshot?.host.dockerHost;
+  const physicalDrive = snapshot?.storage.find((s) => s.isPhysicalRoot);
 
   return (
     <div className="space-y-4 animate-fade-in-up">
@@ -68,10 +69,14 @@ export const HomePage: React.FC<HomePageProps> = ({ snapshot, throughput, isPriv
           <div>
             <p className="label">Infrastructure</p>
             <p className="metric-lg mt-1">
-              {snapshot?.storage.length ?? 0}
-              <span className="metric-unit">volumes tracked</span>
+              {physicalDrive ? formatBytes(physicalDrive.totalBytes) : (snapshot?.storage.length ?? 0)}
+              <span className="metric-unit">{physicalDrive ? 'Physical SSD' : 'volumes tracked'}</span>
             </p>
-            <p className="mt-1 text-[11.5px] text-cockpit-muted">Storage, Tailscale mesh, SSL certificates</p>
+            <p className="mt-1 text-[11.5px] text-cockpit-muted">
+              {physicalDrive
+                ? `${formatBytes(physicalDrive.freeBytes)} free (${(100 - physicalDrive.usedPercent).toFixed(0)}%) · ${snapshot?.storage.length ?? 0} volumes`
+                : 'Storage, Tailscale mesh, SSL certificates'}
+            </p>
           </div>
           <ArrowRight className="h-4 w-4 text-cockpit-muted" />
         </Link>

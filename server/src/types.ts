@@ -16,6 +16,52 @@ export interface PveBackupVitals {
   logSummary: string;
 }
 
+export interface StorageAllocationItem {
+  id: string;
+  name: string;
+  type: 'pve-host' | 'lxc' | 'pool' | 'other';
+  allocatedBytes: number;
+  usedBytes: number;
+  freeBytes: number;
+  usedPercent: number;
+  shareOfDiskPercent: number;
+  vmid?: string;
+  status?: string;
+}
+
+export interface PvePhysicalDisk {
+  devpath: string;
+  model: string;
+  sizeBytes: number;
+  smartStatus: 'PASSED' | 'WARNING' | 'FAILED' | 'UNKNOWN';
+  type?: string;
+  serial?: string;
+  wearoutPercent?: number;
+}
+
+export interface PveStoragePool {
+  id: string;
+  type: string;
+  totalBytes: number;
+  usedBytes: number;
+  freeBytes: number;
+  usedPercent: number;
+  active: boolean;
+  content?: string;
+}
+
+export interface PveStorageVitals {
+  connected: boolean;
+  physicalDisk: PvePhysicalDisk;
+  pools: PveStoragePool[];
+  allocations: StorageAllocationItem[];
+  totalBytes: number;
+  usedBytes: number;
+  freeBytes: number;
+  usedPercent: number;
+  allocatedBytes: number;
+}
+
 export interface PveHostMetrics {
   connected: boolean;
   nodeName: string;
@@ -30,6 +76,7 @@ export interface PveHostMetrics {
   uptimeSeconds: number;
   pveVersion?: string;
   backupVitals?: PveBackupVitals;
+  storageVitals?: PveStorageVitals;
 }
 
 export interface DockerHostMetrics {
@@ -69,6 +116,13 @@ export interface StorageItem {
   activeTimePercent?: number;
   avgResponseMs?: number;
   sparklineActiveTime?: number[];
+
+  // Proxmox Physical SSD & Container Allocation Telemetry
+  isPhysicalRoot?: boolean;
+  physicalDisk?: PvePhysicalDisk;
+  storagePools?: PveStoragePool[];
+  allocations?: StorageAllocationItem[];
+  unreachableHostFallback?: boolean;
 }
 
 export interface ProcessMetric {

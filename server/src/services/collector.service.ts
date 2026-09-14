@@ -89,14 +89,19 @@ export class CollectorService {
   }
 
   public async collect(): Promise<CockpitSnapshot> {
-    const [pveMetrics, dockerHostMetrics, tailscaleData, storageData, sslCerts, diskHygiene] = await Promise.all([
-      this.proxmoxService.getMetrics(),
+    const localRootStats = this.systemService.safeStatfs('/');
+    const rootUsage = localRootStats ? { used: localRootStats.used, total: localRootStats.total } : undefined;
+
+    const [pveMetrics, dockerHostMetrics, tailscaleData, pveStorage, sslCerts, diskHygiene] = await Promise.all([
+      this.proxmoxService.getMetrics(rootUsage),
       this.systemService.getDockerHostMetrics(),
       this.tailscaleService.getStatus(),
-      this.systemService.getStorageMatrix(),
+      this.proxmoxService.getStorageVitals(rootUsage),
       this.sslService.getCertificates(),
       this.dockerServices[0].getDiskHygiene(),
     ]);
+
+    const storageData = await this.systemService.getStorageMatrix(pveStorage);
 
     const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
 

@@ -41,6 +41,11 @@ export const HostDetailPanels: React.FC<HostDetailPanelsProps> = ({ host, isPriv
         <div className="px-5 py-1.5">
           <Row label="Address">{redactText(pve.ip, isPrivacyMode)}</Row>
           <Row label="Cores">{pve.cpuCores} threads</Row>
+          {pve.storageVitals?.physicalDisk && (
+            <Row label="Host SSD">
+              {pve.storageVitals.physicalDisk.model} ({formatBytes(pve.storageVitals.physicalDisk.sizeBytes)})
+            </Row>
+          )}
           <Row label="Version">{pve.pveVersion || 'PVE 8.x'}</Row>
           <Row label="Uptime">{formatUptime(pve.uptimeSeconds)}</Row>
         </div>
