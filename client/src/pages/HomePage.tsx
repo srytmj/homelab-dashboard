@@ -22,6 +22,17 @@ export const HomePage: React.FC<HomePageProps> = ({ snapshot, throughput, isPriv
 
   return (
     <div className="space-y-4 animate-fade-in-up">
+
+      <div className="flex items-center justify-between rounded-panel border border-blue-500/30 bg-blue-500/10 px-5 py-4 mb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-blue-400">Try the new Dashboard Experience</h2>
+          <p className="mt-1 text-[12.5px] text-cockpit-muted">We're redesigning the UI! Toggle to the Beta view to check out our progress while the legacy UI is still available.</p>
+        </div>
+        <Link to="/beta" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+          Switch to Beta UI
+        </Link>
+      </div>
+
       <section className="panel px-5 py-4">
         <p className="label">This machine</p>
         <h1 className="mt-1 text-[19px] font-extrabold tracking-tight text-cockpit-text">

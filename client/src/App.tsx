@@ -1,3 +1,4 @@
+import { HomePageBeta } from "./pages/HomePageBeta.js";
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
@@ -110,6 +111,7 @@ function CockpitDashboard() {
 
           <Routes>
             <Route path="/" element={<HomePage snapshot={snapshot} throughput={throughput} isPrivacyMode={isPrivacyMode} />} />
+            <Route path="/beta" element={<HomePageBeta snapshot={snapshot} throughput={throughput} isPrivacyMode={isPrivacyMode} />} />
             <Route
               path="/fleet"
               element={
