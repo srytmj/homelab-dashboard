@@ -19,23 +19,21 @@ import {
   Square,
   Play,
 } from 'lucide-react';
-import { ContainerMetric } from '../types.js';
+import { ContainerMetric, CockpitSnapshot } from '../types.js';
 import { Sparkline } from './Sparkline.js';
 import { formatBytes, formatNetworkRate, redactText, getStatusColor } from '../utils/formatters.js';
 import { PowerAction } from './RestartModal.js';
 
 interface ContainerGridSectionProps {
-  containers: ContainerMetric[] | undefined;
+  snapshot?: CockpitSnapshot | null;
+  containers?: ContainerMetric[];
   isPrivacyMode?: boolean;
   onViewLogs: (container: ContainerMetric) => void;
   onPowerAction: (container: ContainerMetric, action: PowerAction) => void;
   onPinContainer: (container: ContainerMetric) => void;
 }
 
-type SortKey = 'cpu' | 'ram' | 'name' | 'network';
-
 const PAGE_SIZES = [10, 25, 50, 100];
-const HOST_DROPDOWN_THRESHOLD = 5;
 
 function useClickOutside(onOutside: () => void) {
   const ref = useRef<HTMLDivElement>(null);
@@ -118,93 +116,8 @@ const WebUiMenu: React.FC<{ container: ContainerMetric; isPrivacyMode: boolean }
   );
 };
 
-const HostFilter: React.FC<{
-  hosts: string[];
-  value: string;
-  onChange: (host: string) => void;
-}> = ({ hosts, value, onChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const ref = useClickOutside(() => setIsOpen(false));
-
-  if (hosts.length <= HOST_DROPDOWN_THRESHOLD) {
-    return (
-      <div className="seg">
-        <button onClick={() => onChange('all')} className={`seg-btn ${value === 'all' ? 'seg-btn-on' : ''}`}>
-          All docker
-        </button>
-        {hosts.map((host) => (
-          <button
-            key={host}
-            onClick={() => onChange(host)}
-            className={`seg-btn ${value === host ? 'seg-btn-on' : ''}`}
-          >
-            {host}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  const filteredHosts = hosts.filter((h) => h.toLowerCase().includes(query.toLowerCase()));
-
-  return (
-    <div className="relative" ref={ref}>
-      <button onClick={() => setIsOpen((v) => !v)} className="seg-btn seg-btn-on inline-flex items-center gap-1.5">
-        <Server className="h-3 w-3" />
-        {value === 'all' ? 'All docker' : value}
-        <ChevronDown className="h-3 w-3 opacity-70" />
-      </button>
-
-      {isOpen && (
-        <div className="modal-panel absolute left-0 top-full z-30 mt-1.5 w-56 overflow-hidden rounded-lg border border-cockpit-border bg-cockpit-panel shadow-lg shadow-black/30">
-          <div className="border-b border-cockpit-border p-2">
-            <input
-              autoFocus
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search docker host…"
-              className="field w-full"
-            />
-          </div>
-          <div className="max-h-56 overflow-y-auto py-1">
-            <button
-              onClick={() => {
-                onChange('all');
-                setIsOpen(false);
-              }}
-              className={`block w-full px-3 py-1.5 text-left text-[12.5px] hover:bg-cockpit-panelHover ${
-                value === 'all' ? 'text-cockpit-accent' : 'text-cockpit-text'
-              }`}
-            >
-              All docker
-            </button>
-            {filteredHosts.map((host) => (
-              <button
-                key={host}
-                onClick={() => {
-                  onChange(host);
-                  setIsOpen(false);
-                }}
-                className={`block w-full truncate px-3 py-1.5 text-left text-[12.5px] hover:bg-cockpit-panelHover ${
-                  value === host ? 'text-cockpit-accent' : 'text-cockpit-text'
-                }`}
-              >
-                {host}
-              </button>
-            ))}
-            {filteredHosts.length === 0 && (
-              <p className="px-3 py-2 text-[12px] text-cockpit-muted">No host matches "{query}".</p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
+  snapshot,
   containers = [],
   isPrivacyMode = false,
   onViewLogs,
@@ -214,9 +127,6 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
   const [pinnedFilter, setPinnedFilter] = useState<'all' | 'pinned'>('all');
-  const [hostFilter, setHostFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<SortKey>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
@@ -234,40 +144,84 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
     } catch {}
   };
 
-  const hostNames = useMemo(
-    () => Array.from(new Set(containers.map((c) => c.dockerHost))).sort(),
-    [containers]
-  );
+  // Extract all unique docker hosts from containers + dockerHosts snapshot
+  const hostNames = useMemo(() => {
+    const list = Array.from(new Set(containers.map((c) => c.dockerHost))).filter(Boolean);
+    if (list.length === 0 && snapshot?.dockerHosts) {
+      return snapshot.dockerHosts.map((h) => h.name);
+    }
+    return list.sort();
+  }, [containers, snapshot]);
+
+  // Selected host defaults to the first host if available, or 'all' if none
+  const [selectedHost, setSelectedHost] = useState<string>(() => {
+    return hostNames[0] || 'all';
+  });
+
+  // Sync selectedHost if initial hostNames was empty and now loaded
+  useEffect(() => {
+    if (selectedHost === 'all' && hostNames.length > 0) {
+      setSelectedHost(hostNames[0]);
+    }
+  }, [hostNames, selectedHost]);
+
+  // Compute stats per docker host
+  const hostStats = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        total: number;
+        running: number;
+        stopped: number;
+        totalCpu: number;
+        totalRamBytes: number;
+      }
+    > = {};
+
+    for (const h of hostNames) {
+      map[h] = { total: 0, running: 0, stopped: 0, totalCpu: 0, totalRamBytes: 0 };
+    }
+
+    for (const c of containers) {
+      const h = c.dockerHost || hostNames[0] || 'docker-host';
+      if (!map[h]) {
+        map[h] = { total: 0, running: 0, stopped: 0, totalCpu: 0, totalRamBytes: 0 };
+      }
+      map[h].total += 1;
+      if (c.state === 'running') {
+        map[h].running += 1;
+        map[h].totalCpu += c.cpuPercent || 0;
+        map[h].totalRamBytes += c.memoryBytes || 0;
+      } else {
+        map[h].stopped += 1;
+      }
+    }
+
+    return map;
+  }, [containers, hostNames]);
+
+  const dockerHostTelemetry = snapshot?.host.dockerHost;
 
   const filteredContainers = useMemo(() => {
-    return containers
-      .filter((c) => {
-        const q = search.toLowerCase();
-        const matchesSearch =
-          c.name.toLowerCase().includes(q) ||
-          c.image.toLowerCase().includes(q) ||
-          c.ports.some((p) => p.toLowerCase().includes(q));
+    return containers.filter((c) => {
+      // Host selection filter
+      if (selectedHost !== 'all' && c.dockerHost && c.dockerHost !== selectedHost) {
+        return false;
+      }
 
-        if (!matchesSearch) return false;
-        if (statusFilter === 'running' && c.state !== 'running') return false;
-        if (statusFilter === 'exited' && c.state === 'running') return false;
-        if (pinnedFilter === 'pinned' && !c.isPinned) return false;
-        if (hostFilter !== 'all' && c.dockerHost !== hostFilter) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        let diff = 0;
-        if (sortBy === 'cpu') diff = a.cpuPercent - b.cpuPercent;
-        else if (sortBy === 'ram') diff = a.memoryBytes - b.memoryBytes;
-        else if (sortBy === 'name') diff = a.name.localeCompare(b.name);
-        else
-          diff =
-            a.networkRxRateBytesPerSec +
-            a.networkTxRateBytesPerSec -
-            (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
-        return sortOrder === 'desc' ? -diff : diff;
-      });
-  }, [containers, search, statusFilter, pinnedFilter, hostFilter, sortBy, sortOrder]);
+      const q = search.toLowerCase();
+      const matchesSearch =
+        c.name.toLowerCase().includes(q) ||
+        c.image.toLowerCase().includes(q) ||
+        c.ports.some((p) => p.toLowerCase().includes(q));
+
+      if (!matchesSearch) return false;
+      if (statusFilter === 'running' && c.state !== 'running') return false;
+      if (statusFilter === 'exited' && c.state === 'running') return false;
+      if (pinnedFilter === 'pinned' && !c.isPinned) return false;
+      return true;
+    });
+  }, [containers, selectedHost, search, statusFilter, pinnedFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredContainers.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -276,160 +230,228 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, pinnedFilter, hostFilter, pageSize]);
+  }, [search, statusFilter, pinnedFilter, selectedHost, pageSize]);
 
-  const toggleSort = (column: SortKey) => {
-    if (sortBy === column) {
-      setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
-    } else {
-      setSortBy(column);
-      setSortOrder(column === 'name' ? 'asc' : 'desc');
-    }
-  };
-
-  const runningCount = containers.filter((c) => c.state === 'running').length;
-
-  const SortHeader: React.FC<{ column: SortKey; children: React.ReactNode; className?: string }> = ({
-    column,
-    children,
-    className = '',
-  }) => (
-    <th className={`px-4 py-2.5 font-medium ${className}`}>
-      <button
-        onClick={() => toggleSort(column)}
-        className={`inline-flex items-center gap-1 transition-colors hover:text-cockpit-text ${
-          sortBy === column ? 'text-cockpit-accent' : ''
-        }`}
-      >
-        {children}
-        {sortBy === column && <span aria-hidden="true">{sortOrder === 'desc' ? '↓' : '↑'}</span>}
-      </button>
-    </th>
-  );
+  const runningCount = filteredContainers.filter((c) => c.state === 'running').length;
 
   return (
-    <section className="panel overflow-hidden animate-fade-in-up">
-      <div className="panel-head flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="panel-title">Container fleet</h2>
-          <p className="panel-sub">
-            {runningCount} running of {containers.length} · live throughput &amp; L7 probes
-          </p>
+    <div className="space-y-5 animate-fade-in">
+      {/* Top Header: Select Docker Host / LXC Runner */}
+      <div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-[16px] font-bold text-cockpit-text">Docker &amp; LXC Fleets</h2>
+            <p className="text-[12px] text-cockpit-muted">
+              Pilih host / LXC di bawah ini untuk melihat container dan resource usage
+            </p>
+          </div>
+          {hostNames.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setSelectedHost('all')}
+              className={`rounded-xl px-3 py-1.5 font-mono text-[11px] font-semibold transition-all ${
+                selectedHost === 'all'
+                  ? 'bg-cockpit-accent text-white shadow-sm'
+                  : 'border border-cockpit-border bg-cockpit-panel text-cockpit-muted hover:text-cockpit-text'
+              }`}
+            >
+              Lihat Semua Docker ({containers.length})
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <div className="relative flex-1 sm:flex-initial min-w-[160px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
-            <input
-              type="text"
-              placeholder="Filter name, image, port"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="field w-full sm:w-44 lg:w-56 !pl-9 pr-7 text-[12.5px]"
-            />
-            {search && (
+        {/* Host Usage Selector Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {hostNames.map((host) => {
+            const stats = hostStats[host] || { total: 0, running: 0, stopped: 0, totalCpu: 0, totalRamBytes: 0 };
+            const isSelected = selectedHost === host;
+            const isConnected = snapshot?.dockerHosts?.find((d) => d.name === host)?.connected ?? true;
+
+            // Approximate host cpu / ram if primary host
+            const isPrimary = host === dockerHostTelemetry?.hostname || host === 'docker-host';
+            const displayCpu = isPrimary && dockerHostTelemetry ? dockerHostTelemetry.cpuPercent : stats.totalCpu;
+            const displayRamUsed = isPrimary && dockerHostTelemetry ? dockerHostTelemetry.ramUsedBytes : stats.totalRamBytes;
+            const displayRamTotal = isPrimary && dockerHostTelemetry ? dockerHostTelemetry.ramTotalBytes : 32 * 1024 * 1024 * 1024;
+            const ramPercent = Math.min(100, Math.round((displayRamUsed / displayRamTotal) * 100));
+
+            return (
               <button
+                key={host}
                 type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-cockpit-muted hover:text-cockpit-text"
-                title="Clear search"
+                onClick={() => setSelectedHost(host)}
+                className={`relative flex flex-col justify-between rounded-2xl border p-4 text-left transition-all duration-200 ${
+                  isSelected
+                    ? 'border-cockpit-accent bg-cockpit-accent/10 shadow-panel ring-1 ring-cockpit-accent/50'
+                    : 'border-cockpit-border/80 bg-cockpit-panel/85 hover:border-cockpit-border hover:bg-cockpit-panelHover/60'
+                }`}
               >
-                <X className="h-3.5 w-3.5" />
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
+                          isSelected
+                            ? 'border-cockpit-accent/50 bg-cockpit-accent/20 text-cockpit-accent'
+                            : 'border-cockpit-border bg-cockpit-bg text-cockpit-muted'
+                        }`}
+                      >
+                        <Server className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[13.5px] text-cockpit-text truncate">{host}</span>
+                          <span
+                            className={`inline-block h-2 w-2 rounded-full shrink-0 ${
+                              isConnected ? 'bg-state-good' : 'bg-state-warn'
+                            }`}
+                            title={isConnected ? 'Connected' : 'Degraded'}
+                          />
+                        </div>
+                        <p className="font-mono text-[10.5px] text-cockpit-muted">
+                          {stats.running} running · {stats.stopped} stopped
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`pill text-[10px] ${
+                        isSelected ? 'bg-cockpit-accent text-white font-bold' : 'pill-neutral'
+                      }`}
+                    >
+                      {stats.total} Containers
+                    </span>
+                  </div>
+
+                  {/* Usage Bars */}
+                  <div className="mt-4 space-y-2 border-t border-cockpit-border/60 pt-3 text-[11.5px]">
+                    <div>
+                      <div className="flex justify-between items-center text-cockpit-muted font-mono text-[11px] mb-1">
+                        <span>CPU Usage</span>
+                        <span className="text-cockpit-text font-bold">{displayCpu.toFixed(1)}%</span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-cockpit-border/70">
+                        <div
+                          className="h-full bg-cockpit-accent rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(2, displayCpu))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center text-cockpit-muted font-mono text-[11px] mb-1">
+                        <span>RAM Usage</span>
+                        <span className="text-cockpit-text font-bold">
+                          {formatBytes(displayRamUsed)} ({ramPercent}%)
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-cockpit-border/70">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(2, ramPercent))}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-cockpit-muted">
+                  <span>Click to view containers</span>
+                  {isSelected && <span className="text-cockpit-accent font-bold">Active Host</span>}
+                </div>
               </button>
-            )}
-          </div>
-
-          <div className="seg">
-            {([
-              ['all', 'All'],
-              ['running', 'Running'],
-              ['exited', 'Stopped'],
-            ] as const).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setStatusFilter(mode)}
-                className={`seg-btn ${statusFilter === mode ? 'seg-btn-on' : ''}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="seg">
-            <button
-              onClick={() => setPinnedFilter('all')}
-              className={`seg-btn ${pinnedFilter === 'all' ? 'seg-btn-on' : ''}`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setPinnedFilter('pinned')}
-              className={`seg-btn inline-flex items-center gap-1 ${pinnedFilter === 'pinned' ? 'seg-btn-on' : ''}`}
-            >
-              <Pin className="h-3 w-3" />
-              Pinned
-            </button>
-          </div>
-
-          {hostNames.length > 1 && <HostFilter hosts={hostNames} value={hostFilter} onChange={setHostFilter} />}
-
-          {/* Card View Sort Controls */}
-          {viewMode === 'cards' && (
-            <div className="flex items-center gap-1.5" title="Sort fleet containers">
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => {
-                    const key = e.target.value as SortKey;
-                    setSortBy(key);
-                    setSortOrder(key === 'name' ? 'asc' : 'desc');
-                  }}
-                  className="field py-1 pl-2.5 pr-7 text-[12px] bg-cockpit-panel cursor-pointer rounded-lg border-cockpit-border focus:border-cockpit-accent text-cockpit-text"
-                >
-                  <option value="name">Sort: Name</option>
-                  <option value="cpu">Sort: CPU</option>
-                  <option value="ram">Sort: RAM</option>
-                  <option value="network">Sort: Network</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-cockpit-muted" />
-              </div>
-              <button
-                type="button"
-                onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                title={sortOrder === 'asc' ? 'Ascending (A-Z / Min-Max) - Click for Descending' : 'Descending (Z-A / Max-Min) - Click for Ascending'}
-                className="icon-btn h-[33px] px-2 flex items-center gap-1 border border-cockpit-border hover:border-cockpit-accent/40 rounded-lg"
-              >
-                {sortOrder === 'asc' ? (
-                  <ArrowUp className="h-3.5 w-3.5 text-cockpit-accent" />
-                ) : (
-                  <ArrowDown className="h-3.5 w-3.5 text-cockpit-accent" />
-                )}
-                <span className="text-[10px] font-mono uppercase text-cockpit-muted">
-                  {sortOrder}
-                </span>
-              </button>
-            </div>
-          )}
-
-          {/* View Mode Toggle */}
-          <div className="seg hidden sm:inline-flex" title="Switch layout view">
-            <button
-              onClick={() => handleSetViewMode('table')}
-              className={`seg-btn px-2 ${viewMode === 'table' ? 'seg-btn-on' : ''}`}
-              title="Table view"
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => handleSetViewMode('cards')}
-              className={`seg-btn px-2 ${viewMode === 'cards' ? 'seg-btn-on' : ''}`}
-              title="Grid cards view"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-          </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* Main Containers Section for Selected Host */}
+      <section className="panel overflow-hidden">
+        <div className="panel-head flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="panel-title">
+              Containers on <span className="text-cockpit-accent">{selectedHost === 'all' ? 'All Hosts' : selectedHost}</span>
+            </h3>
+            <p className="panel-sub">
+              {runningCount} running of {filteredContainers.length} containers · live telemetry
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            {/* Search */}
+            <div className="relative flex-1 sm:flex-initial min-w-[160px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cockpit-muted" />
+              <input
+                type="text"
+                placeholder="Filter container name, image…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="field w-full sm:w-48 lg:w-60 !pl-9 pr-7 text-[12.5px]"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-cockpit-muted hover:text-cockpit-text"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter */}
+            <div className="seg">
+              {([
+                ['all', 'All'],
+                ['running', 'Running'],
+                ['exited', 'Stopped'],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setStatusFilter(mode)}
+                  className={`seg-btn ${statusFilter === mode ? 'seg-btn-on' : ''}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Pinned Filter */}
+            <div className="seg">
+              <button
+                onClick={() => setPinnedFilter('all')}
+                className={`seg-btn ${pinnedFilter === 'all' ? 'seg-btn-on' : ''}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setPinnedFilter('pinned')}
+                className={`seg-btn inline-flex items-center gap-1 ${pinnedFilter === 'pinned' ? 'seg-btn-on' : ''}`}
+              >
+                <Pin className="h-3 w-3" />
+                Pinned
+              </button>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="seg hidden sm:inline-flex" title="Switch layout view">
+              <button
+                onClick={() => handleSetViewMode('table')}
+                className={`seg-btn px-2.5 ${viewMode === 'table' ? 'seg-btn-on' : ''}`}
+                title="Table view"
+              >
+                <List className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => handleSetViewMode('cards')}
+                className={`seg-btn px-2.5 ${viewMode === 'cards' ? 'seg-btn-on' : ''}`}
+                title="Grid cards view"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
 
       {viewMode === 'cards' ? (
         /* Card / Grid View */
@@ -574,12 +596,12 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
           <table className="w-full text-left text-[13px] min-w-[680px]">
             <thead>
               <tr className="border-b border-cockpit-border font-mono text-[10px] uppercase tracking-[0.09em] text-cockpit-muted">
-                <SortHeader column="name" className="w-auto">Service</SortHeader>
+                <th className="px-4 py-2.5 font-medium w-auto">Service</th>
                 <th className="px-4 py-2.5 font-medium w-32 whitespace-nowrap">Health</th>
                 <th className="px-4 py-2.5 font-medium w-24 whitespace-nowrap">Web UI</th>
-                <SortHeader column="cpu" className="w-24 whitespace-nowrap">CPU</SortHeader>
-                <SortHeader column="ram" className="w-28 whitespace-nowrap">Memory</SortHeader>
-                <SortHeader column="network" className="w-36 whitespace-nowrap">Throughput</SortHeader>
+                <th className="px-4 py-2.5 font-medium w-24 whitespace-nowrap">CPU</th>
+                <th className="px-4 py-2.5 font-medium w-28 whitespace-nowrap">Memory</th>
+                <th className="px-4 py-2.5 font-medium w-36 whitespace-nowrap">Throughput</th>
                 <th className="px-4 py-2.5 text-right font-medium w-32 whitespace-nowrap">Actions</th>
               </tr>
             </thead>
@@ -783,5 +805,6 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
         </div>
       </div>
     </section>
+  </div>
   );
 };

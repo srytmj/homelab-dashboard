@@ -43,9 +43,9 @@ export const LegacyLayout: React.FC<LegacyLayoutProps> = (props) => {
       <div ref={headerRef}>
         <Header {...props} />
       </div>
-      <div className="mx-auto flex w-full max-w-[1600px] flex-1 items-start gap-4">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 items-start gap-5 px-4 sm:px-6 lg:px-8">
         <Sidebar />
-        <main className="w-full min-w-0 flex-1 space-y-6 px-5 py-7 lg:px-8">
+        <main className="w-full min-w-0 flex-1 space-y-6 py-6">
           <DasWatchdogAlert storage={props.snapshot?.storage} />
 
           {props.snapshot?.host.pve && !props.snapshot.host.pve.connected && (

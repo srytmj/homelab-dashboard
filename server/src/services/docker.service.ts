@@ -183,7 +183,16 @@ export class DockerService {
     return { containers: this.getSimulatedContainers(), isLive: false };
   }
 
+  private cachedDiskHygiene: DockerDiskHygiene | null = null;
+  private lastDiskHygieneTime = 0;
+
   public async getDiskHygiene(): Promise<DockerDiskHygiene> {
+    const now = Date.now();
+    // Cache disk hygiene for 5 minutes (300,000 ms) to avoid expensive docker.df() calls
+    if (this.cachedDiskHygiene && now - this.lastDiskHygieneTime < 300000) {
+      return this.cachedDiskHygiene;
+    }
+
     if (this.isDockerAvailable && this.docker && !config.demoMode) {
       try {
         const df = await this.docker.df();
@@ -207,7 +216,7 @@ export class DockerService {
           }
         }
 
-        return {
+        const hygiene: DockerDiskHygiene = {
           reclaimableBytes: reclaimable,
           danglingImagesCount: dangling,
           stoppedContainersCount: (df.Containers || []).filter((c: any) => c.State !== 'running').length,
@@ -215,6 +224,9 @@ export class DockerService {
           volumesCount: (df.Volumes || []).length,
           lastPrunedTime: this.mockHygiene.lastPrunedTime,
         };
+        this.cachedDiskHygiene = hygiene;
+        this.lastDiskHygieneTime = now;
+        return hygiene;
       } catch {
         // fallback
       }
@@ -230,6 +242,7 @@ export class DockerService {
       try {
         await this.docker.pruneImages({ filters: { dangling: { true: true } } });
         await this.docker.pruneContainers();
+        this.cachedDiskHygiene = null; // Invalidate cache after prune
         return {
           success: true,
           message: 'Dangling images and stopped containers successfully pruned from NVMe SSD',
@@ -251,75 +264,22 @@ export class DockerService {
     };
   }
 
+  /**
+   * Lightweight container fetching: relies purely on docker.listContainers({ all: true }).
+   * Avoids calling container.stats() in loop to prevent high CPU usage on dockerd & containerd.
+   */
   private async fetchLiveContainers(tailscaleIp: string): Promise<ContainerMetric[]> {
     if (!this.docker) return [];
 
     const containers = await this.docker.listContainers({ all: true });
     const results: ContainerMetric[] = [];
     const lanNodeIp = '192.168.18.225';
-    const now = Date.now();
 
     for (const info of containers) {
       const id = info.Id;
       const shortId = id.slice(0, 12);
       const name = (info.Names[0] || '').replace(/^\//, '');
       const state = info.State.toLowerCase() as ContainerMetric['state'];
-
-      let cpuPercent = 0;
-      let memBytes = 0;
-      let memLimit = 0;
-      let memPercent = 0;
-      let rxBytes = 0;
-      let txBytes = 0;
-
-      if (state === 'running') {
-        try {
-          const container = this.docker.getContainer(id);
-          const stats = await container.stats({ stream: false });
-          
-          const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - (stats.precpu_stats?.cpu_usage?.total_usage || 0);
-          const systemDelta = stats.cpu_stats.system_cpu_usage - (stats.precpu_stats?.system_cpu_usage || 0);
-          const onlineCpus = stats.cpu_stats.online_cpus || stats.cpu_stats.cpu_usage.percpu_usage?.length || 1;
-          
-          if (systemDelta > 0 && cpuDelta > 0) {
-            cpuPercent = (cpuDelta / systemDelta) * onlineCpus * 100;
-          }
-
-          memBytes = stats.memory_stats?.usage || 0;
-          memLimit = stats.memory_stats?.limit || 1;
-          memPercent = (memBytes / memLimit) * 100;
-
-          if (stats.networks) {
-            for (const iface of Object.values<any>(stats.networks)) {
-              rxBytes += iface.rx_bytes || 0;
-              txBytes += iface.tx_bytes || 0;
-            }
-          }
-        } catch {
-          // handled
-        }
-      }
-
-      let history = this.historyMap.get(id);
-      if (!history) {
-        history = { cpu: [], memory: [], lastRxBytes: rxBytes, lastTxBytes: txBytes, lastTimestamp: now };
-        this.historyMap.set(id, history);
-      }
-
-      const timeDeltaSec = Math.max(1, (now - history.lastTimestamp) / 1000);
-      const rxRate = Math.max(0, (rxBytes - history.lastRxBytes) / timeDeltaSec);
-      const txRate = Math.max(0, (txBytes - history.lastTxBytes) / timeDeltaSec);
-
-      history.lastRxBytes = rxBytes;
-      history.lastTxBytes = txBytes;
-      history.lastTimestamp = now;
-
-      history.cpu.push(Number(cpuPercent.toFixed(1)));
-      if (history.cpu.length > 12) history.cpu.shift();
-
-      const memMB = Math.round(memBytes / (1024 * 1024));
-      history.memory.push(memMB);
-      if (history.memory.length > 12) history.memory.shift();
 
       const ports = (info.Ports || []).map(p => 
         p.PublicPort ? `${p.PublicPort}:${p.PrivatePort}${p.Type ? `/${p.Type}` : ''}` : `${p.PrivatePort}/${p.Type}`
@@ -348,16 +308,16 @@ export class DockerService {
         image: info.Image,
         state,
         status: info.Status,
-        cpuPercent: Number(cpuPercent.toFixed(1)),
-        memoryBytes: memBytes,
-        memoryLimitBytes: memLimit,
-        memoryPercent: Number(memPercent.toFixed(2)),
-        networkRxBytes: rxBytes,
-        networkTxBytes: txBytes,
-        networkRxRateBytesPerSec: Math.round(rxRate),
-        networkTxRateBytesPerSec: Math.round(txRate),
-        sparklineCpu: [...history.cpu],
-        sparklineMemory: [...history.memory],
+        cpuPercent: 0,
+        memoryBytes: 0,
+        memoryLimitBytes: 0,
+        memoryPercent: 0,
+        networkRxBytes: 0,
+        networkTxBytes: 0,
+        networkRxRateBytesPerSec: 0,
+        networkTxRateBytesPerSec: 0,
+        sparklineCpu: [],
+        sparklineMemory: [],
         uptime: info.Status,
         ports,
         created: info.Created * 1000,
@@ -372,6 +332,32 @@ export class DockerService {
     }
 
     return results;
+  }
+
+  /**
+   * On-demand stats for a single container if inspected specifically.
+   */
+  public async getSingleContainerStats(id: string): Promise<{ cpuPercent: number; memBytes: number; memLimit: number } | null> {
+    if (!this.docker || !this.isDockerAvailable || config.demoMode) return null;
+    try {
+      const container = this.docker.getContainer(id);
+      const stats = await container.stats({ stream: false });
+      const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - (stats.precpu_stats?.cpu_usage?.total_usage || 0);
+      const systemDelta = stats.cpu_stats.system_cpu_usage - (stats.precpu_stats?.system_cpu_usage || 0);
+      const onlineCpus = stats.cpu_stats.online_cpus || stats.cpu_stats.cpu_usage.percpu_usage?.length || 1;
+      
+      let cpuPercent = 0;
+      if (systemDelta > 0 && cpuDelta > 0) {
+        cpuPercent = Number(((cpuDelta / systemDelta) * onlineCpus * 100).toFixed(1));
+      }
+
+      const memBytes = stats.memory_stats?.usage || 0;
+      const memLimit = stats.memory_stats?.limit || 1;
+
+      return { cpuPercent, memBytes, memLimit };
+    } catch {
+      return null;
+    }
   }
 
   private getSimulatedContainers(): ContainerMetric[] {

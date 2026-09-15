@@ -95,6 +95,7 @@ function CockpitDashboard() {
     <>
       <Route path="fleet" element={
         <FleetPage
+          snapshot={snapshot}
           containers={snapshot?.containers}
           isPrivacyMode={isPrivacyMode}
           onViewLogs={(c) => setActiveLogContainer(c)}

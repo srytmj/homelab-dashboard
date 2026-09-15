@@ -49,31 +49,50 @@ export class CollectorService {
   }
 
   public start() {
+    // Initial snapshot collection at boot
     this.collectAndBroadcast();
 
+    // Do not run high-frequency polling when 0 clients are connected.
+    // Timer will be dynamically started when a client connects and paused when all clients disconnect.
+    console.log(`[CollectorService] Real-time metrics collector initialized. Waiting for active clients to start streaming.`);
+  }
+
+  private startTimer() {
+    if (this.timer) return;
     this.timer = setInterval(() => {
       this.collectAndBroadcast();
     }, config.pollIntervalMs);
-
-    console.log(`[CollectorService] Real-time metrics collector running (interval: ${config.pollIntervalMs}ms)`);
+    console.log(`[CollectorService] Active client connected. Polling started (interval: ${config.pollIntervalMs}ms)`);
   }
 
-  public stop() {
+  private stopTimer() {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
+      console.log(`[CollectorService] No active clients. Polling paused to save CPU.`);
     }
+  }
+
+  public stop() {
+    this.stopTimer();
   }
 
   public addClient(ws: WebSocket) {
     this.wsClients.add(ws);
 
-    if (this.lastSnapshot) {
+    // If this is the first client connected, start polling and broadcast immediately
+    if (this.wsClients.size === 1) {
+      this.startTimer();
+      this.collectAndBroadcast();
+    } else if (this.lastSnapshot) {
       ws.send(JSON.stringify({ type: 'SNAPSHOT', data: this.lastSnapshot }));
     }
 
     ws.on('close', () => {
       this.wsClients.delete(ws);
+      if (this.wsClients.size === 0) {
+        this.stopTimer();
+      }
     });
 
     ws.on('message', async (message: RawData) => {

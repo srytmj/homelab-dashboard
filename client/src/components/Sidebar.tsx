@@ -51,7 +51,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`hidden md:flex sticky top-[calc(var(--header-h,7.5rem)+max(1rem,(100vh-var(--header-h,7.5rem)-450px)/2))] self-start max-h-[calc(100vh-var(--header-h,7.5rem)-2rem)] flex-col overflow-y-auto scrollbar-none rounded-2xl border border-cockpit-border/60 bg-cockpit-panel/85 backdrop-blur-xl shadow-panel transition-all duration-200 shrink-0 ${
+      className={`hidden md:flex sticky top-[calc(var(--header-h,7.5rem)+1.5rem)] self-start max-h-[calc(100vh-var(--header-h,7.5rem)-2.5rem)] flex-col overflow-y-auto scrollbar-none rounded-2xl border border-cockpit-border/60 bg-cockpit-panel/85 backdrop-blur-xl shadow-panel transition-all duration-200 shrink-0 ${
         isCollapsed ? 'w-16' : 'w-56'
       }`}
     >
