@@ -179,6 +179,34 @@ All user interface modifications must strictly preserve the modern glassmorphism
 - **Log Completion of Task:** Once the task is completed and pushed, update that same `AGENT_LOG.md` entry from `[IN PROGRESS]` to `[COMPLETED]` with a summary of the finalized changes. Always read `AGENT_LOG.md` first to check if another agent has locked a feature.
 - **Update Announcements on Commit:** Setiap kali melakukan commit pembaruan fitur atau UI, pastikan juga menambahkan entry pesan pembaruan (message update) ke dalam file `announcements.json`. Hal ini penting agar `AppUpdateBanner` di halaman Overview dapat langsung menampilkan ringkasan release notes.
 
+
+## Out-of-Process Redeployment Architecture (`homelab-redeploy.sh`)
+
+When redeploying `homelab-dashboard` / `homelab-cockpit` or other tracked git projects:
+- **Why Out-of-Process Execution is Required:** If `docker compose up -d --build` is executed from inside the `homelab-cockpit` container, Docker terminates the running container during recreation. This kills the Node.js process (`SIGTERM`/`SIGKILL`) mid-flight before the new build is finalized, cutting WebSocket feeds, dropping database updates, and leaving the deployment in an uncertain state.
+- **Dedicated Standalone Executable:**
+  - File locations: `scripts/homelab-redeploy.sh` (in repository) and `/root/homelab-redeploy.sh` (on host).
+  - Both AI agents and human users can run manual redeployments directly via CLI:
+    ```bash
+    # Redeploy homelab-dashboard itself:
+    bash /root/homelab-redeploy.sh
+    # or from repo directory:
+    npm run redeploy
+
+    # Redeploy another tracked project (e.g. homelab-idp):
+    bash /root/homelab-redeploy.sh homelab-idp
+    ```
+- **Daemon / Watcher Mode (`--watch`):**
+  - Run continuous watcher: `bash /root/homelab-redeploy.sh --watch` or via systemd service `scripts/homelab-redeploy.service`.
+  - The watcher polls `data/.redeploy-trigger`. When the web UI triggers an update via `AppUpdateService` or `GitProjectsService`, it writes the target project name to `data/.redeploy-trigger`.
+  - The host runner automatically cleans stale `.git/index.lock`, safely stashes local changes, runs `git fetch origin <branch>` and `git reset --hard origin/<branch>`, ensures Docker network `homelab-net` exists, executes `docker compose up -d --build --force-recreate`, and streams logs to `data/redeploy.log` and status to `data/redeploy-status.json`.
+- **Seamless Downtime & Frontend Reconnection:**
+  - `AppUpdateBanner.tsx` and `GitPullInline.tsx` tail `data/redeploy.log` in real time.
+  - When the container stops and restarts during recreate ("service sempet down"), the frontend catches consecutive connection drops, shows the transitional "Service Restarting" status, automatically polls `/api/health`, and reloads the page via `window.location.reload()` once the new container is healthy ("trus naik lagi").
+- **Guideline for AI Agents:**
+  - If a user requests to pull and redeploy via terminal or asks for deployment assistance, execute `/root/homelab-redeploy.sh` (or `npm run redeploy`).
+  - Never run `docker compose up -d --build` synchronously inside a process that will kill itself without detaching or delegating to `homelab-redeploy.sh`.
+
 ## UI Styles, Layout Variants & 100% Feature Parity Rule
 
 When an agent creates a new UI style/layout variant (e.g. Beta Brutalist UI, Cyberpunk, Compact) or modifies existing layouts:

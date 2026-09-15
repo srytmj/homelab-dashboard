@@ -153,6 +153,33 @@ If a **local path** is set when you first track a project (or add one later by e
 
 The edit dialog has an **Auto-deploy new commits** checkbox, available once a local path and rebuild command are set. Turn it on and this one project pulls and rebuilds itself as soon as a new commit appears — no click needed. It only ever does this when the same migration-risk check as manual Pull & rebuild comes back clean; if a changed file looks like it might touch the database, the project shows an amber **Auto-deploy paused** note next to its name instead of deploying, and waits for you to review and pull manually. This is opt-in per project — leave it off for anything you'd rather review by hand first.
 
+### Out-of-Process Redeployment (`homelab-redeploy.sh`)
+
+When redeploying a container or updating the Homelab Dashboard itself:
+- **Self-Redeploy Safety**: When you trigger an update for `homelab-cockpit` (via the Overview page's **Update Sekarang** or Git projects' **Pull & Redeploy**), the build cannot run purely inside the container because Docker terminates the container during recreation, killing the update process. 
+- **Out-of-Process Runner**: The dashboard dispatches a trigger to the standalone script at `/root/homelab-redeploy.sh` (or `scripts/homelab-redeploy.sh`). The script stashes local edits, cleans stale locks (`.git/index.lock`), runs `git fetch` and `git reset --hard`, ensures the `homelab-net` Docker network exists, and runs `docker compose up -d --build --force-recreate`.
+- **Graceful Downtime & Auto-Reconnect**:
+  - The browser modal tails the live build log from `data/redeploy.log`.
+  - When the container stops and recreates, the UI gracefully enters the **Service Restarting** state.
+  - The client automatically polls `/api/health` every 1.5 seconds.
+  - Once the new container starts, the page automatically reloads with the updated build.
+
+### Manual CLI Execution for Users & AI Agents
+If you prefer to trigger updates manually via SSH or if the dashboard is ever inaccessible:
+
+```bash
+# Redeploy Homelab Dashboard itself:
+/root/homelab-redeploy.sh
+# or:
+npm run redeploy
+
+# Redeploy any tracked Git project:
+/root/homelab-redeploy.sh <container-or-project-name>
+
+# Run continuous trigger watcher daemon:
+/root/homelab-redeploy.sh --watch
+```
+
 ## Processes
 
 A tab strip picks the source, task-manager style:

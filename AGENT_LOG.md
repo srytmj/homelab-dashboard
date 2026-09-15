@@ -5,6 +5,20 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-15 04:22 UTC]
+**Agent:** Gemini (Redeployer Script Documentation for Users & AI Agents)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Comprehensive Documentation for Standalone Redeployer (`homelab-redeploy.sh`):**
+  - **`CLAUDE.md`**: Added detailed AI agent briefing section covering out-of-process redeployment architecture, why in-container self-redeploy fails, CLI usage, daemon `--watch` behavior, and rules for agents when handling deploy/redeploy requests.
+  - **`README.md`**: Added dedicated section on `homelab-redeploy.sh` explaining out-of-process isolation, manual CLI commands for users, background watcher daemon setup, systemd service registration, and seamless auto-reconnect behavior.
+  - **`docs/USER_MANUAL.md`**: Added user manual subsection under Git projects detailing self-redeploy safety, the live log tailing modal, the "Service Restarting" graceful transition, auto-polling of `/api/health`, and manual SSH commands.
+- **Verification:**
+  - Validated markdown formatting and file cross-references.
+  - Build verified (`npm run build`).
+
+---
+
 ### [2026-09-14 19:10 UTC]
 **Agent:** Gemini (Standalone Out-of-Process Redeployer & Seamless Service Reconnect)
 **Status:** `[COMPLETED]`

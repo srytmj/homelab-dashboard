@@ -125,6 +125,50 @@ npm start            # Serves production client directly from the Fastify server
 
 Commit messages follow [conventional commits](https://www.conventionalcommits.org) enforced through husky and commitlint.
 
+## Out-of-Process Redeployment (`homelab-redeploy.sh`)
+
+Homelab Cockpit ships with a standalone host redeployer script located at [`scripts/homelab-redeploy.sh`](scripts/homelab-redeploy.sh) and placed at `/root/homelab-redeploy.sh`.
+
+### Why Out-of-Process?
+When updating the dashboard itself via the web interface, executing `docker compose up -d --build` from inside the `homelab-cockpit` container causes Docker to terminate the running container. This kills the Node.js process mid-execution (`SIGTERM`), cutting live feeds and preventing the new container state from being finalized. 
+
+The standalone script runs on the host completely outside the container's process tree. It features:
+- Automatic stashing of uncommitted tracked edits (`git stash push`).
+- Stale lock removal (`rm -f .git/index.lock`).
+- Clean branch synchronization (`git fetch origin <branch>` and `git reset --hard origin/<branch>`).
+- Auto-creation of external Docker networks (e.g. `homelab-net`) if missing.
+- Safe Docker container rebuild: `docker compose up -d --build --force-recreate`.
+- Persistent logging to `data/redeploy.log` and status updates to `data/redeploy-status.json`.
+
+### Manual CLI Execution
+Users and AI agents can execute redeployments directly from the host terminal:
+
+```bash
+# Redeploy Homelab Dashboard itself:
+bash /root/homelab-redeploy.sh
+# or from the repository root:
+npm run redeploy
+
+# Redeploy any tracked Git project (e.g., homelab-idp):
+bash /root/homelab-redeploy.sh homelab-idp
+```
+
+### Background Watcher Daemon (`--watch`)
+To allow Web UI buttons (**Update Sekarang** and **Pull & Redeploy**) to trigger instantaneous out-of-process rebuilds on the host:
+
+```bash
+# Run watcher as a background daemon:
+nohup /root/homelab-redeploy.sh --watch > data/redeploy-daemon.log 2>&1 &
+
+# Or register as a systemd service (recommended for production host):
+cp scripts/homelab-redeploy.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now homelab-redeploy
+```
+
+### Seamless Downtime & Auto-Reconnect
+During self-redeploy, the dashboard web UI tails `data/redeploy.log`. When the container stops and restarts during recreate, the frontend enters a transitional **"Service Restarting"** state, polls `/api/health` every 1.5 seconds, and automatically reloads the page once the new container responds with 200 OK.
+
 ## HTTP API
 
 All endpoints except `/api/health` and `/api/auth/*` require authentication via `Authorization: Bearer <token>`. The WebSocket accepts the token via query parameter (`/ws?token=<token>`).
