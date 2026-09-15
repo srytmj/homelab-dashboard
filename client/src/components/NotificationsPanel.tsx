@@ -65,7 +65,7 @@ export const NotificationsPanel: React.FC = () => {
             : [];
           if (desktopEnabled && freshOnes.length > 0 && Notification.permission === 'granted') {
             freshOnes.slice(0, 3).forEach((entry) => {
-              new Notification('Homelab Cockpit', { body: entry.message });
+              new Notification('Homelab Dashboard', { body: entry.message });
             });
           }
           setEntries(data);

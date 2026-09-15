@@ -510,7 +510,7 @@ export class GitProjectsService {
 
       const isSelf = containerName === 'homelab-cockpit' || record.repoName === 'homelab-dashboard';
       if (isSelf) {
-        appendLog('ℹ Terdeteksi self-redeploy pada container Homelab Cockpit.');
+        appendLog('ℹ Terdeteksi self-redeploy pada container Homelab Dashboard.');
         appendLog('ℹ Memicu out-of-process runner agar proses rebuild tidak terputus saat container dimatikan...');
 
         record.lastKnownSha = newSha;

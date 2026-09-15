@@ -233,7 +233,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               {activeTab === 'node' ? <Server className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-cockpit-text">Cockpit Settings</h2>
+              <h2 className="text-[15px] font-bold text-cockpit-text">Dashboard Settings</h2>
               <p className="text-[11.5px] text-cockpit-muted">Node identity, appearance, and security</p>
             </div>
           </div>

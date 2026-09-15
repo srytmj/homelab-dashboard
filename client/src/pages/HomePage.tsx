@@ -37,6 +37,9 @@ export const HomePage: React.FC<HomePageProps> = ({ snapshot, throughput, isPriv
 
   return (
     <div className="space-y-4 animate-fade-in-up">
+      {/* Homelab Dashboard update banner at the very top */}
+      <AppUpdateBanner />
+
       <section className="panel px-5 py-4">
         <p className="label">This machine</p>
         <h1 className="mt-1 text-[19px] font-extrabold tracking-tight text-cockpit-text">
@@ -50,8 +53,6 @@ export const HomePage: React.FC<HomePageProps> = ({ snapshot, throughput, isPriv
       </section>
 
       <HostSummaryTiles host={snapshot?.host} throughput={throughput} />
-
-      <AppUpdateBanner />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Link to="/fleet" className="panel flex items-center justify-between px-5 py-4 transition-colors hover:bg-cockpit-panelHover">

@@ -1,10 +1,10 @@
-# Homelab Cockpit
+# Homelab Dashboard
 
 A single-pane dashboard for a compact homelab: Proxmox VE host vitals, Docker container telemetry, Tailscale peers, storage and DAS mount health, SSL expiry, AI coding agent metrics, and an optional Telegram companion bot. One Node.js daemon, one React client, no external monitoring stack.
 
 Built for a Lenovo ThinkCentre M710q Tiny running Proxmox VE with an Ubuntu LXC container runner and an external multi-bay DAS enclosure, but adaptable to any Linux-based homelab environment.
 
-![Homelab Cockpit Overview](docs/screenshots/overview.png)
+![Homelab Dashboard Overview](docs/screenshots/overview.png)
 
 ## Results in Production
 
@@ -132,7 +132,7 @@ Commit messages follow [conventional commits](https://www.conventionalcommits.or
 
 ## Out-of-Process Redeployment (`homelab-redeploy.sh`)
 
-Homelab Cockpit ships with a standalone host redeployer script located at [`scripts/homelab-redeploy.sh`](scripts/homelab-redeploy.sh) and placed at `/root/homelab-redeploy.sh`.
+Homelab Dashboard ships with a standalone host redeployer script located at [`scripts/homelab-redeploy.sh`](scripts/homelab-redeploy.sh) and placed at `/root/homelab-redeploy.sh`.
 
 ### Why Out-of-Process?
 When updating the dashboard itself via the web interface, executing `docker compose up -d --build` from inside the `homelab-cockpit` container causes Docker to terminate the running container. This kills the Node.js process mid-execution (`SIGTERM`), cutting live feeds and preventing the new container state from being finalized. 

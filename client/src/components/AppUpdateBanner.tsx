@@ -425,7 +425,7 @@ export const AppUpdateBanner: React.FC = () => {
                   <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-amber-400" />
                   <div>
                     <p className="font-bold">Service Restarting</p>
-                    <p className="text-[11px] opacity-90">Container Homelab Cockpit sedang direstart ke build baru oleh out-of-process runner. Halaman akan otomatis memuat ulang saat service online (biasanya 5–15 detik)...</p>
+                    <p className="text-[11px] opacity-90">Container Homelab Dashboard sedang direstart ke build baru oleh out-of-process runner. Halaman akan otomatis memuat ulang saat service online (biasanya 5–15 detik)...</p>
                   </div>
                 </div>
               )}
@@ -465,7 +465,7 @@ export const AppUpdateBanner: React.FC = () => {
                 {isReconnecting ? (
                   <div className="flex items-center gap-2 text-[12.5px] text-amber-400">
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Menunggu Homelab Cockpit online kembali...</span>
+                    <span>Menunggu Homelab Dashboard online kembali...</span>
                   </div>
                 ) : isUpdating ? (
                   <div className="flex items-center gap-2 text-[12.5px] text-cockpit-accent">

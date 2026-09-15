@@ -61,7 +61,7 @@ export const AuthScreen: React.FC = () => {
           </span>
           <div>
             <h1 className="text-[16px] font-bold tracking-tight text-cockpit-text">
-              {isSetupMode ? 'Set Up Owner Access' : 'Cockpit Portal'}
+              {isSetupMode ? 'Set Up Owner Access' : 'Dashboard Portal'}
             </h1>
             <p className="text-[12px] text-cockpit-muted">
               {isSetupMode ? 'First run · One master account only' : 'Authenticate to access server telemetry'}
@@ -179,7 +179,7 @@ export const AuthScreen: React.FC = () => {
             disabled={isLoading}
             className="btn-primary w-full justify-center gap-2 py-2.5 text-[13px] font-bold mt-2"
           >
-            {isLoading ? 'Authenticating…' : isSetupMode ? 'Create owner account' : 'Sign in to Cockpit'}
+            {isLoading ? 'Authenticating…' : isSetupMode ? 'Create owner account' : 'Sign in to Dashboard'}
             {!isLoading && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>

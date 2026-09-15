@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <h1 className="text-[14px] sm:text-[15px] font-extrabold tracking-tight text-cockpit-text">Cockpit</h1>
+                <h1 className="text-[14px] sm:text-[15px] font-extrabold tracking-tight text-cockpit-text">Dashboard</h1>
                 {username && <span className="pill pill-neutral normal-case hidden sm:inline-flex">{username}</span>}
                 {snapshot?.isDemoMode && <span className="pill pill-warn">Demo</span>}
               </div>

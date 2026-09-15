@@ -16,6 +16,7 @@ export interface BookmarkRecord {
 
 interface BookmarksDb {
   bookmarks: BookmarkRecord[];
+  groups?: string[];
 }
 
 /**
@@ -62,6 +63,39 @@ export class BookmarksService {
 
   public getAll(): BookmarkRecord[] {
     return this.db.bookmarks;
+  }
+
+  public getGroups(): string[] {
+    const custom = this.db.groups || [];
+    const fromBookmarks = this.db.bookmarks
+      .map((b) => b.group?.trim())
+      .filter((g): g is string => Boolean(g));
+    return Array.from(new Set([...custom, ...fromBookmarks])).sort();
+  }
+
+  public addGroup(name: string): string[] {
+    const trimmed = name.trim();
+    if (!trimmed) return this.getGroups();
+    if (!this.db.groups) this.db.groups = [];
+    if (!this.db.groups.includes(trimmed)) {
+      this.db.groups.push(trimmed);
+      this.saveDb();
+    }
+    return this.getGroups();
+  }
+
+  public deleteGroup(name: string): string[] {
+    const trimmed = name.trim();
+    if (this.db.groups) {
+      this.db.groups = this.db.groups.filter((g) => g !== trimmed);
+    }
+    for (const b of this.db.bookmarks) {
+      if (b.group === trimmed) {
+        delete b.group;
+      }
+    }
+    this.saveDb();
+    return this.getGroups();
   }
 
   public add(name: string, url: string, group?: string): BookmarkRecord {

@@ -394,6 +394,26 @@ async function bootstrap() {
     return bookmarksService.getAll();
   });
 
+  app.get('/api/bookmarks/groups', async () => {
+    return bookmarksService.getGroups();
+  });
+
+  app.post('/api/bookmarks/groups', async (request, reply) => {
+    const body = request.body as { name?: string };
+    if (!body?.name?.trim()) {
+      reply.status(400);
+      return { success: false, message: 'Group name is required' };
+    }
+    const groups = bookmarksService.addGroup(body.name);
+    return { success: true, groups };
+  });
+
+  app.delete('/api/bookmarks/groups/:name', async (request) => {
+    const { name } = request.params as { name: string };
+    const groups = bookmarksService.deleteGroup(decodeURIComponent(name));
+    return { success: true, groups };
+  });
+
   app.post('/api/bookmarks', async (request, reply) => {
     const body = request.body as { name?: string; url?: string; group?: string };
     if (!body?.name?.trim() || !body?.url?.trim()) {
@@ -614,7 +634,7 @@ async function bootstrap() {
 
   try {
     await app.listen({ port: config.port, host: config.host });
-    console.log(`[Cockpit] Server ready at http://${config.host}:${config.port}`);
+    console.log(`[Dashboard] Server ready at http://${config.host}:${config.port}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
