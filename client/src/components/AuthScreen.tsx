@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Server, AlertCircle, ArrowRight } from 'lucide-react';
+import { Server, AlertCircle, ArrowRight, Eye, EyeOff, Lock, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 
 export const AuthScreen: React.FC = () => {
@@ -8,6 +8,8 @@ export const AuthScreen: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,99 +53,134 @@ export const AuthScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-cockpit-bg px-4">
-      <div className="panel modal-panel w-full max-w-sm">
-        <div className="panel-head">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-cockpit-border bg-cockpit-bg text-cockpit-accent">
-              <Server className="h-[18px] w-[18px]" />
-            </span>
-            <div>
-              <h1 className="panel-title">{isSetupMode ? 'Set up owner access' : 'Cockpit'}</h1>
-              <p className="panel-sub">
-                {isSetupMode ? 'First run, one account only' : 'Sign in to continue'}
-              </p>
-            </div>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-cockpit-bg px-4 py-8 relative overflow-hidden">
+      <div className="w-full max-w-md rounded-2xl border border-cockpit-border/80 bg-cockpit-panel/90 p-1 shadow-2xl backdrop-blur-xl animate-fade-in">
+        <div className="flex items-center gap-3.5 border-b border-cockpit-border/70 p-6 bg-cockpit-topbar/40 rounded-t-2xl">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cockpit-border bg-cockpit-panel text-cockpit-accent shadow-sm">
+            <Server className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-[16px] font-bold tracking-tight text-cockpit-text">
+              {isSetupMode ? 'Set Up Owner Access' : 'Cockpit Portal'}
+            </h1>
+            <p className="text-[12px] text-cockpit-muted">
+              {isSetupMode ? 'First run · One master account only' : 'Authenticate to access server telemetry'}
+            </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <form onSubmit={handleSubmit} className="space-y-4 p-6">
           {isSetupMode && (
-            <p className="text-[12.5px] leading-relaxed text-cockpit-muted">
-              Create the owner account now. Registration closes permanently once it exists, so anyone
-              reaching this dashboard afterwards has to sign in.
+            <p className="rounded-xl border border-cockpit-accent/20 bg-cockpit-accent/5 p-3 text-[12px] leading-relaxed text-cockpit-muted">
+              Create the owner account now. Registration locks permanently once created.
             </p>
           )}
 
           {error && (
-            <div className="flex animate-fadeIn items-center gap-2 rounded-lg bg-state-bad/10 px-3 py-2.5 text-[12.5px] text-state-bad">
+            <div className="flex items-center gap-2 rounded-xl border border-state-bad/30 bg-state-bad/10 p-3 text-[12.5px] text-state-bad animate-fade-in">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           <div className="space-y-1.5">
-            <label htmlFor="cockpit-username" className="label block">
+            <label htmlFor="cockpit-username" className="block text-[12px] font-bold text-cockpit-text">
               Username
             </label>
-            <input
-              id="cockpit-username"
-              type="text"
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
-              className="field w-full"
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-cockpit-muted">
+                <User className="h-3.5 w-3.5" />
+              </div>
+              <input
+                id="cockpit-username"
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
+                placeholder="root or admin"
+                className="field w-full pl-9 pr-3.5 font-mono text-[13px]"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="cockpit-password" className="label block">
+            <label htmlFor="cockpit-password" className="block text-[12px] font-bold text-cockpit-text">
               Password
             </label>
-            <input
-              id="cockpit-password"
-              type="password"
-              autoComplete={isSetupMode ? 'new-password' : 'current-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              className="field w-full"
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-cockpit-muted">
+                <Lock className="h-3.5 w-3.5" />
+              </div>
+              <input
+                id="cockpit-password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete={isSetupMode ? 'new-password' : 'current-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                placeholder="••••••••"
+                className="field w-full pl-9 pr-10 font-mono text-[13px]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-cockpit-muted hover:text-cockpit-text transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {isSetupMode && (
             <div className="space-y-1.5">
-              <label htmlFor="cockpit-confirm" className="label block">
+              <label htmlFor="cockpit-confirm" className="block text-[12px] font-bold text-cockpit-text">
                 Confirm password
               </label>
-              <input
-                id="cockpit-confirm"
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={isLoading}
-                className="field w-full"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-cockpit-muted">
+                  <Lock className="h-3.5 w-3.5" />
+                </div>
+                <input
+                  id="cockpit-confirm"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="••••••••"
+                  className="field w-full pl-9 pr-10 font-mono text-[13px]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-cockpit-muted hover:text-cockpit-text transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           )}
 
           {!isSetupMode && (
-            <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-cockpit-muted transition-colors hover:text-cockpit-text">
+            <label className="flex cursor-pointer items-center gap-2.5 py-1 text-[12.5px] text-cockpit-muted transition-colors hover:text-cockpit-text select-none">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-cockpit-border bg-cockpit-bg accent-cockpit-accent"
+                className="h-4 w-4 rounded border-cockpit-border bg-cockpit-bg accent-cockpit-accent cursor-pointer"
               />
               Stay signed in for 30 days
             </label>
           )}
 
-          <button type="submit" disabled={isLoading} className="btn-primary w-full justify-center">
-            {isLoading ? 'Working…' : isSetupMode ? 'Create owner account' : 'Sign in'}
-            {!isLoading && <ArrowRight className="h-3.5 w-3.5" />}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="btn-primary w-full justify-center gap-2 py-2.5 text-[13px] font-bold mt-2"
+          >
+            {isLoading ? 'Authenticating…' : isSetupMode ? 'Create owner account' : 'Sign in to Cockpit'}
+            {!isLoading && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
       </div>

@@ -3,12 +3,17 @@ import { createPortal } from 'react-dom';
 import {
   Check,
   CheckCircle2,
+  Eye,
+  EyeOff,
   Key,
+  Lock,
   Moon,
   RotateCcw,
   Save,
   Server,
+  Shield,
   ShieldAlert,
+  ShieldCheck,
   Sun,
   X,
 } from 'lucide-react';
@@ -46,6 +51,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [currentPassword, setCurrentPassword] = useState<string>('');
   const [newPassword, setNewPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState<boolean>(false);
+  const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -71,6 +79,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     setNodeError(null);
     setPasswordSuccess(null);
     setPasswordError(null);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
   }, [isOpen, currentPveNode]);
 
   if (!isOpen) return null;
@@ -95,7 +109,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     const trimmed = primaryNodeName.trim();
 
     try {
-      // 1. Immediately update localStorage & dispatch local event
       if (trimmed) {
         localStorage.setItem('cockpit_primary_node_name', trimmed);
       } else {
@@ -103,7 +116,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       }
       window.dispatchEvent(new CustomEvent('cockpit_settings_updated', { detail: { primaryNodeName: trimmed } }));
 
-      // 2. Persist to backend
       const res = await authFetch('/api/settings', {
         method: 'PATCH',
         body: JSON.stringify({ primaryNodeName: trimmed }),
@@ -188,38 +200,61 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
   };
 
+  // Password strength calculation
+  const getPasswordStrength = () => {
+    if (!newPassword) return { score: 0, text: '', color: '' };
+    let score = 0;
+    if (newPassword.length >= 6) score += 1;
+    if (newPassword.length >= 10) score += 1;
+    if (/[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword)) score += 1;
+    if (/[0-9]/.test(newPassword)) score += 1;
+    if (/[^A-Za-z0-9]/.test(newPassword)) score += 1;
+
+    if (score <= 2) return { score: 1, text: 'Weak', color: 'bg-state-bad' };
+    if (score <= 3) return { score: 2, text: 'Moderate', color: 'bg-state-warn' };
+    return { score: 3, text: 'Strong', color: 'bg-state-good' };
+  };
+
+  const strength = getPasswordStrength();
+
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl border border-cockpit-border bg-cockpit-panel shadow-2xl overflow-hidden animate-scale-in"
+        className="relative w-full max-w-lg rounded-2xl border border-cockpit-border/80 bg-cockpit-panel/95 shadow-2xl overflow-hidden backdrop-blur-xl animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-cockpit-border px-5 py-4">
-          <div>
-            <h2 className="text-[15px] font-bold text-cockpit-text">Cockpit Settings</h2>
-            <p className="text-[11.5px] text-cockpit-muted">Customize your node name, theme, and owner credentials</p>
+        <div className="flex items-center justify-between border-b border-cockpit-border/70 px-6 py-4 bg-cockpit-topbar/50">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cockpit-border bg-cockpit-panel text-cockpit-accent shadow-sm">
+              {activeTab === 'node' ? <Server className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+            </div>
+            <div>
+              <h2 className="text-[15px] font-bold text-cockpit-text">Cockpit Settings</h2>
+              <p className="text-[11.5px] text-cockpit-muted">Node identity, appearance, and security</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-cockpit-muted hover:bg-cockpit-panelHover hover:text-cockpit-text transition-colors"
+            aria-label="Close"
+            className="rounded-xl p-2 text-cockpit-muted hover:bg-cockpit-panelHover hover:text-cockpit-text transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-cockpit-border bg-cockpit-panelHover/30 px-3 pt-2">
+        <div className="flex border-b border-cockpit-border/70 bg-cockpit-panelHover/30 px-6 gap-2 pt-2">
           <button
             type="button"
             onClick={() => setActiveTab('node')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[12.5px] font-semibold transition-colors ${
+            className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-[12.5px] font-semibold transition-all duration-150 ${
               activeTab === 'node'
-                ? 'border-cockpit-accent text-cockpit-accent'
+                ? 'border-cockpit-accent text-cockpit-accent font-bold'
                 : 'border-transparent text-cockpit-muted hover:text-cockpit-text'
             }`}
           >
@@ -229,19 +264,19 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('password')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[12.5px] font-semibold transition-colors ${
+            className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-[12.5px] font-semibold transition-all duration-150 ${
               activeTab === 'password'
-                ? 'border-cockpit-accent text-cockpit-accent'
+                ? 'border-cockpit-accent text-cockpit-accent font-bold'
                 : 'border-transparent text-cockpit-muted hover:text-cockpit-text'
             }`}
           >
             <Key className="h-4 w-4" />
-            Account Security
+            Change Password
           </button>
         </div>
 
         {/* Body Content */}
-        <div className="p-5 max-h-[75vh] overflow-y-auto space-y-6">
+        <div className="p-6 max-h-[72vh] overflow-y-auto space-y-6">
           {/* TAB: Node & Appearance */}
           {activeTab === 'node' && (
             <div className="space-y-6">
@@ -251,8 +286,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   <label className="block text-[12.5px] font-bold text-cockpit-text mb-1">
                     Primary Node Custom Name
                   </label>
-                  <p className="text-[11.5px] text-cockpit-muted mb-2">
-                    Rename your primary hypervisor node from default &ldquo;pve&rdquo; to your customized label (e.g. &ldquo;homelab-server&rdquo;, &ldquo;proxmox-01&rdquo;). Broadcasts dynamically to all dashboard telemetry views.
+                  <p className="text-[11.5px] text-cockpit-muted mb-3 leading-relaxed">
+                    Rename your primary hypervisor node from default <code className="font-mono text-cockpit-accent font-semibold">pve</code> to your customized label (e.g. &ldquo;homelab-server&rdquo;, &ldquo;proxmox-01&rdquo;).
                   </p>
                   <div className="flex gap-2">
                     <input
@@ -260,12 +295,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                       value={primaryNodeName}
                       onChange={(e) => setPrimaryNodeName(e.target.value)}
                       placeholder={currentPveNode || 'e.g. homelab-server'}
-                      className="input flex-1 font-mono text-[13px]"
+                      className="field flex-1 font-mono text-[13px]"
                     />
                     <button
                       type="submit"
                       disabled={isSavingNode}
-                      className="btn-primary flex items-center gap-1.5 px-3 py-2 text-[12px] font-bold shrink-0"
+                      className="btn-primary flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-bold shrink-0"
                     >
                       <Save className="h-3.5 w-3.5" />
                       Save
@@ -275,7 +310,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                       onClick={handleResetNodeName}
                       disabled={isSavingNode}
                       title="Reset to default hypervisor node name"
-                      className="btn-ghost flex items-center gap-1 px-2.5 py-2 text-[12px] shrink-0"
+                      className="btn-ghost flex items-center gap-1 px-3 py-2 text-[12px] shrink-0"
                     >
                       <RotateCcw className="h-3 w-3" />
                       Reset
@@ -284,14 +319,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 </div>
 
                 {nodeSuccess && (
-                  <div className="flex items-center gap-2 rounded-lg border border-state-good/30 bg-state-good/10 p-2.5 text-[12px] text-state-good">
+                  <div className="flex items-center gap-2 rounded-xl border border-state-good/30 bg-state-good/10 p-3 text-[12px] text-state-good animate-fade-in">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span>{nodeSuccess}</span>
                   </div>
                 )}
 
                 {nodeError && (
-                  <div className="flex items-center gap-2 rounded-lg border border-state-bad/30 bg-state-bad/10 p-2.5 text-[12px] text-state-bad">
+                  <div className="flex items-center gap-2 rounded-xl border border-state-bad/30 bg-state-bad/10 p-3 text-[12px] text-state-bad animate-fade-in">
                     <ShieldAlert className="h-4 w-4 shrink-0" />
                     <span>{nodeError}</span>
                   </div>
@@ -299,25 +334,25 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               </form>
 
               {/* Theme Toggle Section */}
-              <div className="border-t border-cockpit-border pt-4">
+              <div className="border-t border-cockpit-border/70 pt-5">
                 <label className="block text-[12.5px] font-bold text-cockpit-text mb-1">
                   Color Theme
                 </label>
                 <p className="text-[11.5px] text-cockpit-muted mb-3">
-                  Toggle between high-contrast Dark Mode and crisp Light Mode.
+                  Toggle between high-contrast Dark Mode and clean Light Mode.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => handleToggleTheme(true)}
-                    className={`flex items-center justify-between rounded-xl border p-3 text-left transition-all ${
+                    className={`flex items-center justify-between rounded-xl border p-3.5 text-left transition-all ${
                       isDarkMode
-                        ? 'border-cockpit-accent bg-cockpit-accent/10 shadow-sm'
-                        : 'border-cockpit-border bg-cockpit-panel hover:border-cockpit-border/80'
+                        ? 'border-cockpit-accent bg-cockpit-accent/15 shadow-sm'
+                        : 'border-cockpit-border bg-cockpit-bg/50 hover:border-cockpit-border/80'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-zinc-100 border border-zinc-700">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-zinc-100 border border-zinc-700 shadow-sm">
                         <Moon className="h-4 w-4" />
                       </div>
                       <div>
@@ -331,14 +366,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleToggleTheme(false)}
-                    className={`flex items-center justify-between rounded-xl border p-3 text-left transition-all ${
+                    className={`flex items-center justify-between rounded-xl border p-3.5 text-left transition-all ${
                       !isDarkMode
-                        ? 'border-cockpit-accent bg-cockpit-accent/10 shadow-sm'
-                        : 'border-cockpit-border bg-cockpit-panel hover:border-cockpit-border/80'
+                        ? 'border-cockpit-accent bg-cockpit-accent/15 shadow-sm'
+                        : 'border-cockpit-border bg-cockpit-bg/50 hover:border-cockpit-border/80'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-900 border border-amber-300">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-900 border border-amber-300 shadow-sm">
                         <Sun className="h-4 w-4" />
                       </div>
                       <div>
@@ -356,63 +391,131 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           {/* TAB: Password */}
           {activeTab === 'password' && (
             <form onSubmit={handleChangePassword} className="space-y-4">
-              <p className="text-[11.5px] text-cockpit-muted">
-                Update the master administrator password used for cockpit login sessions.
-              </p>
+              <div className="rounded-xl border border-cockpit-accent/20 bg-cockpit-accent/5 p-3.5 flex items-start gap-3">
+                <ShieldCheck className="h-5 w-5 text-cockpit-accent shrink-0 mt-0.5" />
+                <div className="text-[12px] leading-relaxed text-cockpit-muted">
+                  <span className="font-semibold text-cockpit-text">Master Password Update</span>
+                  <p className="mt-0.5">
+                    Changes your root login credential. All future logins across devices will require this new password.
+                  </p>
+                </div>
+              </div>
 
-              <div>
-                <label className="block text-[12px] font-semibold text-cockpit-text mb-1">
+              {/* Current Password Field */}
+              <div className="space-y-1.5">
+                <label className="block text-[12px] font-bold text-cockpit-text">
                   Current Password
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="input w-full font-mono text-[12.5px]"
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-cockpit-muted">
+                    <Lock className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="field w-full pl-9 pr-10 font-mono text-[13px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-cockpit-muted hover:text-cockpit-text transition-colors"
+                  >
+                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[12px] font-semibold text-cockpit-text mb-1">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className="input w-full font-mono text-[12.5px]"
-                />
+              {/* New Password Field */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[12px] font-bold text-cockpit-text">
+                    New Password
+                  </label>
+                  {newPassword && (
+                    <span className="text-[11px] font-mono text-cockpit-muted">
+                      Strength: <strong className={strength.score === 1 ? 'text-state-bad' : strength.score === 2 ? 'text-state-warn' : 'text-state-good'}>{strength.text}</strong>
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-cockpit-muted">
+                    <Key className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="field w-full pl-9 pr-10 font-mono text-[13px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-cockpit-muted hover:text-cockpit-text transition-colors"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {/* Strength bar */}
+                {newPassword && (
+                  <div className="flex gap-1.5 pt-1">
+                    <div className={`h-1 flex-1 rounded-full transition-colors ${strength.score >= 1 ? strength.color : 'bg-cockpit-border'}`} />
+                    <div className={`h-1 flex-1 rounded-full transition-colors ${strength.score >= 2 ? strength.color : 'bg-cockpit-border'}`} />
+                    <div className={`h-1 flex-1 rounded-full transition-colors ${strength.score >= 3 ? strength.color : 'bg-cockpit-border'}`} />
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-[12px] font-semibold text-cockpit-text mb-1">
+              {/* Confirm Password Field */}
+              <div className="space-y-1.5">
+                <label className="block text-[12px] font-bold text-cockpit-text">
                   Confirm New Password
                 </label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                  className="input w-full font-mono text-[12.5px]"
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-cockpit-muted">
+                    <Key className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className={`field w-full pl-9 pr-10 font-mono text-[13px] ${
+                      confirmPassword && newPassword !== confirmPassword
+                        ? 'border-state-bad focus:border-state-bad focus:ring-state-bad/40'
+                        : ''
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-cockpit-muted hover:text-cockpit-text transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <p className="text-[11px] text-state-bad font-medium mt-1">Passwords do not match.</p>
+                )}
               </div>
 
               {passwordSuccess && (
-                <div className="flex items-center gap-2 rounded-lg border border-state-good/30 bg-state-good/10 p-2.5 text-[12px] text-state-good">
+                <div className="flex items-center gap-2 rounded-xl border border-state-good/30 bg-state-good/10 p-3 text-[12px] text-state-good animate-fade-in">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
                   <span>{passwordSuccess}</span>
                 </div>
               )}
 
               {passwordError && (
-                <div className="flex items-center gap-2 rounded-lg border border-state-bad/30 bg-state-bad/10 p-2.5 text-[12px] text-state-bad">
+                <div className="flex items-center gap-2 rounded-xl border border-state-bad/30 bg-state-bad/10 p-3 text-[12px] text-state-bad animate-fade-in">
                   <ShieldAlert className="h-4 w-4 shrink-0" />
                   <span>{passwordError}</span>
                 </div>
@@ -421,11 +524,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isChangingPassword}
-                  className="btn-primary w-full flex items-center justify-center gap-1.5 py-2 text-[12.5px] font-bold"
+                  disabled={isChangingPassword || (Boolean(confirmPassword) && newPassword !== confirmPassword)}
+                  className="btn-primary w-full flex items-center justify-center gap-2 py-2.5 text-[13px] font-bold"
                 >
-                  <Key className="h-3.5 w-3.5" />
-                  {isChangingPassword ? 'Updating Password...' : 'Change Password'}
+                  <Key className="h-4 w-4" />
+                  {isChangingPassword ? 'Updating Password...' : 'Save New Password'}
                 </button>
               </div>
             </form>
@@ -433,11 +536,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end border-t border-cockpit-border bg-cockpit-panelHover/20 px-5 py-3">
+        <div className="flex items-center justify-end border-t border-cockpit-border/70 bg-cockpit-panelHover/20 px-6 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="btn-ghost px-4 py-1.5 text-[12px]"
+            className="btn-ghost px-5 py-2 text-[12px] font-semibold"
           >
             Close
           </button>
