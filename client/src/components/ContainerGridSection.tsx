@@ -173,7 +173,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [isTogglingMonitor, setIsTogglingMonitor] = useState(false);
   const isMonitoringRef = useRef(isMonitoring);
   isMonitoringRef.current = isMonitoring;
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Sync state if snapshot has containerMonitoring telemetry
   useEffect(() => {
