@@ -8,7 +8,22 @@ interface SslTrackerSectionProps {
 }
 
 export const SslTrackerSection: React.FC<SslTrackerSectionProps> = ({ certificates = [], isPrivacyMode = false }) => {
-  if (certificates.length === 0) return null;
+  if (certificates.length === 0) {
+    return (
+      <section className="panel flex flex-col">
+        <div className="panel-head">
+          <div>
+            <h2 className="panel-title">SSL certificates</h2>
+            <p className="panel-sub">Let's Encrypt via Nginx Proxy Manager</p>
+          </div>
+          <span className="pill pill-neutral">0 active</span>
+        </div>
+        <div className="px-5 py-8 text-center text-[12px] text-cockpit-muted">
+          No SSL certificates tracked or Nginx Proxy Manager database not detected.
+        </div>
+      </section>
+    );
+  }
 
   const soonest = Math.min(...certificates.map((c) => c.daysRemaining));
 
