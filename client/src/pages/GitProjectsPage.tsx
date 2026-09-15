@@ -53,19 +53,18 @@ export const GitProjectsPage: React.FC<GitProjectsPageProps> = ({ snapshot, onRe
           <div>
             <h2 className="panel-title">Git projects</h2>
             <p className="panel-sub">
-              {projects.length === 0 ? 'Nothing tracked yet' : `${projects.length} tracked`} · checked against GitHub
-              every few minutes
+              {projects.length === 0 ? 'Nothing tracked yet' : `${projects.length} tracked`} · click refresh to check for newest commits
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing || projects.length === 0}
-              title="Check GitHub now instead of waiting for the next scheduled check"
-              className="btn-ghost disabled:opacity-40"
+              title="Fetch newest commit version from GitHub to detect container updates"
+              className="btn-ghost inline-flex items-center gap-2 text-[12px] font-medium disabled:opacity-40"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-cockpit-accent' : ''}`} />
+              <span>{isRefreshing ? 'Fetching newest commits…' : 'Refresh to get newest commit version'}</span>
             </button>
             <button onClick={() => setIsAdding(true)} className="btn-primary">
               <Plus className="h-3.5 w-3.5" />

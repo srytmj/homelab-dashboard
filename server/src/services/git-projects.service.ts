@@ -241,20 +241,12 @@ export class GitProjectsService {
   }
 
   /**
-   * Returns every registered project's status instantly from cache, kicking
-   * off a background refresh for any project whose cache is older than
-   * config.githubCheckIntervalMs. Never awaits the network itself, so this
-   * is safe to call on every collector tick.
+   * Returns every registered project's status instantly from cache without
+   * auto-querying GitHub in the background. Commit versions are refreshed on-demand
+   * when the user triggers 'Refresh to get newest commit version' (refreshAll).
    */
   public getSnapshot(): GitProjectStatus[] {
-    const now = Date.now();
     return Object.entries(this.db.projects).map(([containerName, record]) => {
-      const isStale = !record.lastCheckedAt || now - record.lastCheckedAt > config.githubCheckIntervalMs;
-      if (isStale) {
-        // Fire-and-forget; the next tick(s) will pick up the refreshed cache.
-        this.refresh(containerName, record).catch(() => {});
-      }
-
       return {
         containerName,
         repoOwner: record.repoOwner,

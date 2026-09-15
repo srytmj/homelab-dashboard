@@ -150,7 +150,7 @@ Disaster recovery and portable configuration:
 
 ## Git projects
 
-For containers that are your own projects — not off-the-shelf services like Jellyfin or Kavita. **Track a project** links a container to a GitHub repo and branch; the daemon checks that repo's latest commit every few minutes and shows an **Update available** pill when it differs from what you last deployed. **Refresh** forces that check for every tracked project right now instead of waiting for the next scheduled one.
+For containers that are your own projects — not off-the-shelf services like Jellyfin or Kavita. **Track a project** links a container to a GitHub repo and branch. Instead of automated background polling, updates are checked on-demand: click **Refresh to get newest commit version** at the top right to query GitHub for the latest commit across all tracked repositories. If new commits are detected, an **Update available** pill appears along with the newest commit message and date, showing exactly what needs to be pulled and rebuilt.
 
 Picking the container to track: if more than one Docker host is configured, a tab strip lets you narrow the list to one host first. The container field itself is a search box, not a plain dropdown — type part of a name to filter, since a fleet with many containers across hosts would otherwise be a long scroll.
 
