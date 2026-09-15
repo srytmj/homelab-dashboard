@@ -256,6 +256,29 @@ export interface NotificationEntry {
   createdAt: number;
 }
 
+export type AuditLevel = 'info' | 'warn' | 'error';
+
+export type AuditCategory =
+  | 'auth'
+  | 'pin'
+  | 'bookmark'
+  | 'container'
+  | 'git'
+  | 'backup'
+  | 'config'
+  | 'app-update'
+  | 'system';
+
+export interface AuditLogEntry {
+  id: string;
+  category: AuditCategory;
+  level: AuditLevel;
+  message: string;
+  actor: string | null;
+  detail?: string;
+  createdAt: number;
+}
+
 export interface GitProjectStatus {
   containerName: string;
   repoOwner: string;
@@ -269,6 +292,7 @@ export interface GitProjectStatus {
   latestCommitMessage?: string;
   latestCommitDate?: string;
   lastKnownSha?: string;
+  lastDeployedAt?: number;
   hasUpdate: boolean;
   lastPullStatus?: 'idle' | 'pulling' | 'rebuilding' | 'success' | 'failed';
   lastPullMessage?: string;
@@ -370,6 +394,7 @@ export interface AgentInstanceTelemetry {
   currentModel: string;
   lastActiveAt?: string;
   lastError?: string;
+  turnsToday: number;
   rolling5h: {
     turnsCount: number;
     estimatedLimit: number;

@@ -10,6 +10,7 @@ export interface BookmarkRecord {
   id: string;
   name: string;
   url: string;
+  group?: string;
   addedAt: number;
 }
 
@@ -63,11 +64,12 @@ export class BookmarksService {
     return this.db.bookmarks;
   }
 
-  public add(name: string, url: string): BookmarkRecord {
+  public add(name: string, url: string, group?: string): BookmarkRecord {
     const record: BookmarkRecord = {
       id: crypto.randomUUID(),
       name: name.trim(),
       url: this.normalizeUrl(url),
+      group: group?.trim() || undefined,
       addedAt: Date.now(),
     };
     this.db.bookmarks.push(record);
@@ -75,11 +77,12 @@ export class BookmarksService {
     return record;
   }
 
-  public update(id: string, name: string, url: string): BookmarkRecord | null {
+  public update(id: string, name: string, url: string, group?: string): BookmarkRecord | null {
     const record = this.db.bookmarks.find((b) => b.id === id);
     if (!record) return null;
     record.name = name.trim();
     record.url = this.normalizeUrl(url);
+    record.group = group?.trim() || undefined;
     this.saveDb();
     return record;
   }

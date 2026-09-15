@@ -12,6 +12,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  MoreVertical,
 } from 'lucide-react';
 import { CockpitSnapshot } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -50,6 +51,19 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { username, logout } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const [isMoreOpen, setIsMoreOpen] = React.useState(false);
+  const moreRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isMoreOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setIsMoreOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isMoreOpen]);
 
   const pve = snapshot?.host.pve;
   const pveOnline = pve?.connected ?? false;
@@ -111,14 +125,6 @@ export const Header: React.FC<HeaderProps> = ({
               </kbd>
             </button>
 
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              title="User Settings (Theme, Node Name, Password)"
-              className="icon-btn"
-            >
-              <Settings className="h-3.5 w-3.5" />
-            </button>
-
             <NotificationsPanel />
 
             <button
@@ -137,29 +143,65 @@ export const Header: React.FC<HeaderProps> = ({
               {isPrivacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             </button>
 
-            <button
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-              className="icon-btn hidden sm:flex"
-            >
-              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            </button>
+            <div className="relative" ref={moreRef}>
+              <button
+                onClick={() => setIsMoreOpen((v) => !v)}
+                title="More actions"
+                className={`icon-btn ${isMoreOpen ? 'border-cockpit-accent/50 text-cockpit-accent' : ''}`}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </button>
 
-            <button
-              onClick={onRefresh}
-              title="Refresh telemetry immediately"
-              className="icon-btn"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-
-            <button
-              onClick={logout}
-              title="Lock terminal & sign out"
-              className="icon-btn hover:text-state-bad"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
+              {isMoreOpen && (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-52 overflow-hidden rounded-xl border border-cockpit-border/60 bg-cockpit-panel/95 backdrop-blur-xl shadow-panel animate-fade-in">
+                  <button
+                    onClick={() => {
+                      setIsMoreOpen(false);
+                      setIsSettingsOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[12.5px] font-medium text-cockpit-text transition-colors hover:bg-cockpit-panelHover"
+                  >
+                    <Settings className="h-3.5 w-3.5 text-cockpit-muted" />
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMoreOpen(false);
+                      onToggleFullscreen();
+                    }}
+                    className="hidden w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[12.5px] font-medium text-cockpit-text transition-colors hover:bg-cockpit-panelHover sm:flex"
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="h-3.5 w-3.5 text-cockpit-muted" />
+                    ) : (
+                      <Maximize2 className="h-3.5 w-3.5 text-cockpit-muted" />
+                    )}
+                    {isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMoreOpen(false);
+                      onRefresh();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[12.5px] font-medium text-cockpit-text transition-colors hover:bg-cockpit-panelHover"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 text-cockpit-muted" />
+                    Refresh telemetry
+                  </button>
+                  <div className="border-t border-cockpit-border/60" />
+                  <button
+                    onClick={() => {
+                      setIsMoreOpen(false);
+                      logout();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[12.5px] font-medium text-state-bad transition-colors hover:bg-state-bad/10"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

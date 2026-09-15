@@ -1,5 +1,21 @@
 [
   {
+    "id": "2026-09-15-fleet-management-logs-and-ui-overhaul",
+    "version": "1.2.0",
+    "title": "Full Container Management, System Logs Page & UI Overhaul",
+    "date": "2026-09-15",
+    "description": "Perombakan UI (sidebar sticky, header dirapikan, animasi interaksi) plus fitur baru: manajemen penuh container (start/stop/restart, default card view, filter pinned, sort), halaman Logs untuk audit trail lengkap, timestamp pull & redeploy di Git Projects, grouping shortcut, dan detail tambahan di AI Agents Monitor.",
+    "highlights": [
+      "Sidebar sekarang benar-benar sticky mengikuti viewport saat scroll, tidak lagi ikut ter-scroll bersama konten.",
+      "Header dirapikan: tombol Settings/Fullscreen/Refresh/Sign out digabung ke satu menu 'More' agar tidak berantakan.",
+      "Container Fleet: default tampilan Card, filter Pinned/All, dan kontrol penuh start/stop/restart per container.",
+      "Halaman Logs baru: audit trail lengkap (auth, pin, container, git, backup, config, error) dengan filter kategori/level dan pencarian.",
+      "Git Projects menampilkan jam & tanggal pull & redeploy terakhir.",
+      "Shortcuts (Bookmarks) kini bisa dikelompokkan berdasarkan grup buatan sendiri.",
+      "AI Agents Monitor menampilkan turns hari ini, waktu aktif terakhir, dan disclaimer transparansi bahwa angka 5-jam/mingguan adalah estimasi lokal, bukan limit resmi dari akun."
+    ]
+  },
+  {
     "id": "2026-09-14-standalone-out-of-process-redeployer",
     "version": "1.1.13",
     "title": "Standalone Out-of-Process Redeployer & Seamless Service Reconnect",

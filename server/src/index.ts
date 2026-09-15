@@ -24,6 +24,7 @@ import { CollectorService } from './services/collector.service.js';
 import { SentinelService } from './services/sentinel.service.js';
 import { AppUpdateService } from './services/app-update.service.js';
 import { AiAgentsService } from './services/ai-agents.service.js';
+import { auditLogService } from './services/audit-log.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -98,6 +99,16 @@ async function bootstrap() {
     }
     return '';
   };
+
+  const actorFor = (_req: any): string | null => authService.getUsername();
+
+  app.setErrorHandler((error: Error, request, reply) => {
+    auditLogService.log('system', 'error', `${request.method} ${request.url} failed: ${error.message}`, {
+      actor: actorFor(request),
+      detail: error.stack,
+    });
+    reply.status((error as any).statusCode || 500).send({ error: error.message });
+  });
 
   // Auth Protection Hook for /api/*
   app.addHook('preHandler', async (request, reply) => {
@@ -178,6 +189,7 @@ async function bootstrap() {
   app.post('/api/auth/register', async (req, reply) => {
     const body = req.body as { username?: string; password?: string };
     const result = authService.registerOwner(body?.username || '', body?.password || '');
+    auditLogService.log('auth', result.success ? 'info' : 'warn', result.success ? `Owner account registered (${body?.username})` : `Registration failed: ${result.message}`, { actor: body?.username || null });
     if (!result.success) {
       reply.status(400);
     }
@@ -187,6 +199,7 @@ async function bootstrap() {
   app.post('/api/auth/login', async (req, reply) => {
     const body = req.body as { username?: string; password?: string; rememberMe?: boolean };
     const result = authService.login(body?.username || '', body?.password || '', body?.rememberMe ?? true);
+    auditLogService.log('auth', result.success ? 'info' : 'warn', result.success ? `Login succeeded (${body?.username})` : `Login failed: ${result.message}`, { actor: body?.username || null });
     if (!result.success) {
       reply.status(401);
     }
@@ -195,9 +208,11 @@ async function bootstrap() {
 
   app.post('/api/auth/logout', async (req) => {
     const token = extractToken(req);
+    const actor = actorFor(req);
     if (token) {
       authService.logout(token);
     }
+    auditLogService.log('auth', 'info', 'Logged out', { actor });
     return { success: true, message: 'Logged out successfully.' };
   });
 
@@ -209,6 +224,7 @@ async function bootstrap() {
     }
     const body = req.body as { currentPassword?: string; newPassword?: string };
     const result = authService.changePassword(body?.currentPassword || '', body?.newPassword || '');
+    auditLogService.log('auth', result.success ? 'info' : 'warn', result.success ? 'Password changed' : `Password change failed: ${result.message}`, { actor: actorFor(req) });
     if (!result.success) {
       reply.status(400);
     }
@@ -269,8 +285,9 @@ async function bootstrap() {
     return terminalService.getRemoteProcesses(target);
   });
 
-  app.post('/api/docker/prune', async () => {
+  app.post('/api/docker/prune', async (request) => {
     const result = await primaryDockerService.pruneSystem();
+    auditLogService.log('container', 'info', 'Docker prune executed', { actor: actorFor(request), detail: JSON.stringify(result) });
     return result;
   });
 
@@ -287,6 +304,29 @@ async function bootstrap() {
     const { id } = request.params as { id: string };
     const service = collectorService.getDockerServiceForContainer(id) || primaryDockerService;
     const result = await service.restartContainer(id);
+    auditLogService.log('container', result.success ? 'info' : 'error', `Restart ${id.slice(0, 12)}: ${result.message}`, { actor: actorFor(request) });
+    if (!result.success) {
+      reply.status(400);
+    }
+    return result;
+  });
+
+  app.post('/api/containers/:id/stop', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const service = collectorService.getDockerServiceForContainer(id) || primaryDockerService;
+    const result = await service.stopContainer(id);
+    auditLogService.log('container', result.success ? 'info' : 'error', `Stop ${id.slice(0, 12)}: ${result.message}`, { actor: actorFor(request) });
+    if (!result.success) {
+      reply.status(400);
+    }
+    return result;
+  });
+
+  app.post('/api/containers/:id/start', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const service = collectorService.getDockerServiceForContainer(id) || primaryDockerService;
+    const result = await service.startContainer(id);
+    auditLogService.log('container', result.success ? 'info' : 'error', `Start ${id.slice(0, 12)}: ${result.message}`, { actor: actorFor(request) });
     if (!result.success) {
       reply.status(400);
     }
@@ -298,6 +338,7 @@ async function bootstrap() {
     const body = request.body as { publicUrl?: string };
     const record = pinsService.pin(name, body?.publicUrl);
     notificationsService.add('pin', `Pinned ${name}`);
+    auditLogService.log('pin', 'info', `Pinned ${name}`, { actor: actorFor(request) });
     return { success: true, pin: record };
   });
 
@@ -305,6 +346,17 @@ async function bootstrap() {
     const { name } = request.params as { name: string };
     pinsService.unpin(name);
     notificationsService.add('unpin', `Unpinned ${name}`);
+    auditLogService.log('pin', 'info', `Unpinned ${name}`, { actor: actorFor(request) });
+    return { success: true };
+  });
+
+  app.get('/api/audit-log', async () => {
+    return auditLogService.getAll();
+  });
+
+  app.post('/api/audit-log/clear', async (request) => {
+    auditLogService.clear();
+    auditLogService.log('system', 'info', 'Audit log cleared', { actor: actorFor(request) });
     return { success: true };
   });
 
@@ -322,12 +374,13 @@ async function bootstrap() {
   });
 
   app.post('/api/bookmarks', async (request, reply) => {
-    const body = request.body as { name?: string; url?: string };
+    const body = request.body as { name?: string; url?: string; group?: string };
     if (!body?.name?.trim() || !body?.url?.trim()) {
       reply.status(400);
       return { success: false, message: 'name and url are required' };
     }
-    const record = bookmarksService.add(body.name, body.url);
+    const record = bookmarksService.add(body.name, body.url, body.group);
+    auditLogService.log('bookmark', 'info', `Added bookmark ${body.name}`, { actor: actorFor(request) });
     return { success: true, bookmark: record };
   });
 
@@ -343,12 +396,12 @@ async function bootstrap() {
 
   app.put('/api/bookmarks/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = request.body as { name?: string; url?: string };
+    const body = request.body as { name?: string; url?: string; group?: string };
     if (!body?.name?.trim() || !body?.url?.trim()) {
       reply.status(400);
       return { success: false, message: 'name and url are required' };
     }
-    const record = bookmarksService.update(id, body.name, body.url);
+    const record = bookmarksService.update(id, body.name, body.url, body.group);
     if (!record) {
       reply.status(404);
       return { success: false, message: 'Bookmark not found' };
@@ -385,12 +438,14 @@ async function bootstrap() {
       body.rebuildCommand,
       body.autoDeploy
     );
+    auditLogService.log('git', 'info', `Tracked ${containerName} (${body.repoOwner}/${body.repoName})`, { actor: actorFor(request) });
     return { success: true, project: record };
   });
 
   app.delete('/api/git-projects/:containerName', async (request) => {
     const { containerName } = request.params as { containerName: string };
     gitProjectsService.unregister(containerName);
+    auditLogService.log('git', 'info', `Untracked ${containerName}`, { actor: actorFor(request) });
     return { success: true };
   });
 
@@ -416,6 +471,7 @@ async function bootstrap() {
   app.post('/api/git-projects/:containerName/pull', async (request, reply) => {
     const { containerName } = request.params as { containerName: string };
     const result = gitProjectsService.startPull(containerName);
+    auditLogService.log('git', result.started ? 'info' : 'warn', `Pull & rebuild ${result.started ? 'started' : 'rejected'} for ${containerName}`, { actor: actorFor(request) });
     if (!result.started) {
       reply.status(400);
     }
@@ -468,6 +524,7 @@ async function bootstrap() {
 
   app.post('/api/backup/run', async (request, reply) => {
     const result = await backupService.runBackup();
+    auditLogService.log('backup', result.lastResult === 'success' ? 'info' : 'error', `Backup run: ${result.lastResult}${result.lastError ? ` (${result.lastError})` : ''}`, { actor: actorFor(request) });
     if (result.lastResult !== 'success') {
       reply.status(400);
     }
@@ -481,6 +538,7 @@ async function bootstrap() {
       return { lastRunAt: new Date().toISOString(), lastResult: 'failed', lastError: 'Confirmation required', lastDurationMs: 0 };
     }
     const result = await backupService.runRestore();
+    auditLogService.log('backup', result.lastResult === 'success' ? 'warn' : 'error', `Restore run: ${result.lastResult}${result.lastError ? ` (${result.lastError})` : ''}`, { actor: actorFor(request) });
     if (result.lastResult !== 'success') {
       reply.status(400);
     }
@@ -494,6 +552,7 @@ async function bootstrap() {
       return { success: false, message: 'url is required', imported: [] };
     }
     const result = await backupService.importConfig(body.url);
+    auditLogService.log('config', result.success ? 'info' : 'error', `Config import: ${result.message}`, { actor: actorFor(request) });
     if (!result.success) {
       reply.status(400);
     }

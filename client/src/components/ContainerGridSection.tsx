@@ -16,16 +16,19 @@ import {
   LayoutGrid,
   List,
   X,
+  Square,
+  Play,
 } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
 import { Sparkline } from './Sparkline.js';
 import { formatBytes, formatNetworkRate, redactText, getStatusColor } from '../utils/formatters.js';
+import { PowerAction } from './RestartModal.js';
 
 interface ContainerGridSectionProps {
   containers: ContainerMetric[] | undefined;
   isPrivacyMode?: boolean;
   onViewLogs: (container: ContainerMetric) => void;
-  onRestartContainer: (container: ContainerMetric) => void;
+  onPowerAction: (container: ContainerMetric, action: PowerAction) => void;
   onPinContainer: (container: ContainerMetric) => void;
 }
 
@@ -205,11 +208,12 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   containers = [],
   isPrivacyMode = false,
   onViewLogs,
-  onRestartContainer,
+  onPowerAction,
   onPinContainer,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'exited'>('all');
+  const [pinnedFilter, setPinnedFilter] = useState<'all' | 'pinned'>('all');
   const [hostFilter, setHostFilter] = useState('all');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -217,9 +221,9 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
     try {
-      return (localStorage.getItem('cockpit-fleet-view') as 'table' | 'cards') || 'table';
+      return (localStorage.getItem('cockpit-fleet-view') as 'table' | 'cards') || 'cards';
     } catch {
-      return 'table';
+      return 'cards';
     }
   });
 
@@ -247,6 +251,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
         if (!matchesSearch) return false;
         if (statusFilter === 'running' && c.state !== 'running') return false;
         if (statusFilter === 'exited' && c.state === 'running') return false;
+        if (pinnedFilter === 'pinned' && !c.isPinned) return false;
         if (hostFilter !== 'all' && c.dockerHost !== hostFilter) return false;
         return true;
       })
@@ -262,7 +267,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
             (b.networkRxRateBytesPerSec + b.networkTxRateBytesPerSec);
         return sortOrder === 'desc' ? -diff : diff;
       });
-  }, [containers, search, statusFilter, hostFilter, sortBy, sortOrder]);
+  }, [containers, search, statusFilter, pinnedFilter, hostFilter, sortBy, sortOrder]);
 
   const pageCount = Math.max(1, Math.ceil(filteredContainers.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -271,7 +276,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, hostFilter, pageSize]);
+  }, [search, statusFilter, pinnedFilter, hostFilter, pageSize]);
 
   const toggleSort = (column: SortKey) => {
     if (sortBy === column) {
@@ -348,6 +353,22 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                 {label}
               </button>
             ))}
+          </div>
+
+          <div className="seg">
+            <button
+              onClick={() => setPinnedFilter('all')}
+              className={`seg-btn ${pinnedFilter === 'all' ? 'seg-btn-on' : ''}`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setPinnedFilter('pinned')}
+              className={`seg-btn inline-flex items-center gap-1 ${pinnedFilter === 'pinned' ? 'seg-btn-on' : ''}`}
+            >
+              <Pin className="h-3 w-3" />
+              Pinned
+            </button>
           </div>
 
           {hostNames.length > 1 && <HostFilter hosts={hostNames} value={hostFilter} onChange={setHostFilter} />}
@@ -510,8 +531,25 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                       <button onClick={() => onViewLogs(container)} title="View logs" className="icon-btn p-1.5">
                         <Terminal className="h-3.5 w-3.5" />
                       </button>
+                      {isRunning ? (
+                        <button
+                          onClick={() => onPowerAction(container, 'stop')}
+                          title="Stop container"
+                          className="icon-btn p-1.5 hover:border-state-bad/40 hover:text-state-bad"
+                        >
+                          <Square className="h-3.5 w-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onPowerAction(container, 'start')}
+                          title="Start container"
+                          className="icon-btn p-1.5 hover:border-state-good/40 hover:text-state-good"
+                        >
+                          <Play className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => onRestartContainer(container)}
+                        onClick={() => onPowerAction(container, 'restart')}
                         title="Restart container"
                         className="icon-btn p-1.5 hover:border-state-warn/40 hover:text-state-warn"
                       >
@@ -542,7 +580,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                 <SortHeader column="cpu" className="w-24 whitespace-nowrap">CPU</SortHeader>
                 <SortHeader column="ram" className="w-28 whitespace-nowrap">Memory</SortHeader>
                 <SortHeader column="network" className="w-36 whitespace-nowrap">Throughput</SortHeader>
-                <th className="px-4 py-2.5 text-right font-medium w-24 whitespace-nowrap">Actions</th>
+                <th className="px-4 py-2.5 text-right font-medium w-32 whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody key={`${currentPage}-${pageSize}`} className="animate-fadeIn">
@@ -659,8 +697,25 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
                         <button onClick={() => onViewLogs(container)} title="View logs" className="icon-btn">
                           <Terminal className="h-3.5 w-3.5" />
                         </button>
+                        {isRunning ? (
+                          <button
+                            onClick={() => onPowerAction(container, 'stop')}
+                            title="Stop container"
+                            className="icon-btn hover:border-state-bad/40 hover:text-state-bad"
+                          >
+                            <Square className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onPowerAction(container, 'start')}
+                            title="Start container"
+                            className="icon-btn hover:border-state-good/40 hover:text-state-good"
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
-                          onClick={() => onRestartContainer(container)}
+                          onClick={() => onPowerAction(container, 'restart')}
                           title="Restart container"
                           className="icon-btn hover:border-state-warn/40 hover:text-state-warn"
                         >

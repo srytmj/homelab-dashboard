@@ -5,6 +5,23 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-15 04:38 UTC]
+**Agent:** Claude (Full UI Overhaul + Feature Batch)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Sidebar fix:** `Sidebar.tsx` is now `sticky` (was flow-positioned inside a plain flex row), so it stays put while the page scrolls. `LegacyLayout.tsx` measures header height via `ResizeObserver` and exposes it as `--header-h`.
+- **Header redesign:** Settings/Fullscreen/Refresh/Sign out consolidated into one "More" dropdown in `Header.tsx`; Command Deck, Notifications and Theme stay inline.
+- **Container Fleet full management:** `ContainerGridSection.tsx` defaults to card view, adds an All/Pinned filter, and every container gets Start/Stop/Restart (existing sort-by control, default name, already covered start-up requirement). `RestartModal.tsx` generalized into a `PowerAction`-aware modal; added `DockerService.stopContainer()`/`startContainer()` and `POST /api/containers/:id/stop|start`.
+- **Git Projects last-deploy timestamp:** `GitProjectRecord.lastDeployedAt`, surfaced in snapshot and rendered in `GitPullInline.tsx`.
+- **New Logs page (`/logs`):** `AuditLogService` (`data/audit-log.json`) backs a full audit trail (auth, pins, container actions, git actions, backup/restore, config import, plus a global error handler) with filterable UI in `LogsPage.tsx`. Added to Sidebar nav, Command Palette and routes.
+- **Shortcuts grouping:** `BookmarkRecord.group`, grouped rendering in `BookmarksSection.tsx`, group datalist in the add/edit modal.
+- **AI Agents Monitor:** added a permanent disclaimer clarifying the 5h/weekly numbers are a local T3-session estimate (no Anthropic Console admin API key available), plus `turnsToday` and last-active-time per agent.
+- **Animation pass:** added `active:scale-95`/transition polish to sidebar links and toggle.
+- **Verification:** `cd server && npx tsc` clean; `cd client && npx tsc -b && npx vite build` clean. No UI click-through was performed (per repo convention — owner tests behavior manually).
+- **Not done / explicitly out of scope this round:** real (Anthropic-account-wide) 5h/weekly usage — requires a Console admin API key the owner doesn't have; declined by owner in favor of the local estimate.
+
+---
+
 ### [2026-09-15 04:22 UTC]
 **Agent:** Gemini (Redeployer Script Documentation for Users & AI Agents)
 **Status:** `[COMPLETED]`

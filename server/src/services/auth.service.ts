@@ -74,6 +74,10 @@ export class AuthService {
     return this.db.owner !== null;
   }
 
+  public getUsername(): string | null {
+    return this.db.owner?.username ?? null;
+  }
+
   public registerOwner(username: string, password: string): { success: boolean; message: string; token?: string; username?: string } {
     if (this.isRegistered()) {
       return { success: false, message: 'Registration is closed. Owner account already exists.' };

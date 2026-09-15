@@ -45,6 +45,9 @@ interface GitProjectRecord {
   // Set when autoDeploy found a migration-risk file and backed off, so the
   // UI can explain why an update is sitting there instead of deploying itself.
   autoDeployBlocked?: boolean;
+  // Wall-clock time of the last successful pull & rebuild, so the UI can
+  // show when this project was last deployed, not just what SHA it's on.
+  lastDeployedAt?: number;
 }
 
 interface GitProjectsDb {
@@ -265,6 +268,7 @@ export class GitProjectsService {
         latestCommitMessage: record.cachedLatestMessage,
         latestCommitDate: record.cachedLatestDate,
         lastKnownSha: record.lastKnownSha,
+        lastDeployedAt: record.lastDeployedAt,
         hasUpdate: Boolean(
           record.lastKnownSha && record.cachedLatestSha && record.cachedLatestSha !== record.lastKnownSha
         ),
@@ -587,6 +591,7 @@ export class GitProjectsService {
       }
 
       record.lastKnownSha = newSha;
+      record.lastDeployedAt = Date.now();
       this.saveDb();
 
       const message = `Pulled and rebuilt at ${newSha.slice(0, 7)}.`;

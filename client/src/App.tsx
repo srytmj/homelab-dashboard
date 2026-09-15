@@ -6,7 +6,7 @@ import { useCockpitData } from './hooks/useCockpitData.js';
 import { useTheme } from './hooks/useTheme.js';
 import { CommandPalette } from './components/CommandPalette.js';
 import { LogModal } from './components/LogModal.js';
-import { RestartModal } from './components/RestartModal.js';
+import { RestartModal, PowerAction } from './components/RestartModal.js';
 import { PruneModal } from './components/PruneModal.js';
 import { PinDomainModal } from './components/PinDomainModal.js';
 import { HomePage } from './pages/HomePage.js';
@@ -16,6 +16,7 @@ import { SentinelPage } from './pages/SentinelPage.js';
 import { GitProjectsPage } from './pages/GitProjectsPage.js';
 import { ProcessesPage } from './pages/ProcessesPage.js';
 import { AiAgentsPage } from './pages/AiAgentsPage.js';
+import { LogsPage } from './pages/LogsPage.js';
 import { LegacyLayout } from './layouts/LegacyLayout.js';
 
 // Lazy-loaded: xterm.js is heavy and only needed by owners who use SSH.
@@ -29,6 +30,7 @@ function CockpitDashboard() {
 
   const [activeLogContainer, setActiveLogContainer] = useState<ContainerMetric | null>(null);
   const [activeRestartContainer, setActiveRestartContainer] = useState<ContainerMetric | null>(null);
+  const [activePowerAction, setActivePowerAction] = useState<PowerAction>('restart');
   const [activePinContainer, setActivePinContainer] = useState<ContainerMetric | null>(null);
   const [isPruneModalOpen, setIsPruneModalOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -96,7 +98,10 @@ function CockpitDashboard() {
           containers={snapshot?.containers}
           isPrivacyMode={isPrivacyMode}
           onViewLogs={(c) => setActiveLogContainer(c)}
-          onRestartContainer={(c) => setActiveRestartContainer(c)}
+          onPowerAction={(c, action) => {
+            setActivePowerAction(action);
+            setActiveRestartContainer(c);
+          }}
           onPinContainer={(c) => setActivePinContainer(c)}
         />
       } />
@@ -110,6 +115,7 @@ function CockpitDashboard() {
       <Route path="processes" element={<ProcessesPage />} />
       <Route path="sentinel" element={<SentinelPage sentinel={snapshot?.sentinel} />} />
       <Route path="ai-agents" element={<AiAgentsPage />} />
+      <Route path="logs" element={<LogsPage />} />
       <Route path="git-projects" element={<GitProjectsPage snapshot={snapshot} onRefetch={refetch} />} />
       <Route path="terminal" element={
         <Suspense fallback={<p className="label font-mono text-[10.5px]">Loading terminal…</p>}>
@@ -145,6 +151,7 @@ function CockpitDashboard() {
       {activeRestartContainer && (
         <RestartModal
           container={activeRestartContainer}
+          action={activePowerAction}
           onClose={() => setActiveRestartContainer(null)}
           onSuccess={() => refetch()}
         />

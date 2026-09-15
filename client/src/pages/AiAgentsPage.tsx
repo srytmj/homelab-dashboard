@@ -113,6 +113,15 @@ export const AiAgentsPage: React.FC = () => {
         </div>
       )}
 
+      {/* Accuracy disclaimer — always visible, not tucked into the collapsible docs */}
+      <div className="rounded-panel border border-state-warn/30 bg-state-warn/[0.06] px-4 py-3 text-[12px] leading-relaxed text-cockpit-muted">
+        <span className="font-semibold text-cockpit-text">Estimated, not the account's real limit.</span> These 5-hour and
+        weekly numbers are counted from turns recorded in this host's local T3 session history
+        (<code className="font-mono text-cockpit-accent">{data?.t3Path || '~/.t3'}</code>), not from Anthropic's own usage
+        counters. If the same account is used from another machine, another T3 session, or a different app, that usage
+        isn't visible here and the real remaining quota will be lower than shown.
+      </div>
+
       {/* Docs / How It Works Collapsible Banner */}
       {showDocs && (
         <div className="panel animate-fade-in-up p-5 space-y-4">
@@ -268,6 +277,10 @@ export const AiAgentsPage: React.FC = () => {
                     </div>
                     <div className="text-[11px] font-mono text-cockpit-muted truncate max-w-[240px] mt-0.5 uppercase">
                       {agent.account} · <span className="text-cockpit-accent font-semibold">{agent.plan}</span>
+                    </div>
+                    <div className="text-[10.5px] font-mono text-cockpit-muted mt-0.5">
+                      {agent.turnsToday} turn{agent.turnsToday === 1 ? '' : 's'} today
+                      {agent.lastActiveAt && ` · last active ${new Date(agent.lastActiveAt).toLocaleTimeString()}`}
                     </div>
                   </div>
                 </div>

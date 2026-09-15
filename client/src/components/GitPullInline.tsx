@@ -127,6 +127,12 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
 
   return (
     <div className="animate-fadeIn space-y-3 border-t border-cockpit-border bg-cockpit-bg px-4 py-3.5">
+      {project.lastDeployedAt && (
+        <p className="label !normal-case !tracking-normal text-[11px] text-cockpit-muted">
+          Last pull &amp; redeploy: {new Date(project.lastDeployedAt).toLocaleString()}
+        </p>
+      )}
+
       {!showLog && check === null && (
         <div className="flex items-center gap-2 text-[12.5px] text-cockpit-muted">
           <RefreshCw className="h-3.5 w-3.5 animate-spin text-cockpit-accent" />

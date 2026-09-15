@@ -251,6 +251,7 @@ export interface GitProjectStatus {
   latestCommitMessage?: string;
   latestCommitDate?: string;
   lastKnownSha?: string;
+  lastDeployedAt?: number;
   hasUpdate: boolean;
   lastPullStatus?: 'idle' | 'pulling' | 'rebuilding' | 'success' | 'failed';
   lastPullMessage?: string;

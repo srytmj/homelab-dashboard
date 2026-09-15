@@ -14,6 +14,7 @@ export interface AgentInstanceTelemetry {
   currentModel: string;
   lastActiveAt?: string;
   lastError?: string;
+  turnsToday: number;
   rolling5h: {
     turnsCount: number;
     estimatedLimit: number;
@@ -336,6 +337,7 @@ export class AiAgentsService {
       );
 
       const latestTurn = turns[0];
+      const turnsToday = turns.filter((t) => new Date(t.requested_at).getTime() >= startOfTodayMs).length;
 
       agentsTelemetry.push({
         id: key,
@@ -347,6 +349,7 @@ export class AiAgentsService {
         status,
         currentModel,
         lastActiveAt: latestTurn?.requested_at,
+        turnsToday,
         rolling5h: {
           turnsCount: turnsIn5Hours.length,
           estimatedLimit: estimated5hLimit,

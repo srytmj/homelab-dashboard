@@ -437,6 +437,50 @@ export class DockerService {
     return { success: false, message: `Container ${id} not found` };
   }
 
+  public async stopContainer(id: string): Promise<{ success: boolean; message: string }> {
+    if (this.isDockerAvailable && this.docker && !config.demoMode) {
+      try {
+        const container = this.docker.getContainer(id);
+        await container.stop();
+        return { success: true, message: `Container ${id.slice(0, 12)} stopped successfully` };
+      } catch (err: any) {
+        return { success: false, message: `Failed to stop: ${err.message}` };
+      }
+    }
+
+    const target = this.mockContainers.find(c => c.id === id || c.shortId === id);
+    if (target) {
+      target.state = 'exited';
+      target.status = 'Exited (0) Less than a second ago';
+      target.uptime = '0s';
+      return { success: true, message: `Mock Container ${target.name} stopped successfully` };
+    }
+
+    return { success: false, message: `Container ${id} not found` };
+  }
+
+  public async startContainer(id: string): Promise<{ success: boolean; message: string }> {
+    if (this.isDockerAvailable && this.docker && !config.demoMode) {
+      try {
+        const container = this.docker.getContainer(id);
+        await container.start();
+        return { success: true, message: `Container ${id.slice(0, 12)} started successfully` };
+      } catch (err: any) {
+        return { success: false, message: `Failed to start: ${err.message}` };
+      }
+    }
+
+    const target = this.mockContainers.find(c => c.id === id || c.shortId === id);
+    if (target) {
+      target.state = 'running';
+      target.status = 'Up Less than a second';
+      target.uptime = '0s';
+      return { success: true, message: `Mock Container ${target.name} started successfully` };
+    }
+
+    return { success: false, message: `Container ${id} not found` };
+  }
+
   public async getLogs(id: string, tail = 100): Promise<{ logs: string }> {
     if (this.isDockerAvailable && this.docker && !config.demoMode) {
       try {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { CockpitSnapshot } from '../types.js';
 import { Theme } from '../hooks/useTheme.js';
@@ -21,9 +21,28 @@ interface LegacyLayoutProps {
 }
 
 export const LegacyLayout: React.FC<LegacyLayoutProps> = (props) => {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height;
+      if (height) setHeaderHeight(height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="flex min-h-screen flex-col bg-cockpit-bg text-cockpit-text transition-colors duration-250">
-      <Header {...props} />
+    <div
+      className="flex min-h-screen flex-col bg-cockpit-bg text-cockpit-text transition-colors duration-250"
+      style={{ '--header-h': headerHeight ? `${headerHeight}px` : '7.5rem' } as React.CSSProperties}
+    >
+      <div ref={headerRef}>
+        <Header {...props} />
+      </div>
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 items-start gap-4">
         <Sidebar />
         <main className="w-full min-w-0 flex-1 space-y-6 px-5 py-7 lg:px-8">

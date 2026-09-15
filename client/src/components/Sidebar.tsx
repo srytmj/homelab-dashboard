@@ -11,6 +11,7 @@ import {
   Sparkles,
   ChevronsLeft,
   ChevronsRight,
+  ScrollText,
 } from 'lucide-react';
 
 export const NAV_ROUTES = [
@@ -22,6 +23,7 @@ export const NAV_ROUTES = [
   { path: '/terminal', label: 'Terminal', icon: TerminalSquare },
   { path: '/sentinel', label: 'Sentinel', icon: Bot },
   { path: '/ai-agents', label: 'AI Agents', icon: Sparkles },
+  { path: '/logs', label: 'Logs', icon: ScrollText },
 ];
 
 const STORAGE_KEY = 'cockpit-sidebar-collapsed';
@@ -49,7 +51,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`hidden md:flex flex-col border-r border-cockpit-border bg-cockpit-panel/30 transition-all duration-200 shrink-0 ${
+      className={`hidden md:flex sticky top-[var(--header-h,7.5rem)] self-start max-h-[calc(100vh-var(--header-h,7.5rem))] flex-col overflow-y-auto scrollbar-none rounded-2xl border border-cockpit-border/60 bg-cockpit-panel/85 backdrop-blur-xl shadow-panel transition-all duration-200 shrink-0 ${
         isCollapsed ? 'w-16' : 'w-56'
       }`}
     >
@@ -63,7 +65,7 @@ export const Sidebar: React.FC = () => {
               end={route.path === '/'}
               title={route.label}
               className={({ isActive }) =>
-                `flex items-center justify-between rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors duration-150 ${
+                `flex items-center justify-between rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-all duration-150 active:scale-95 ${
                   isActive
                     ? 'bg-cockpit-accent/10 text-cockpit-accent'
                     : 'text-cockpit-muted hover:bg-cockpit-panelHover hover:text-cockpit-text'
@@ -82,7 +84,7 @@ export const Sidebar: React.FC = () => {
       <button
         onClick={toggle}
         title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="flex h-10 items-center justify-center border-t border-cockpit-border text-cockpit-muted transition-colors hover:bg-cockpit-panelHover hover:text-cockpit-text"
+        className="flex h-10 items-center justify-center border-t border-cockpit-border text-cockpit-muted transition-all duration-150 hover:bg-cockpit-panelHover hover:text-cockpit-text active:scale-95"
       >
         {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
       </button>
