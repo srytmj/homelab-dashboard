@@ -39,7 +39,7 @@ Host machine (Proxmox + Ubuntu Runner)
         └── optional Telegram bot with Gemini Q&A
              │
         React client (Vite + Tailwind + React Router)
-        ├── Overview / Fleet / Infra / Git / Processes / Sentinel / AI Agents
+        ├── Overview / Fleet / Infra (Overview, Network, Storage, Performance, Backup) / Git / Processes / Sentinel / AI Agents
         ├── Ctrl+K command palette
         └── light and dark theme
 ```
@@ -50,13 +50,18 @@ Host machine (Proxmox + Ubuntu Runner)
 
 **Host vitals.** Proxmox CPU, memory, package temperature, and uptime; LXC CPU, memory, and load average; fan speed and kernel throttle counters; vzdump backup status, archive size, and duration.
 
-**Container fleet.** Live CPU, memory, and per-second network bandwidth for every container, with historical sparklines, sortable columns, filters, and pagination. L7 HTTP probes report the actual HTTP status code and response latency rather than relying solely on Docker's "Up" state. The Web UI link lets you select which address to open -- LAN, Tailscale, or assigned public domain.
+**Container fleet & live usage monitor.** Container management with host cards, search, status filters, and pagination. To keep background CPU overhead near zero on constrained homelab hosts, live container CPU & RAM telemetry is gathered on-demand via the **Live Usage Monitor** toggle button with an active 5-minute auto-stop countdown and automatic cessation whenever navigating away to another page. L7 HTTP probes report real status codes and latency. Web UI launcher supports LAN, Tailscale, or public tunnel URLs.
 
 **Multiple Docker hosts.** Point the daemon at multiple Docker daemons (via `DOCKER_HOSTS`) to aggregate containers into a unified fleet table, tagged and filterable by host. Host-level CPU and RAM telemetry remains scoped to the primary host running the daemon.
 
 **Storage and DAS watchdog.** Disk usage tracking per volume along with a canary file check (`.mounted`) on external enclosures. If an external drive disconnects, an alert banner appears immediately to prevent containers from overflowing the root NVMe drive.
 
-**Disk performance.** Infra page Performance tab: track real-time read/write throughput and disk activity percentages over time directly from `/proc/diskstats`, requiring no additional host agent.
+**Infrastructure categories (5 domains).** Infra page organized into five operational categories:
+- **Overview:** System specifications, compute & RAM progress, network & storage KPIs, and domain jump cards.
+- **Network:** Docker daemon hosts, full Tailscale mesh peer table, and SSL certificate expiration countdown.
+- **Storage:** NVMe & external DAS volumes with canary watchdog (`.mounted`), SMART indicators, and Docker disk hygiene prune.
+- **Performance:** Proxmox hypervisor & Docker runner vitals, kernel throttling counters, and real-time disk I/O throughput and latency via `/proc/diskstats`.
+- **Backup:** Remote cloud backup status via Rclone, on-demand execution, restore confirmation modal, and portable config link importer.
 
 **Processes.** Multi-tab system inspection covering host processes, Docker container processes (via `docker top`), and remote hosts via read-only SSH execution.
 

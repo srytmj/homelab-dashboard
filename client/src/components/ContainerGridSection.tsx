@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { authFetch } from '../utils/api.js';
 import {
   Search,
   RefreshCw,
@@ -18,6 +19,7 @@ import {
   X,
   Square,
   Play,
+  Activity,
 } from 'lucide-react';
 import { ContainerMetric, CockpitSnapshot } from '../types.js';
 import { Sparkline } from './Sparkline.js';
@@ -153,17 +155,123 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
     return list.sort();
   }, [containers, snapshot]);
 
-  // Selected host defaults to the first host if available, or 'all' if none
+  // Selected host defaults to the first host if available
   const [selectedHost, setSelectedHost] = useState<string>(() => {
-    return hostNames[0] || 'all';
+    return hostNames[0] || '';
   });
 
   // Sync selectedHost if initial hostNames was empty and now loaded
   useEffect(() => {
-    if (selectedHost === 'all' && hostNames.length > 0) {
+    if ((!selectedHost || selectedHost === 'all') && hostNames.length > 0) {
       setSelectedHost(hostNames[0]);
     }
   }, [hostNames, selectedHost]);
+
+  // Live container metrics monitoring (on-demand, 5m auto-stop)
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [countdown, setCountdown] = useState(300); // 5 minutes in seconds
+  const [isTogglingMonitor, setIsTogglingMonitor] = useState(false);
+  const isMonitoringRef = useRef(isMonitoring);
+  isMonitoringRef.current = isMonitoring;
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync state if snapshot has containerMonitoring telemetry
+  useEffect(() => {
+    if (snapshot?.containerMonitoring) {
+      if (snapshot.containerMonitoring.active) {
+        setIsMonitoring(true);
+        const remSec = Math.max(0, Math.round(snapshot.containerMonitoring.remainingMs / 1000));
+        setCountdown(remSec);
+      } else if (isMonitoring) {
+        setIsMonitoring(false);
+        setCountdown(300);
+      }
+    }
+  }, [snapshot?.containerMonitoring]);
+
+  const stopMonitoring = useCallback(async () => {
+    setIsMonitoring(false);
+    setCountdown(300);
+    if (timerRef.current) clearInterval(timerRef.current);
+    try {
+      await authFetch('/api/containers/monitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: false }),
+      });
+    } catch (e) {
+      console.warn('Failed to stop container monitoring:', e);
+    }
+  }, []);
+
+  const startMonitoring = useCallback(async () => {
+    setIsTogglingMonitor(true);
+    try {
+      const res = await authFetch('/api/containers/monitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: true, durationMs: 300000 }),
+      });
+      if (res.ok) {
+        setIsMonitoring(true);
+        setCountdown(300);
+      }
+    } catch (e) {
+      console.warn('Failed to start container monitoring:', e);
+    } finally {
+      setIsTogglingMonitor(false);
+    }
+  }, []);
+
+  const toggleMonitoring = () => {
+    if (isMonitoring) {
+      stopMonitoring();
+    } else {
+      startMonitoring();
+    }
+  };
+
+  // 5-minute countdown timer: automatically stops when reaches 0
+  useEffect(() => {
+    if (!isMonitoring) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setCountdown(300);
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          stopMonitoring();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isMonitoring, stopMonitoring]);
+
+  // Automatically stop monitoring when navigating away from Fleet page (component unmount)
+  useEffect(() => {
+    return () => {
+      if (isMonitoringRef.current) {
+        authFetch('/api/containers/monitor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: false }),
+        }).catch(() => {});
+      }
+    };
+  }, []);
+
+  const formatCountdown = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Compute stats per docker host
   const hostStats = useMemo(() => {
@@ -205,7 +313,7 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
   const filteredContainers = useMemo(() => {
     return containers.filter((c) => {
       // Host selection filter
-      if (selectedHost !== 'all' && c.dockerHost && c.dockerHost !== selectedHost) {
+      if (selectedHost && c.dockerHost && c.dockerHost !== selectedHost) {
         return false;
       }
 
@@ -245,19 +353,40 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
               Pilih host / LXC di bawah ini untuk melihat container dan resource usage
             </p>
           </div>
-          {hostNames.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setSelectedHost('all')}
-              className={`rounded-xl px-3 py-1.5 font-mono text-[11px] font-semibold transition-all ${
-                selectedHost === 'all'
-                  ? 'bg-cockpit-accent text-white shadow-sm'
-                  : 'border border-cockpit-border bg-cockpit-panel text-cockpit-muted hover:text-cockpit-text'
-              }`}
-            >
-              Lihat Semua Docker ({containers.length})
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={toggleMonitoring}
+            disabled={isTogglingMonitor}
+            title={
+              isMonitoring
+                ? 'Live usage telemetry active. Click to stop (auto-stops in 5m or upon navigating away).'
+                : 'Click to track live CPU and memory usage for running containers (auto-stops in 5m or when leaving page).'
+            }
+            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-[12px] font-medium transition-all ${
+              isMonitoring
+                ? 'border border-state-good/60 bg-state-good/15 text-state-good shadow-sm hover:bg-state-good/25'
+                : 'border border-cockpit-border bg-cockpit-panel text-cockpit-muted hover:border-cockpit-accent/50 hover:text-cockpit-text'
+            }`}
+          >
+            {isMonitoring ? (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-good opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-state-good" />
+                </span>
+                <span className="font-semibold text-cockpit-text">Stop Monitor</span>
+                <span className="font-mono tabular-nums text-[11px] bg-state-good/20 text-state-good px-1.5 py-0.5 rounded-md">
+                  {formatCountdown(countdown)}
+                </span>
+              </>
+            ) : (
+              <>
+                <Activity className="h-3.5 w-3.5 text-cockpit-accent" />
+                <span>Live Usage Monitor</span>
+                <span className="pill pill-neutral font-mono text-[10px]">5m auto-stop</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Host Usage Selector Cards */}
@@ -366,10 +495,33 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
 
       {/* Main Containers Section for Selected Host */}
       <section className="panel overflow-hidden">
+        {isMonitoring && (
+          <div className="border-b border-state-good/30 bg-state-good/10 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+            <div className="flex items-center gap-2 text-cockpit-text">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-good opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-state-good" />
+              </span>
+              <span>
+                Live usage monitoring active for running containers on <strong className="text-cockpit-accent">{selectedHost || 'host'}</strong>.
+              </span>
+            </div>
+            <div className="flex items-center gap-3 font-mono text-[11px] text-cockpit-muted">
+              <span>Auto-stop in <strong className="text-cockpit-text tabular-nums">{formatCountdown(countdown)}</strong></span>
+              <button
+                type="button"
+                onClick={stopMonitoring}
+                className="font-semibold text-state-good hover:underline"
+              >
+                Stop Now
+              </button>
+            </div>
+          </div>
+        )}
         <div className="panel-head flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="panel-title">
-              Containers on <span className="text-cockpit-accent">{selectedHost === 'all' ? 'All Hosts' : selectedHost}</span>
+              Containers on <span className="text-cockpit-accent">{selectedHost || 'Docker Host'}</span>
             </h3>
             <p className="panel-sub">
               {runningCount} running of {filteredContainers.length} containers · live telemetry

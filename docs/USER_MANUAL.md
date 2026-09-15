@@ -16,7 +16,7 @@ Seven pages, reachable from the sidebar on the left or by typing the address dir
 | --- | --- |
 | Overview (`/`) | Device identity, spec, the four headline tiles, shortcuts into Fleet and Infra, and your personal shortcuts |
 | Fleet (`/fleet`) | The container table |
-| Infra (`/infra`) | Overview and Performance sub-views: storage/Tailscale/SSL/backup inventory, or live host and disk performance |
+| Infra (`/infra`) | 5 dedicated categories: Overview (summary & KPI cards), Network (Tailscale, Docker hosts, SSL), Storage (DAS watchdog & hygiene), Performance (host & disk I/O), and Backup (Rclone & config import) |
 | Git projects (`/git-projects`) | Containers built from your own repos, and whether they have new commits upstream |
 | Processes (`/processes`) | Every process, tabbed by source: this host, Docker containers, or an SSH target |
 | Terminal (`/terminal`) | A real shell to Proxmox or a configured Docker host, over SSH |
@@ -77,13 +77,22 @@ One row per container.
 - **Throughput** shows the live per-second rate, with cumulative totals underneath.
 - **Actions** — pin, view logs, or restart. All three appear on hover.
 
-Filtering and sorting:
+Host selection and filtering:
 
-- The search box matches name, image and port.
+- Click any host card in the **Docker & LXC Fleets** section to switch between hosts.
+- The search box matches container name, image and port.
 - `All / Running / Stopped` filters by state.
-- If more than one Docker host is configured, a **host filter** appears: buttons for up to five hosts, or a searchable dropdown beyond that. Each row also shows which host it's on when more than one is configured.
+- `Pinned` toggles between all containers and pinned containers only.
 - Click a column header to sort by it, click again to reverse. Sorted columns are marked with an arrow.
 - The footer sets rows per page (10, 25, 50, 100) and pages through the result. Changing a filter or the page size returns you to page one.
+
+### Live Usage Monitor
+
+By default, container lists are fetched via lightweight metadata checks to keep host and dockerd CPU utilization near zero. To inspect live CPU and RAM consumption per container on demand:
+- Click the **Live Usage Monitor** button at the top right of the Fleet page.
+- **Start / Stop**: Clicking toggles live polling of running container CPU/RAM stats and dynamic sparklines.
+- **5-Minute Auto-Stop**: A countdown timer runs for 5 minutes (300 seconds); once elapsed, monitoring automatically disengages to prevent unintentional CPU drain.
+- **Navigation Auto-Stop**: Switching to any other page (Overview, Infra, Processes, etc.) immediately stops container usage monitoring and releases server polling.
 
 ### Logs
 
@@ -101,33 +110,43 @@ Pins are stored on the daemon, not the browser, so they're the same whether you 
 
 ## Infra
 
-Two sub-views, switched with the tab strip at the top of the page.
+Five dedicated categories, switched with the navigation tabs at the top of the page:
 
 ### Overview
 
-**Docker hosts.** Only appears once a second Docker host is configured. One row per host, with a connected/simulated pill and how many containers it's currently reporting. CPU and memory aren't shown here — that's only ever readable for the machine the daemon itself runs on, so a second host contributes containers, not its own vitals.
+The high-level command summary for homelab infrastructure:
+- **Node Specification & Uptime**: Real-time hostname, OS, Linux kernel version, and running duration.
+- **KPI Summary Cards**: Four primary indicators showing Compute (vCPU cores & RAM usage), Network & Mesh (Tailscale peers online & Docker daemon count), Storage Capacity (total volume footprint & average allocation), and Disaster Recovery (last backup timestamp & result).
+- **Domain Jump Cards**: Direct shortcut cards for Network, Storage, Performance, and Backup with status pills and one-click jump buttons to their respective categories.
 
-**Storage and DAS watchdog.** One row per volume, named from `STORAGE_LABELS` if the owner set one for that mount, otherwise auto-named from the mount's own folder. Each row has a usage bar. The line underneath carries the mount path, used and free space, and either the SMART result or the canary state for external bays. A `DETACHED` badge and a red banner at the top of the page mean an enclosure dropped: containers pointed at that path will silently write to the root NVMe until it fills, so stop them or remount before doing anything else.
+### Network
 
-The footer button shows reclaimable Docker space and opens the prune dialog. Prune removes untagged image layers and builder cache only; running containers and named volumes are left alone.
+Comprehensive networking matrix:
+- **Docker Host Daemons**: Connected daemon endpoints, reachability status, and container counts per host.
+- **Tailscale Mesh**: Live peer device table with online status, 100.x IPv4 and IPv6 addresses, MagicDNS names, advertised subnet routes, and exit node status. Hover or click to copy IP addresses.
+- **SSL Certificates**: Let's Encrypt / Nginx Proxy Manager certificate expiration countdown per domain, alerting amber under 30 days and red under 14 days, with a graceful empty state when none are configured.
 
-**Tailscale mesh.** Peers with online state, address and last-seen time. `THIS HOST` marks the machine serving the dashboard, `EXIT` marks an exit node, and a peer advertising routes shows them in place of its MagicDNS name. Hover a row to copy its address.
+### Storage
 
-**SSL certificates.** Days remaining per domain, amber under 30 days, red under 14. The header pill shows the soonest expiry across all of them.
-
-**Backup.** Shows when it's configured, when the last backup ran and whether it succeeded. Three actions:
-
-- **Run backup now** — syncs your configured source paths up to the rclone remote immediately, without waiting for the schedule.
-- **Restore from backup** — the reverse: pulls the remote back down over your local paths. This overwrites whatever's there now, so it lists exactly which paths before asking you to confirm. This is what you run after replacing a dead disk and pointing a fresh install at the same remote.
-- **Import config from link** — separate from the two above, and works even without a backup remote configured. Paste a link to a small zip (an "Anyone with the link" Google Drive share works) and it restores just your pinned containers and tracked git projects — never your login, never the fleet itself. Meant for a quick config restore, not disaster recovery; use Restore from backup for that.
-
-Both "Run backup now" and "Restore from backup" stay disabled until `BACKUP_RCLONE_REMOTE` is configured.
+Physical and logical storage inspection:
+- **Storage & DAS Watchdog**: One row per volume (internal NVMe and external DAS multi-bay mounts), displaying used/free capacity bars, filesystem type, and mount points.
+- **Canary Watchdog (`.mounted`)**: Verifies presence of the canary file on external enclosures. A `DETACHED` badge and red warning banner appear immediately if a DAS drops, preventing silent root NVMe exhaustion.
+- **SMART Health**: SMART indicators per physical disk drive.
+- **Docker Disk Hygiene**: Displays reclaimable disk space across dangling images and build cache, with a safe **Prune** modal that preserves running containers and named volumes.
 
 ### Performance
 
-**Host detail.** The Proxmox node's address, core count, version and uptime; the LXC runner's live CPU and memory bars, load average and fan or throttle state; and last night's vzdump backup with size and duration. A `SIMULATED` badge on the Proxmox panel means the API token is not configured and the numbers are generated.
+Low-level host and storage I/O telemetry:
+- **Host Detail**: Proxmox VE hypervisor metrics (CPU model, core count, package temperature, uptime, PVE version) and Ubuntu LXC runner vitals (CPU percent, RAM usage, 1/5/15m load averages, thermal throttling counters, fan speed).
+- **Disk Performance (`/proc/diskstats`)**: Tabbed per volume with real-time active time percentage graph, IOPS response latency, read throughput rate, and write throughput rate directly from the Linux kernel.
 
-**Disk performance.** A tab per volume, internal and external alike — the tab strip always shows every configured mount, even one with no data yet. Below it, a graph of active time (how much of the last stretch that disk was busy) plus four readouts: active time, average response time, read speed and write speed — the same shape as Task Manager's own Performance tab for a disk. This reads `/proc/diskstats` directly, so it only has real numbers on a Linux host; elsewhere, or for a volume behind LVM/device-mapper, the tab says so instead of showing stale or wrong numbers.
+### Backup
+
+Disaster recovery and portable configuration:
+- **Rclone Cloud Backup**: Tracks remote backup configuration (`BACKUP_RCLONE_REMOTE`), last run timestamp, duration, and status.
+- **Run backup now**: On-demand sync of configured source paths to the cloud remote without waiting for cron schedules.
+- **Restore from backup**: Reverse sync pulling cloud archives down over local paths, with an interactive confirmation modal showing target paths.
+- **Import config from link**: Lightweight configuration restore (pins, git project tracking) from a public zip or Google Drive share link without requiring full disaster recovery or overwriting credentials.
 
 ## Git projects
 

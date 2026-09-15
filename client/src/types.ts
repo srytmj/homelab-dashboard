@@ -381,6 +381,10 @@ export interface CockpitSnapshot {
   sentinel?: SentinelStatus;
   isDemoMode: boolean;
   appVersion?: AppVersionInfo;
+  containerMonitoring?: {
+    active: boolean;
+    remainingMs: number;
+  };
 }
 
 export interface AgentInstanceTelemetry {

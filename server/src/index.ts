@@ -285,6 +285,27 @@ async function bootstrap() {
     return terminalService.getRemoteProcesses(target);
   });
 
+  // Live container usage monitoring (on-demand, 5m auto-stop)
+  app.get('/api/containers/monitor', async () => {
+    return {
+      active: collectorService.isContainerMonitoringActive(),
+      remainingMs: collectorService.getContainerMonitoringRemainingMs(),
+    };
+  });
+
+  app.post('/api/containers/monitor', async (request) => {
+    const body = request.body as { active?: boolean; durationMs?: number };
+    const shouldActive = Boolean(body?.active);
+    const duration = typeof body?.durationMs === 'number' ? body.durationMs : 300000;
+    collectorService.setContainerMonitoring(shouldActive, duration);
+    collectorService.collectAndBroadcast().catch(() => {});
+    return {
+      active: shouldActive,
+      remainingMs: shouldActive ? duration : 0,
+      message: shouldActive ? 'Live container usage monitoring started' : 'Live container usage monitoring stopped',
+    };
+  });
+
   app.post('/api/docker/prune', async (request) => {
     const result = await primaryDockerService.pruneSystem();
     auditLogService.log('container', 'info', 'Docker prune executed', { actor: actorFor(request), detail: JSON.stringify(result) });

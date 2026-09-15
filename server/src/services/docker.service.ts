@@ -19,6 +19,22 @@ export class DockerService {
   private historyMap: Map<string, SparklineHistory> = new Map();
   private mockContainers: ContainerMetric[] = [];
   private lastMockUpdate = 0;
+  private isMonitoringActive = false;
+  private monitorExpiresAt = 0;
+
+  public setMonitoringActive(active: boolean, durationMs = 300000) {
+    this.isMonitoringActive = active;
+    this.monitorExpiresAt = active ? Date.now() + durationMs : 0;
+  }
+
+  public isMonitoring(): boolean {
+    if (!this.isMonitoringActive) return false;
+    if (Date.now() > this.monitorExpiresAt) {
+      this.isMonitoringActive = false;
+      return false;
+    }
+    return true;
+  }
   private mockHygiene: DockerDiskHygiene = {
     reclaimableBytes: 14820000000, // ~14.82 GB
     danglingImagesCount: 8,
@@ -166,10 +182,11 @@ export class DockerService {
     });
   }
 
-  public async getContainers(tailscaleIp = '100.110.20.15'): Promise<{ containers: ContainerMetric[]; isLive: boolean }> {
+  public async getContainers(tailscaleIp = '100.110.20.15', activeMetrics = false): Promise<{ containers: ContainerMetric[]; isLive: boolean }> {
+    const shouldMonitor = activeMetrics || this.isMonitoring();
     if (this.isDockerAvailable && this.docker && !config.demoMode) {
       try {
-        const liveContainers = await this.fetchLiveContainers(tailscaleIp);
+        const liveContainers = await this.fetchLiveContainers(tailscaleIp, shouldMonitor);
         return { containers: liveContainers, isLive: true };
       } catch (err) {
         console.warn(`[DockerService:${this.name}] Live fetch failed, falling back to mock:`, err);
@@ -180,7 +197,7 @@ export class DockerService {
       return { containers: [], isLive: false };
     }
 
-    return { containers: this.getSimulatedContainers(), isLive: false };
+    return { containers: this.getSimulatedContainers(shouldMonitor), isLive: false };
   }
 
   private cachedDiskHygiene: DockerDiskHygiene | null = null;
@@ -268,12 +285,23 @@ export class DockerService {
    * Lightweight container fetching: relies purely on docker.listContainers({ all: true }).
    * Avoids calling container.stats() in loop to prevent high CPU usage on dockerd & containerd.
    */
-  private async fetchLiveContainers(tailscaleIp: string): Promise<ContainerMetric[]> {
+  private async fetchLiveContainers(tailscaleIp: string, activeMetrics = false): Promise<ContainerMetric[]> {
     if (!this.docker) return [];
 
     const containers = await this.docker.listContainers({ all: true });
     const results: ContainerMetric[] = [];
     const lanNodeIp = '192.168.18.225';
+
+    const statsMap = new Map<string, { cpuPercent: number; memBytes: number; memLimit: number }>();
+    if (activeMetrics) {
+      const running = containers.filter(c => c.State.toLowerCase() === 'running');
+      await Promise.allSettled(
+        running.slice(0, 30).map(async (info) => {
+          const stats = await this.getSingleContainerStats(info.Id);
+          if (stats) statsMap.set(info.Id, stats);
+        })
+      );
+    }
 
     for (const info of containers) {
       const id = info.Id;
@@ -308,16 +336,35 @@ export class DockerService {
         image: info.Image,
         state,
         status: info.Status,
-        cpuPercent: 0,
-        memoryBytes: 0,
-        memoryLimitBytes: 0,
-        memoryPercent: 0,
+        cpuPercent: statsMap.get(id)?.cpuPercent ?? 0,
+        memoryBytes: statsMap.get(id)?.memBytes ?? 0,
+        memoryLimitBytes: statsMap.get(id)?.memLimit ?? 0,
+        memoryPercent: (statsMap.get(id)?.memLimit && statsMap.get(id)!.memLimit > 0)
+          ? Number(((statsMap.get(id)!.memBytes / statsMap.get(id)!.memLimit) * 100).toFixed(2))
+          : 0,
         networkRxBytes: 0,
         networkTxBytes: 0,
         networkRxRateBytesPerSec: 0,
         networkTxRateBytesPerSec: 0,
-        sparklineCpu: [],
-        sparklineMemory: [],
+        sparklineCpu: (() => {
+          const history = this.historyMap.get(id) || { cpu: [], memory: [], lastRxBytes: 0, lastTxBytes: 0, lastTimestamp: Date.now() };
+          if (statsMap.has(id)) {
+            history.cpu.push(statsMap.get(id)!.cpuPercent);
+            if (history.cpu.length > 12) history.cpu.shift();
+            this.historyMap.set(id, history);
+          }
+          return history.cpu;
+        })(),
+        sparklineMemory: (() => {
+          const history = this.historyMap.get(id) || { cpu: [], memory: [], lastRxBytes: 0, lastTxBytes: 0, lastTimestamp: Date.now() };
+          if (statsMap.has(id)) {
+            const memMB = Math.round(statsMap.get(id)!.memBytes / (1024 * 1024));
+            history.memory.push(memMB);
+            if (history.memory.length > 12) history.memory.shift();
+            this.historyMap.set(id, history);
+          }
+          return history.memory;
+        })(),
         uptime: info.Status,
         ports,
         created: info.Created * 1000,
@@ -360,11 +407,11 @@ export class DockerService {
     }
   }
 
-  private getSimulatedContainers(): ContainerMetric[] {
+  private getSimulatedContainers(shouldJitter = true): ContainerMetric[] {
     const now = Date.now();
-    const shouldJitter = now - this.lastMockUpdate > 1500;
+    const canJitter = shouldJitter && (now - this.lastMockUpdate > 1500);
 
-    if (shouldJitter) {
+    if (canJitter) {
       this.lastMockUpdate = now;
       for (const c of this.mockContainers) {
         if (c.state === 'running') {

@@ -100,19 +100,7 @@ async function main() {
   fs.writeFileSync(path.join(screenshotsDir, 'overview.png'), Buffer.from(ss1.data, 'base64'));
   console.log('Saved docs/screenshots/overview.png');
 
-  // Fleet Page
-  await send('Page.navigate', { url: 'http://127.0.0.1:3000/fleet' });
-  await wait(2500);
-  const ss2 = await send('Page.captureScreenshot', { format: 'png' });
-  fs.writeFileSync(path.join(screenshotsDir, 'fleet.png'), Buffer.from(ss2.data, 'base64'));
-  console.log('Saved docs/screenshots/fleet.png');
 
-  // Infra Page
-  await send('Page.navigate', { url: 'http://127.0.0.1:3000/infra' });
-  await wait(2500);
-  const ss3 = await send('Page.captureScreenshot', { format: 'png' });
-  fs.writeFileSync(path.join(screenshotsDir, 'infra.png'), Buffer.from(ss3.data, 'base64'));
-  console.log('Saved docs/screenshots/infra.png');
 
   ws.close();
   chrome.kill();

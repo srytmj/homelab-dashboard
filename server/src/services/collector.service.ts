@@ -23,6 +23,22 @@ export class CollectorService {
   private wsClients: Set<WebSocket> = new Set();
   private timer: NodeJS.Timeout | null = null;
   private lastSnapshot: CockpitSnapshot | null = null;
+  private containerMonitoringExpiresAt = 0;
+
+  public isContainerMonitoringActive(): boolean {
+    return Date.now() < this.containerMonitoringExpiresAt;
+  }
+
+  public getContainerMonitoringRemainingMs(): number {
+    return Math.max(0, this.containerMonitoringExpiresAt - Date.now());
+  }
+
+  public setContainerMonitoring(active: boolean, durationMs = 300000) {
+    this.containerMonitoringExpiresAt = active ? Date.now() + durationMs : 0;
+    for (const service of this.dockerServices) {
+      service.setMonitoringActive(active, durationMs);
+    }
+  }
 
   constructor(
     dockerServices: DockerService[],
@@ -133,10 +149,11 @@ export class CollectorService {
 
     const selfTailscaleIp = tailscaleData.devices.find(d => d.isCurrentDevice)?.ipv4 || '100.110.20.15';
 
+    const isMonitoring = this.isContainerMonitoringActive();
     const perHostResults = await Promise.all(
       this.dockerServices.map(async (service) => ({
         service,
-        result: await service.getContainers(selfTailscaleIp),
+        result: await service.getContainers(selfTailscaleIp, isMonitoring),
       }))
     );
 
@@ -177,6 +194,10 @@ export class CollectorService {
       sentinel,
       isDemoMode: !anyLive || config.demoMode,
       appVersion,
+      containerMonitoring: {
+        active: isMonitoring,
+        remainingMs: this.getContainerMonitoringRemainingMs(),
+      },
     };
 
     this.lastSnapshot = snapshot;
