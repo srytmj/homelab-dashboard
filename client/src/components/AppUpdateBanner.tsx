@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpCircle,
@@ -394,7 +395,7 @@ export const AppUpdateBanner: React.FC = () => {
       )}
 
       {/* UPDATE LIVE PROGRESS MODAL */}
-      {showLogModal && (
+      {showLogModal && createPortal(
         <div className="overlay">
           <div className="panel modal-panel w-full max-w-2xl">
             <div className="panel-head flex items-center justify-between">
@@ -511,7 +512,8 @@ export const AppUpdateBanner: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

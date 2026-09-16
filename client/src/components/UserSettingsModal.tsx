@@ -219,7 +219,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-fade-in"
+      className="overlay animate-fade-in"
       onClick={onClose}
     >
       <div

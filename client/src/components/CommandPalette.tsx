@@ -121,7 +121,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-16 sm:pt-24 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 p-4 pt-16 sm:pt-24 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Trash2, RefreshCw, Eye, Copy, Check, X } from 'lucide-react';
 import { authFetch } from '../utils/api.js';
@@ -42,7 +43,7 @@ const LogDetailModal: React.FC<{
     setTimeout(() => setCopied(false), 2000);
   };
 
-  return (
+  return createPortal(
     <div className="overlay">
       <div className="panel modal-panel flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden shadow-2xl shadow-black/50">
         <div className="panel-head">
@@ -105,7 +106,8 @@ const LogDetailModal: React.FC<{
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Check,
   ChevronDown,
@@ -113,7 +114,7 @@ const ManageGroupsModal: React.FC<{
     return bookmarks.filter((b) => b.group === name).length;
   };
 
-  return (
+  return createPortal(
     <div className="overlay">
       <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
         <div className="panel-head">
@@ -293,7 +294,8 @@ const ManageGroupsModal: React.FC<{
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -346,7 +348,7 @@ const BookmarkModal: React.FC<{
     }
   };
 
-  return (
+  return createPortal(
     <div className="overlay">
       <div className="panel modal-panel w-full max-w-sm shadow-2xl shadow-black/50">
         <div className="panel-head">
@@ -424,7 +426,8 @@ const BookmarkModal: React.FC<{
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useState } from 'react';
 import { Trash2, AlertOctagon, Check, X } from 'lucide-react';
 import { DockerDiskHygiene } from '../types.js';
@@ -41,7 +42,7 @@ export const PruneModal: React.FC<PruneModalProps> = ({ hygiene, onClose, onSucc
     }
   };
 
-  return (
+  return createPortal(
     <div className="overlay">
       <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
         <div className="panel-head">
@@ -103,6 +104,7 @@ export const PruneModal: React.FC<PruneModalProps> = ({ hygiene, onClose, onSucc
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

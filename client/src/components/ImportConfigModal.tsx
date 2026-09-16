@@ -40,7 +40,7 @@ export const ImportConfigModal: React.FC<ImportConfigModalProps> = ({ onClose, o
   };
 
   return createPortal(
-    <div className="overlay fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md overflow-y-auto">
+    <div className="overlay">
       <div className="panel modal-panel w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl shadow-black/60 my-auto animate-scale-up">
         <div className="panel-head shrink-0">
           <div>

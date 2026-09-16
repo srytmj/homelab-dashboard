@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Copy, Check, RefreshCw, ArrowDownToLine } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
@@ -54,7 +55,7 @@ export const LogModal: React.FC<LogModalProps> = ({ container, onClose }) => {
 
   if (!container) return null;
 
-  return (
+  return createPortal(
     <div className="overlay">
       <div className="panel modal-panel flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden shadow-2xl shadow-black/50">
         <div className="panel-head">
@@ -114,6 +115,7 @@ export const LogModal: React.FC<LogModalProps> = ({ container, onClose }) => {
           <span>Close with the icon above</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

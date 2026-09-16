@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useState } from 'react';
 import { ExternalLink, Pin, PinOff, X } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
@@ -41,7 +42,7 @@ export const PinDomainModal: React.FC<PinDomainModalProps> = ({ container, onClo
     }
   };
 
-  return (
+  return createPortal(
     <div className="overlay">
       <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
         <div className="panel-head">
@@ -107,6 +108,7 @@ export const PinDomainModal: React.FC<PinDomainModalProps> = ({ container, onClo
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

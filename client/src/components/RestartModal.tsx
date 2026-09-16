@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw, Square, Play, X, Check } from 'lucide-react';
 import { ContainerMetric } from '../types.js';
@@ -62,7 +63,7 @@ export const RestartModal: React.FC<RestartModalProps> = ({ container, action = 
     }
   };
 
-  return (
+  return createPortal(
     <div className="overlay">
       <div className="panel modal-panel w-full max-w-md shadow-2xl shadow-black/50">
         <div className="panel-head">
@@ -112,6 +113,7 @@ export const RestartModal: React.FC<RestartModalProps> = ({ container, action = 
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

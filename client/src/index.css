@@ -165,13 +165,13 @@ body {
   }
 
   .overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md;
-    /* base */ animation: overlayIn 0.25s ease-out forwards;
+    @apply fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm overflow-y-auto;
+    /* base */ animation: overlayIn 0.2s ease-out forwards;
   }
 
   .modal-panel {
-    @apply border border-cockpit-border/60 shadow-2xl;
-    animation: panelIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    @apply border border-cockpit-border/60 shadow-2xl bg-cockpit-panel;
+    animation: panelIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   /* BETA UI (Brutalist Overrides) */
