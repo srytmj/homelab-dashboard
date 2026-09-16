@@ -350,43 +350,58 @@ export const ContainerGridSection: React.FC<ContainerGridSectionProps> = ({
           <div>
             <h2 className="text-[16px] font-bold text-cockpit-text">Docker &amp; LXC Fleets</h2>
             <p className="text-[12px] text-cockpit-muted">
-              Pilih host / LXC di bawah ini untuk melihat container dan resource usage
+              Select a host or LXC below to view its containers and resource usage
             </p>
           </div>
-          <button
-            type="button"
-            onClick={toggleMonitoring}
-            disabled={isTogglingMonitor}
-            title={
-              isMonitoring
-                ? 'Live usage telemetry active. Click to stop (auto-stops in 5m or upon navigating away).'
-                : 'Click to track live CPU and memory usage for running containers (auto-stops in 5m or when leaving page).'
-            }
-            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-[12px] font-medium transition-all ${
-              isMonitoring
-                ? 'border border-state-good/60 bg-state-good/15 text-state-good shadow-sm hover:bg-state-good/25'
-                : 'border border-cockpit-border bg-cockpit-panel text-cockpit-muted hover:border-cockpit-accent/50 hover:text-cockpit-text'
-            }`}
-          >
-            {isMonitoring ? (
-              <>
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-good opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-state-good" />
-                </span>
-                <span className="font-semibold text-cockpit-text">Stop Monitor</span>
-                <span className="font-mono tabular-nums text-[11px] bg-state-good/20 text-state-good px-1.5 py-0.5 rounded-md">
-                  {formatCountdown(countdown)}
-                </span>
-              </>
-            ) : (
-              <>
-                <Activity className="h-3.5 w-3.5 text-cockpit-accent" />
-                <span>Live Usage Monitor</span>
-                <span className="pill pill-neutral font-mono text-[10px]">5m auto-stop</span>
-              </>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleMonitoring}
+              disabled={isTogglingMonitor}
+              title={
+                isMonitoring
+                  ? 'Live usage telemetry active. Click to stop (auto-stops in 5m or upon navigating away).'
+                  : 'Click to track live CPU and memory usage for running containers (auto-stops in 5m or when leaving page).'
+              }
+              className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-[12px] font-medium transition-all ${
+                isMonitoring
+                  ? 'border border-state-good/60 bg-state-good/15 text-state-good shadow-sm hover:bg-state-good/25'
+                  : 'border border-cockpit-border bg-cockpit-panel text-cockpit-muted hover:border-cockpit-accent/50 hover:text-cockpit-text'
+              }`}
+            >
+              {isMonitoring ? (
+                <>
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-good opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-state-good" />
+                  </span>
+                  <span className="font-semibold text-cockpit-text">Stop Monitor</span>
+                  <span className="font-mono tabular-nums text-[11px] bg-state-good/20 text-state-good px-1.5 py-0.5 rounded-md">
+                    {formatCountdown(countdown)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Activity className="h-3.5 w-3.5 text-cockpit-accent" />
+                  <span>Live Usage Monitor</span>
+                  <span className="pill pill-neutral font-mono text-[10px]">5m auto-stop</span>
+                </>
+              )}
+            </button>
+            {hostNames.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setSelectedHost('all')}
+                className={`rounded-xl px-3 py-1.5 font-mono text-[11px] font-semibold transition-all ${
+                  selectedHost === 'all'
+                    ? 'bg-cockpit-accent text-white shadow-sm'
+                    : 'border border-cockpit-border bg-cockpit-panel text-cockpit-muted hover:text-cockpit-text'
+                }`}
+              >
+                View All Fleets ({containers.length})
+              </button>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Host Usage Selector Cards */}

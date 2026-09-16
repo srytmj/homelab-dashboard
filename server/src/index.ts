@@ -456,6 +456,26 @@ async function bootstrap() {
     return { success: true };
   });
 
+  app.put('/api/bookmarks/groups/rename', async (request, reply) => {
+    const body = request.body as { oldName?: string; newName?: string };
+    if (!body?.oldName?.trim() || !body?.newName?.trim()) {
+      reply.status(400);
+      return { success: false, message: 'oldName and newName are required' };
+    }
+    const count = bookmarksService.renameGroup(body.oldName, body.newName);
+    auditLogService.log('bookmark', 'info', `Renamed shortcut group '${body.oldName}' to '${body.newName}' (${count} items)`, { actor: actorFor(request) });
+    return { success: true, count, bookmarks: bookmarksService.getAll() };
+  });
+
+  app.delete('/api/bookmarks/groups/:groupName', async (request, reply) => {
+    const { groupName } = request.params as { groupName: string };
+    const { deleteShortcuts } = request.query as { deleteShortcuts?: string };
+    const shouldDelete = deleteShortcuts === 'true';
+    const count = bookmarksService.deleteGroup(decodeURIComponent(groupName), shouldDelete);
+    auditLogService.log('bookmark', 'info', `Deleted shortcut group '${groupName}' (removed shortcuts: ${shouldDelete})`, { actor: actorFor(request) });
+    return { success: true, count, bookmarks: bookmarksService.getAll() };
+  });
+
   app.post('/api/git-projects/:containerName', async (request, reply) => {
     const { containerName } = request.params as { containerName: string };
     const body = request.body as {

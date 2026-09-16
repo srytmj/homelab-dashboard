@@ -283,7 +283,7 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
                   type="button"
                   onClick={handleReset}
                   className="rounded border border-state-bad/30 bg-state-bad/10 px-2.5 py-1 text-[11px] font-medium text-state-bad hover:bg-state-bad/20 transition-colors"
-                  title="Batalkan proses pull & rebuild"
+                  title="Cancel pull & rebuild process"
                 >
                   Cancel
                 </button>
@@ -302,7 +302,7 @@ export const GitPullInline: React.FC<GitPullInlineProps> = ({ project, onDone })
                     type="button"
                     onClick={handleReset}
                     className="btn-ghost px-2.5 py-1 text-[11px] h-auto"
-                    title="Tutup log dan kembali ke pengecekan project"
+                    title="Dismiss log output and return to project status"
                   >
                     Dismiss
                   </button>

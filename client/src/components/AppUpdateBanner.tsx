@@ -163,7 +163,7 @@ export const AppUpdateBanner: React.FC = () => {
     setAutoScroll(true);
     setUpdateState({
       status: 'updating',
-      log: ['$ git fetch origin', 'Memulai proses pembaruan Homelab Dashboard...'],
+      log: ['$ git fetch origin', 'Starting Homelab Dashboard update pipeline...'],
     });
 
     try {
@@ -177,8 +177,8 @@ export const AppUpdateBanner: React.FC = () => {
           message: errMsg,
           log: [
             '$ git pull',
-            `✕ Gagal memulai pembaruan: ${errMsg}`,
-            'Pastikan direktori project memiliki akses git repository atau volume repo terhubung.',
+            `✕ Failed to start update: ${errMsg}`,
+            'Ensure project root has Git repository access and appropriate volume mounts.',
           ],
         });
         return;
@@ -187,7 +187,7 @@ export const AppUpdateBanner: React.FC = () => {
       setIsUpdating(false);
       setUpdateState({
         status: 'failed',
-        message: err.message || 'Koneksi ke server gagal.',
+        message: err.message || 'Server connection failed.',
         log: [`✕ Network error: ${err.message}`],
       });
     }
@@ -227,20 +227,20 @@ export const AppUpdateBanner: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1 rounded-full border border-cockpit-accent/50 bg-cockpit-accent/20 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-cockpit-accent">
                   <Sparkles className="h-3 w-3 animate-pulse" />
-                  UPDATE TERSEDIA
+                  UPDATE AVAILABLE
                 </span>
                 {announcement?.version && (
                   <span className="pill pill-neutral font-mono text-[10.5px]">v{announcement.version}</span>
                 )}
                 <span className="font-mono text-[11px] text-cockpit-muted">
-                  {behindBy > 0 ? `${behindBy} commit baru di ` : 'Update di '}
+                  {behindBy > 0 ? `${behindBy} new commit${behindBy === 1 ? '' : 's'} on ` : 'Update on '}
                   <span className="text-cockpit-text">{branch}</span>
                   {latestSha ? ` (${latestSha.slice(0, 7)})` : ''}
                 </span>
               </div>
 
               <h2 className="text-[17px] font-bold tracking-tight text-cockpit-text">
-                {announcement?.title || 'Pembaruan Homelab Dashboard Tersedia'}
+                {announcement?.title || 'Homelab Dashboard Update Available'}
               </h2>
 
               {announcement?.description && (
@@ -252,7 +252,7 @@ export const AppUpdateBanner: React.FC = () => {
               {announcement?.highlights && announcement.highlights.length > 0 && (
                 <div className="mt-3 rounded-lg border border-cockpit-border/60 bg-cockpit-bg/60 p-3">
                   <p className="text-[11.5px] font-semibold uppercase tracking-wider text-cockpit-muted">
-                    Apa yang baru di versi ini:
+                    What's new in this version:
                   </p>
                   <ul className="mt-2 space-y-1.5 text-[12.5px] text-cockpit-text">
                     {announcement.highlights.map((h, i) => (
@@ -272,7 +272,7 @@ export const AppUpdateBanner: React.FC = () => {
                     onClick={() => setShowCommits(!showCommits)}
                     className="inline-flex items-center gap-1 font-mono text-[11px] text-cockpit-muted hover:text-cockpit-text"
                   >
-                    <span>{showCommits ? 'Sembunyikan commit log' : 'Lihat commit log'}</span>
+                    <span>{showCommits ? 'Hide commit log' : 'View commit log'}</span>
                     {showCommits ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </button>
                   {showCommits && (
@@ -296,7 +296,7 @@ export const AppUpdateBanner: React.FC = () => {
                 className="btn-primary flex items-center gap-2 text-[13px] shadow-glow-accent"
               >
                 <ArrowUpCircle className={`h-4 w-4 ${isUpdating ? 'animate-spin' : ''}`} />
-                <span>{isUpdating ? 'Memperbarui...' : 'Update Sekarang'}</span>
+                <span>{isUpdating ? 'Updating...' : 'Update Now'}</span>
               </button>
 
               <a
@@ -306,7 +306,7 @@ export const AppUpdateBanner: React.FC = () => {
                 className="btn-ghost flex items-center gap-1.5 text-[12px]"
               >
                 <GitBranch className="h-3.5 w-3.5 text-cockpit-muted" />
-                <span>Lihat di GitHub</span>
+                <span>View on GitHub</span>
                 <ExternalLink className="h-3 w-3 opacity-60" />
               </a>
             </div>
@@ -331,7 +331,7 @@ export const AppUpdateBanner: React.FC = () => {
                   onClick={() => setShowReleaseNotes(!showReleaseNotes)}
                   className="btn-ghost py-1 px-2.5 text-[11.5px]"
                 >
-                  <span>{showReleaseNotes ? 'Tutup Catatan Rilis' : "Catatan Rilis"}</span>
+                  <span>{showReleaseNotes ? 'Hide Release Notes' : 'Release Notes'}</span>
                 </button>
               )}
 
@@ -339,17 +339,17 @@ export const AppUpdateBanner: React.FC = () => {
                 onClick={handleCheckUpdates}
                 disabled={isChecking}
                 className="btn-ghost py-1 px-2.5 text-[11.5px]"
-                title="Periksa commit baru dari GitHub"
+                title="Check for new commits from GitHub"
               >
                 <RefreshCw className={`h-3 w-3 ${isChecking ? 'animate-spin text-cockpit-accent' : ''}`} />
-                <span>{isChecking ? 'Memeriksa...' : 'Periksa Update'}</span>
+                <span>{isChecking ? 'Checking...' : 'Check Updates'}</span>
               </button>
 
               <button
                 onClick={handleStartUpdate}
                 disabled={isUpdating}
                 className="btn-ghost py-1 px-2.5 text-[11.5px]"
-                title="Jalankan update dan redeploy secara paksa"
+                title="Force pull and rebuild dashboard container"
               >
                 <Download className={`h-3 w-3 ${isUpdating ? 'animate-bounce text-cockpit-accent' : 'text-cockpit-muted'}`} />
                 <span>Pull & Redeploy</span>
@@ -360,7 +360,7 @@ export const AppUpdateBanner: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-ghost py-1 px-2 text-[11.5px]"
-                title="Buka repository di GitHub"
+                title="Open repository on GitHub"
               >
                 <GitBranch className="h-3 w-3 text-cockpit-muted" />
                 <ExternalLink className="h-2.5 w-2.5 opacity-60" />
@@ -403,7 +403,7 @@ export const AppUpdateBanner: React.FC = () => {
                 <h3 className="panel-title">Update Homelab Dashboard</h3>
               </div>
               {!isUpdating && (
-                <button onClick={() => setShowLogModal(false)} className="icon-btn" title="Tutup">
+                <button onClick={() => setShowLogModal(false)} className="icon-btn" title="Close">
                   <X className="h-4 w-4" />
                 </button>
               )}
@@ -412,12 +412,12 @@ export const AppUpdateBanner: React.FC = () => {
             <div className="p-5">
               <p className="text-[12.5px] text-cockpit-muted">
                 {isUpdating
-                  ? 'Menjalankan git pull, npm install, dan membangun bundle web terbaru...'
+                  ? 'Running git pull, npm install, and building latest web bundle...'
                   : updateState?.status === 'success'
-                  ? 'Pembaruan berhasil diselesaikan!'
+                  ? 'Update completed successfully!'
                   : updateState?.status === 'failed'
-                  ? 'Pembaruan gagal dijalankan. Lihat detail pesan di bawah.'
-                  : 'Proses pembaruan selesai.'}
+                  ? 'Update failed. Check detailed log messages below.'
+                  : 'Update process finished.'}
               </p>
 
               {isReconnecting && (
@@ -425,7 +425,7 @@ export const AppUpdateBanner: React.FC = () => {
                   <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-amber-400" />
                   <div>
                     <p className="font-bold">Service Restarting</p>
-                    <p className="text-[11px] opacity-90">Container Homelab Dashboard sedang direstart ke build baru oleh out-of-process runner. Halaman akan otomatis memuat ulang saat service online (biasanya 5–15 detik)...</p>
+                    <p className="text-[11px] opacity-90">Homelab Dashboard container is restarting with the new build via out-of-process runner. Page will automatically reload once online (typically 5–15s)...</p>
                   </div>
                 </div>
               )}
@@ -443,7 +443,7 @@ export const AppUpdateBanner: React.FC = () => {
                       className={`break-all py-0.5 ${
                         line.startsWith('✓')
                           ? 'text-state-good font-semibold'
-                          : line.startsWith('✕') || line.includes('Error') || line.includes('Gagal')
+                          : line.startsWith('✕') || line.includes('Error') || line.includes('Failed')
                           ? 'text-state-bad font-semibold'
                           : line.startsWith('$')
                           ? 'text-cockpit-accent'
@@ -454,9 +454,9 @@ export const AppUpdateBanner: React.FC = () => {
                     </div>
                   ))
                 ) : isUpdating ? (
-                  <div className="py-8 text-center text-cockpit-muted">Menyiapkan update...</div>
+                  <div className="py-8 text-center text-cockpit-muted">Preparing update...</div>
                 ) : (
-                  <div className="py-8 text-center text-cockpit-muted">Tidak ada log proses update.</div>
+                  <div className="py-8 text-center text-cockpit-muted">No update log available.</div>
                 )}
               </div>
 
@@ -465,26 +465,26 @@ export const AppUpdateBanner: React.FC = () => {
                 {isReconnecting ? (
                   <div className="flex items-center gap-2 text-[12.5px] text-amber-400">
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Menunggu Homelab Dashboard online kembali...</span>
+                    <span>Waiting for Homelab Dashboard to come back online...</span>
                   </div>
                 ) : isUpdating ? (
                   <div className="flex items-center gap-2 text-[12.5px] text-cockpit-accent">
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Sedang memperbarui dashboard... Mohon tunggu.</span>
+                    <span>Updating dashboard... Please wait.</span>
                   </div>
                 ) : updateState?.status === 'success' ? (
                   <div className="flex items-center gap-2 text-[12.5px] text-state-good">
                     <Check className="h-4 w-4" />
                     <span>
                       {reloadCountdown !== null
-                        ? `Memuat ulang dashboard dalam ${reloadCountdown} detik...`
-                        : 'Update selesai! Silakan refresh.'}
+                        ? `Reloading dashboard in ${reloadCountdown} seconds...`
+                        : 'Update complete! Refreshing...'}
                     </span>
                   </div>
                 ) : updateState?.status === 'failed' ? (
                   <div className="flex items-center gap-2 text-[12.5px] text-state-bad">
                     <AlertTriangle className="h-4 w-4" />
-                    <span>Gagal: {updateState.message || 'Terjadi kesalahan pada proses update.'}</span>
+                    <span>Failed: {updateState.message || 'An error occurred during update.'}</span>
                   </div>
                 ) : (
                   <span />
@@ -496,7 +496,7 @@ export const AppUpdateBanner: React.FC = () => {
                       onClick={() => window.location.reload()}
                       className="btn-primary text-[12px]"
                     >
-                      Muat Ulang Sekarang
+                      Reload Now
                     </button>
                   )}
                   {!isUpdating && (
@@ -504,7 +504,7 @@ export const AppUpdateBanner: React.FC = () => {
                       onClick={() => setShowLogModal(false)}
                       className="btn-ghost text-[12px]"
                     >
-                      Tutup
+                      Close
                     </button>
                   )}
                 </div>

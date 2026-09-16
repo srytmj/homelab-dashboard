@@ -514,17 +514,23 @@ export class DockerService {
     return { success: false, message: `Container ${id} not found` };
   }
 
-  public async getLogs(id: string, tail = 100): Promise<{ logs: string }> {
+  public async getLogs(id: string, tail: number | 'all' = 100): Promise<{ logs: string }> {
     if (this.isDockerAvailable && this.docker && !config.demoMode) {
       try {
         const container = this.docker.getContainer(id);
-        const logBuffer = await container.logs({
+        const logOpts: any = {
           stdout: true,
           stderr: true,
-          tail,
           timestamps: true,
-        });
-        return { logs: logBuffer.toString('utf-8') };
+        };
+        // In Dockerode / Docker Engine API, tail="all" or omitting tail gives full logs
+        if (tail !== 0 && tail !== 'all') {
+          logOpts.tail = tail;
+        } else {
+          logOpts.tail = 'all';
+        }
+        const logBuffer = (await container.logs(logOpts)) as any;
+        return { logs: logBuffer ? logBuffer.toString('utf-8') : '' };
       } catch (err: any) {
         return { logs: `Error fetching logs from docker daemon: ${err.message}` };
       }

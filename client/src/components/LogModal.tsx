@@ -69,9 +69,13 @@ export const LogModal: React.FC<LogModalProps> = ({ container, onClose }) => {
           <div className="flex items-center gap-2">
             <div className="seg">
               <span className="label px-2">Tail</span>
-              {[50, 100, 250].map((num) => (
-                <button key={num} onClick={() => setTail(num)} className={`seg-btn ${tail === num ? 'seg-btn-on' : ''}`}>
-                  {num}
+              {[50, 100, 250, 500, 1000, 0].map((num) => (
+                <button
+                  key={num}
+                  onClick={() => setTail(num)}
+                  className={`seg-btn ${tail === num ? 'seg-btn-on' : ''}`}
+                >
+                  {num === 0 ? 'All' : num}
                 </button>
               ))}
             </div>
@@ -106,7 +110,7 @@ export const LogModal: React.FC<LogModalProps> = ({ container, onClose }) => {
         </div>
 
         <div className="flex items-center justify-between border-t border-cockpit-border px-5 py-2.5 font-mono text-[11px] text-cockpit-muted">
-          <span>Snapshot of last {tail} lines</span>
+          <span>{tail === 0 ? 'Full log output (all lines)' : `Snapshot of last ${tail} lines`}</span>
           <span>Close with the icon above</span>
         </div>
       </div>

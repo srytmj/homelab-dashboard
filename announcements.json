@@ -1,5 +1,18 @@
 [
   {
+    "id": "2026-09-16-shortcut-groups-full-logs-and-english-sync",
+    "version": "1.3.0",
+    "title": "Shortcut Group Management, Full Logs Inspector & English Localization",
+    "date": "2026-09-16",
+    "description": "Streamlined shortcut management with group rename & deletion modal, removed manual drag/drop order and duplicate repo link, added full log inspector for system audit trails and container logs, and unified the entire dashboard interface into English.",
+    "highlights": [
+      "Shortcut Groups Management: Easily rename custom groups or delete groups with options to keep or remove associated shortcuts.",
+      "Streamlined Shortcuts: Removed drag-and-drop manual ordering and duplicate repository link in favor of automatic group sorting and the dedicated Homelab Updater.",
+      "Full System & Container Logs: Added detailed inspector modal for system audit logs with copy-to-clipboard raw payloads, plus expanded container log tailing options (up to 1,000 lines or full output).",
+      "Unified English Localization: All user interface labels, alerts, update banner states, and tooltips are now cleanly synchronized in English."
+    ]
+  },
+  {
     "id": "2026-09-15-fleet-management-logs-and-ui-overhaul",
     "version": "1.2.0",
     "title": "Full Container Management, System Logs Page & UI Overhaul",

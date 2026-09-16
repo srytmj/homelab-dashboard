@@ -256,7 +256,7 @@ export const StorageMatrixSection: React.FC<StorageMatrixSectionProps> = ({
 
           {externalDrives.length === 0 ? (
             <div className="rounded-xl border border-dashed border-cockpit-border p-6 text-center text-[12.5px] text-cockpit-muted">
-              Tidak ada drive eksternal DAS yang terdeteksi. Hubungkan enclosure untuk mengaktifkan pemantauan canary.
+              No external DAS drives detected. Connect an enclosure to activate canary health monitoring.
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -309,7 +309,7 @@ export const StorageMatrixSection: React.FC<StorageMatrixSectionProps> = ({
                       <div className="mt-3 rounded-lg border border-state-bad/40 bg-state-bad/20 p-2.5 text-[11.5px] text-state-bad font-mono flex items-start gap-2">
                         <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                         <span>
-                          <strong>PERINGATAN:</strong> File canary (<code className="underline">.mounted</code>) hilang atau volume terlepas! Sistem mencegah kontainer menulis file agar root NVMe tidak kehabisan ruang.
+                          <strong>WARNING:</strong> Canary file (<code className="underline">.mounted</code>) missing or enclosure detached! Write operations blocked to protect root NVMe disk space.
                         </span>
                       </div>
                     )}

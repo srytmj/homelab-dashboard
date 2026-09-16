@@ -84,20 +84,6 @@ export class BookmarksService {
     return this.getGroups();
   }
 
-  public deleteGroup(name: string): string[] {
-    const trimmed = name.trim();
-    if (this.db.groups) {
-      this.db.groups = this.db.groups.filter((g) => g !== trimmed);
-    }
-    for (const b of this.db.bookmarks) {
-      if (b.group === trimmed) {
-        delete b.group;
-      }
-    }
-    this.saveDb();
-    return this.getGroups();
-  }
-
   public add(name: string, url: string, group?: string): BookmarkRecord {
     const record: BookmarkRecord = {
       id: crypto.randomUUID(),
@@ -138,6 +124,46 @@ export class BookmarksService {
     this.db.bookmarks = reordered;
     this.saveDb();
     return this.db.bookmarks;
+  }
+
+  public renameGroup(oldName: string, newName: string): number {
+    const trimmedOld = oldName.trim();
+    const trimmedNew = newName.trim();
+    if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) return 0;
+    let count = 0;
+    for (const b of this.db.bookmarks) {
+      if (b.group === trimmedOld) {
+        b.group = trimmedNew;
+        count++;
+      }
+    }
+    if (count > 0) this.saveDb();
+    return count;
+  }
+
+  public deleteGroup(groupName: string, deleteShortcuts = false): number {
+    const trimmed = groupName.trim();
+    if (!trimmed) return 0;
+    if (this.db.groups) {
+      this.db.groups = this.db.groups.filter((g) => g !== trimmed);
+    }
+    if (deleteShortcuts) {
+      const initialCount = this.db.bookmarks.length;
+      this.db.bookmarks = this.db.bookmarks.filter((b) => b.group !== trimmed);
+      const deleted = initialCount - this.db.bookmarks.length;
+      this.saveDb();
+      return deleted;
+    } else {
+      let count = 0;
+      for (const b of this.db.bookmarks) {
+        if (b.group === trimmed) {
+          b.group = undefined;
+          count++;
+        }
+      }
+      this.saveDb();
+      return count;
+    }
   }
 
   public remove(id: string) {
