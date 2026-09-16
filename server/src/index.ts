@@ -408,12 +408,6 @@ async function bootstrap() {
     return { success: true, groups };
   });
 
-  app.delete('/api/bookmarks/groups/:name', async (request) => {
-    const { name } = request.params as { name: string };
-    const groups = bookmarksService.deleteGroup(decodeURIComponent(name));
-    return { success: true, groups };
-  });
-
   app.post('/api/bookmarks', async (request, reply) => {
     const body = request.body as { name?: string; url?: string; group?: string };
     if (!body?.name?.trim() || !body?.url?.trim()) {
