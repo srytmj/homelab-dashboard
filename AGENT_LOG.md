@@ -6,6 +6,15 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 ---
 
 ### [2026-09-18 UTC]
+**Agent:** Claude (Chore: gitignore tsbuildinfo)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Untracked `client/tsconfig.tsbuildinfo`:** Added `*.tsbuildinfo` to `.gitignore` and `git rm --cached` the tracked file. It's TypeScript's incremental build cache — pure local metadata that churned on every `tsc -b` run and showed up as a diff-only noise in `git status`, not something that needs to live in version control.
+- **Docs:** Updated the "What not to do" note in `CLAUDE.md` to say `*.tsbuildinfo` is gitignored, replacing the old note that it was "tracked for historical reasons."
+
+---
+
+### [2026-09-18 UTC]
 **Agent:** Claude (Fix: per-host container link IPs)
 **Status:** `[COMPLETED]`
 **Activities Completed:**
