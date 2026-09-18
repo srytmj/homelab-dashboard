@@ -5,6 +5,18 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 
 ---
 
+### [2026-09-18 UTC]
+**Agent:** Claude (Fix: per-host container link IPs)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **Fixed hardcoded LAN IP in `fetchLiveContainers()`:** `docker.service.ts` used a hardcoded `lanNodeIp = '192.168.18.225'` (docker-host's own IP) for every `DockerService` instance, so containers running on other configured Docker hosts (e.g. `whitearchive-hosts`) got LAN/Tailscale links pointing at docker-host's address instead of their own host — a port collision between hosts (e.g. both exposing something on 8082) opened the wrong service.
+- **Per-host IP config:** `DockerHostConfig` (`server/src/config.ts`) now carries optional `lanIp`/`tailscaleIp`. Primary host reads `DOCKER_HOST_LAN_IP`/`DOCKER_HOST_TAILSCALE_IP`; additional hosts use an extended `DOCKER_HOSTS` entry format `name=url|lanIp|tailscaleIp`.
+- **`DockerService` uses its own host's IPs:** stores `lanIp`/`tailscaleIp` from its `hostConfig` and uses them in `fetchLiveContainers()` instead of a shared constant. A host without a configured `tailscaleIp` (not yet joined the tailnet, e.g. `dev-host`) now correctly gets no Tailscale link rather than inheriting the primary host's.
+- **Docs:** `.env.example` updated with the new env vars and the extended `DOCKER_HOSTS` format, documented with the owner's actual three hosts (`docker-host`, `whitearchive-hosts`, `dev-host`).
+- **Note for ops:** requires setting `DOCKER_HOST_LAN_IP`/`DOCKER_HOST_TAILSCALE_IP`/`DOCKER_HOSTS` on the real server `.env` (not just `.env.example`) and redeploying before this takes effect.
+
+---
+
 ### [2026-09-15 04:38 UTC]
 **Agent:** Claude (Full UI Overhaul + Feature Batch)
 **Status:** `[COMPLETED]`
