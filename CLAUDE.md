@@ -124,7 +124,7 @@ client/src/index.css             token values per theme, shared component classe
 - Do not add a charting or component library. The sparklines are hand-written SVG for a reason. `react-router-dom` (structural routing) and `@xterm/xterm`+`@xterm/addon-fit` (an actual terminal emulator, not realistically hand-rolled) are the two exceptions, and `TerminalPage` is lazy-loaded (`React.lazy` in `App.tsx`) specifically so xterm's ~330KB only loads for someone who opens that page. Any future library addition needs the same justification and, if it's non-trivial in size, the same lazy-loading treatment.
 - Do not put emoji in the interface, in documentation, or in commit messages.
 - Do not add backwards-compatibility shims, feature flags or defensive checks for states that cannot occur. This is a single-owner tool with no external consumers.
-- Do not commit generated output. `client/dist` is ignored; `client/tsconfig.tsbuildinfo` is tracked for historical reasons and its churn can be ignored.
+- Do not commit generated output. `client/dist` is ignored; `*.tsbuildinfo` is also gitignored, so its local churn from `tsc -b` never shows up in `git status`.
 - Do not add attribution for AI tooling to commits, pull requests or documentation.
 
 ## Commits
