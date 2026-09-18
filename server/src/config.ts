@@ -5,8 +5,12 @@ export interface DockerHostConfig {
   name: string;
   socketPath?: string;
   url?: string;
+  lanIp?: string;
+  tailscaleIp?: string;
 }
 
+// "name=url|lanIp|tailscaleIp" (lanIp and tailscaleIp optional), comma-separated.
+// tailscaleIp is omitted for a host that hasn't joined the tailnet.
 function parseDockerHosts(raw: string | undefined): DockerHostConfig[] {
   if (!raw) return [];
   return raw
@@ -14,8 +18,9 @@ function parseDockerHosts(raw: string | undefined): DockerHostConfig[] {
     .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => {
-      const [name, url] = entry.split('=').map((s) => s.trim());
-      return { name, url };
+      const [name, rest] = entry.split('=').map((s) => s.trim());
+      const [url, lanIp, tailscaleIp] = (rest || '').split('|').map((s) => s.trim());
+      return { name, url, lanIp: lanIp || undefined, tailscaleIp: tailscaleIp || undefined };
     })
     .filter((host) => host.name && host.url);
 }
@@ -48,6 +53,8 @@ function parseSshTargets(raw: string | undefined): SshTargetConfig[] {
 const primaryDockerHost: DockerHostConfig = {
   name: process.env.DOCKER_HOST_NAME || 'docker-host',
   socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
+  lanIp: process.env.DOCKER_HOST_LAN_IP || undefined,
+  tailscaleIp: process.env.DOCKER_HOST_TAILSCALE_IP || undefined,
 };
 
 export const config = {

@@ -13,6 +13,8 @@ interface SparklineHistory {
 
 export class DockerService {
   public readonly name: string;
+  private readonly lanIp: string | undefined;
+  private readonly tailscaleIp: string | undefined;
   private readonly providesMocks: boolean;
   private docker: Docker | null = null;
   private isDockerAvailable = false;
@@ -46,6 +48,8 @@ export class DockerService {
 
   constructor(hostConfig: DockerHostConfig, providesMocks = false) {
     this.name = hostConfig.name;
+    this.lanIp = hostConfig.lanIp;
+    this.tailscaleIp = hostConfig.tailscaleIp;
     this.providesMocks = providesMocks;
     this.initDocker(hostConfig);
     if (this.providesMocks) {
@@ -182,7 +186,11 @@ export class DockerService {
     });
   }
 
-  public async getContainers(tailscaleIp = '100.110.20.15', activeMetrics = false): Promise<{ containers: ContainerMetric[]; isLive: boolean }> {
+  public async getContainers(selfTailscaleIp = '100.110.20.15', activeMetrics = false): Promise<{ containers: ContainerMetric[]; isLive: boolean }> {
+    // Each host resolves its own LAN/Tailscale IP from config. selfTailscaleIp (the live
+    // tailnet IP of the machine this daemon runs on) is only a fallback for the primary
+    // host — other hosts without a configured tailscaleIp simply have no Tailscale link.
+    const tailscaleIp = this.tailscaleIp || (this.providesMocks ? selfTailscaleIp : undefined);
     const shouldMonitor = activeMetrics || this.isMonitoring();
     if (this.isDockerAvailable && this.docker && !config.demoMode) {
       try {
@@ -285,12 +293,12 @@ export class DockerService {
    * Lightweight container fetching: relies purely on docker.listContainers({ all: true }).
    * Avoids calling container.stats() in loop to prevent high CPU usage on dockerd & containerd.
    */
-  private async fetchLiveContainers(tailscaleIp: string, activeMetrics = false): Promise<ContainerMetric[]> {
+  private async fetchLiveContainers(tailscaleIp: string | undefined, activeMetrics = false): Promise<ContainerMetric[]> {
     if (!this.docker) return [];
 
     const containers = await this.docker.listContainers({ all: true });
     const results: ContainerMetric[] = [];
-    const lanNodeIp = '192.168.18.225';
+    const lanNodeIp = this.lanIp;
 
     const statsMap = new Map<string, { cpuPercent: number; memBytes: number; memLimit: number }>();
     if (activeMetrics) {
@@ -317,8 +325,8 @@ export class DockerService {
       const hasTailscaleLabel = info.Labels && (info.Labels['tailscale'] === 'true' || info.Labels['tailscale.expose'] === 'true');
       const tailscaleEnabled = Boolean(firstPublicPort) || Boolean(hasTailscaleLabel);
 
-      const tailscaleUrl = (tailscaleEnabled && firstPublicPort) ? `http://${tailscaleIp}:${firstPublicPort}` : undefined;
-      const lanUrl = firstPublicPort ? `http://${lanNodeIp}:${firstPublicPort}` : undefined;
+      const tailscaleUrl = (tailscaleEnabled && firstPublicPort && tailscaleIp) ? `http://${tailscaleIp}:${firstPublicPort}` : undefined;
+      const lanUrl = (firstPublicPort && lanNodeIp) ? `http://${lanNodeIp}:${firstPublicPort}` : undefined;
 
       const httpHealth: HttpHealthProbe = state === 'running' && firstPublicPort ? {
         status: 'healthy',
