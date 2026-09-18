@@ -1,5 +1,17 @@
 [
   {
+    "id": "2026-09-18-fix-per-host-container-link-ips",
+    "version": "1.3.1",
+    "title": "Fix: Container Links Now Resolve to Their Own Docker Host",
+    "date": "2026-09-18",
+    "description": "Container LAN/Tailscale links previously pointed at the primary Docker host's IP regardless of which configured host the container actually ran on. Fixed so each host resolves its own LAN and Tailscale address.",
+    "highlights": [
+      "Container Fleet: containers on additional Docker hosts (e.g. whitearchive-hosts) now get LAN/Tailscale links pointing at that host's own IP, not the primary host's — fixes clicking a container's port badge opening the wrong service when both hosts happened to use the same port.",
+      "Docker hosts without a configured Tailscale IP (not yet joined the tailnet) no longer inherit the primary host's Tailscale address.",
+      "New env config: DOCKER_HOST_LAN_IP / DOCKER_HOST_TAILSCALE_IP for the primary host, and an extended DOCKER_HOSTS format (name=url|lanIp|tailscaleIp) for additional hosts."
+    ]
+  },
+  {
     "id": "2026-09-16-shortcut-groups-full-logs-and-english-sync",
     "version": "1.3.0",
     "title": "Shortcut Group Management, Full Logs Inspector & English Localization",
