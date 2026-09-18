@@ -6,6 +6,25 @@ This file tracks the activities of all AI agents (Gemini, Claude, etc.) operatin
 ---
 
 ### [2026-09-18 UTC]
+**Agent:** Claude (Investigate: stale "whitearchive-hosts" fleet label + Git Projects single-host warning)
+**Status:** `[COMPLETED]`
+**Activities Completed:**
+- **"whitearchive-hosts" fleet label — root cause found, no code bug:** Traced the render path end to end — `container.dockerHost` ([ContainerGridSection.tsx](client/src/components/ContainerGridSection.tsx)) comes straight from `this.name` in `docker.service.ts`, which comes from `config.dockerHosts`, computed **once** at process boot from `process.env.DOCKER_HOSTS` (`dotenv.config()` runs once at module load, never re-read). No hardcoded string, no client-side cache — `useCockpitData.ts` holds the snapshot in plain `useState` with no `localStorage`/service worker/React Query involved, so the browser can't be showing stale data on its own. The only way the UI keeps the old name after a confirmed-correct `.env` and a confirmed-correct `docker info` on the host is that the running `homelab-cockpit` container process was never actually recreated with the new environment — `docker restart` reuses the same container's already-baked env; only `docker compose up -d` / `--force-recreate` (i.e. `homelab-redeploy.sh`) re-reads `.env`. Pointed the owner at the existing `[DockerService:<name>] Connected to Docker at ...` boot log line (`docker.service.ts`) as the standing way to verify this after any future host rename. No client or server code changed for this one — it's a deploy-mechanics issue, not a bug.
+- **`.env.example` hygiene:** Updated the `DOCKER_HOSTS` example entry from `whitearchive-hosts` to `yado-hosts` to match the host's actual current name.
+- **Git Projects single-host limitation, now stated explicitly:** Added a standing (non-dismissible) warning in `GitProjectModal.tsx`, directly under the panel subtitle, explaining that pull & rebuild always targets this daemon's own Docker socket regardless of which configured host tab the tracked container is filtered under — real remote-host support doesn't exist yet.
+- **Docs synced:** `CLAUDE.md`'s "Docker is multi-host" paragraph now lists `GitProjectsService`'s pull/rebuild alongside the other primary-host-only services, with the reasoning. `docs/USER_MANUAL.md`'s Git projects section clarifies the host tab strip only filters which container you're linking, not where the rebuild can run. `announcements.json` got a new `1.3.2` entry; root `package.json` version bumped to match.
+- **Verification:** `cd server && npx tsc` clean; `cd client && npx tsc -b && npx vite build` clean.
+
+---
+
+### [2026-09-18 UTC]
+**Agent:** Claude (Feature: CLI for shortcuts, git tracking, and dashboard actions)
+**Status:** `[IN PROGRESS]`
+**Scope (locking):** New CLI client under `server/` wrapping the existing authenticated REST API (login/session, shortcuts + shortcut groups, git project tracking, pins, container actions, docker prune, backup, app-update). No changes to `data/` schemas or existing routes planned. Touches: new `server/src/cli.ts` (+ helpers), `package.json` (root + server), `README.md`, `docs/USER_MANUAL.md`, `CLAUDE.md`, `announcements.json`, `docs/screenshots/overview.png`. Proposal sent to owner for review before implementation, per Agent Workflow Rules.
+
+---
+
+### [2026-09-18 UTC]
 **Agent:** Claude (Chore: gitignore tsbuildinfo)
 **Status:** `[COMPLETED]`
 **Activities Completed:**

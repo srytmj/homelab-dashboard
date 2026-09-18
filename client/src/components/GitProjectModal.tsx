@@ -120,6 +120,13 @@ export const GitProjectModal: React.FC<GitProjectModalProps> = ({
         </div>
 
         <div className="space-y-4 p-5 overflow-y-auto flex-1 scrollbar-thin">
+          <p className="rounded-lg border border-state-warn/40 bg-state-warn/10 p-3 text-[11.5px] leading-snug text-state-warn">
+            Pull &amp; rebuild only works for projects whose container runs on the same Docker daemon as Homelab
+            Cockpit itself (the primary host). Projects on another configured host or LXC — even one listed below —
+            are not supported yet: the rebuild command always targets this daemon's own Docker socket, never a
+            remote one.
+          </p>
+
           {hostNames.length > 1 && (
             <div className="space-y-1.5">
               <label className="label block">Docker host</label>

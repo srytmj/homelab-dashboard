@@ -1,5 +1,17 @@
 [
   {
+    "id": "2026-09-18-git-projects-single-host-warning",
+    "version": "1.3.2",
+    "title": "Git Projects: Single-Host Limitation Warning",
+    "date": "2026-09-18",
+    "description": "The Track a Git Project form now states plainly that pull & rebuild only works for containers running on the same Docker daemon as Homelab Cockpit itself — picking a different configured host in the tab strip only filters the container list, it doesn't extend where the rebuild can run.",
+    "highlights": [
+      "Track a Git Project: added a standing warning explaining that pull & rebuild always targets this daemon's own docker.sock, not a remote configured host.",
+      "Docs: CLAUDE.md and the user manual now document this scope explicitly alongside the existing primary-host-only services list.",
+      ".env.example: refreshed the DOCKER_HOSTS example entry to match the current host naming (yado-hosts)."
+    ]
+  },
+  {
     "id": "2026-09-18-fix-per-host-container-link-ips",
     "version": "1.3.1",
     "title": "Fix: Container Links Now Resolve to Their Own Docker Host",
